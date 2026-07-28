@@ -1,0 +1,159 @@
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+wheels/
+*.whl
+MANIFEST
+
+# Frontend source lives under src/lib — not a Python build dir; override `lib/` above.
+!frontend/src/lib/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env.bak
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.log
+nosetests.xml
+test-results/
+
+# mypy / pyright / ruff
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyright/
+.ruff_cache/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Alembic
+# (keep migrations tracked; only ignore temp files)
+*.pyc
+
+# =============================================================================
+# Node.js / Next.js (frontend/)
+# =============================================================================
+node_modules/
+.next/
+.next-e2e/
+out/
+.nuxt/
+.cache/
+.parcel-cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+*.tsbuildinfo
+next-env.d.ts
+
+# =============================================================================
+# Environment & secrets
+# =============================================================================
+.env
+.env.dev
+.env.test
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+*.pem
+*.key
+*.crt
+secrets/
+
+# =============================================================================
+# Docker
+# =============================================================================
+.dockerignore
+
+# =============================================================================
+# Data & storage (never commit local data volumes)
+# =============================================================================
+volumes/
+minio-data/
+postgres-data/
+redis-data/
+
+# ML / AI model artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.gguf
+*.bin
+*.onnx
+models/weights/
+checkpoints/
+
+# =============================================================================
+# IDE / editors
+# =============================================================================
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains (PyCharm, IntelliJ, WebStorm)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# =============================================================================
+# OS
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# =============================================================================
+# Misc
+# =============================================================================
+*.bak
+*.tmp
+*.swp
+*.swo
+*.orig
+.sass-cache/
+
+# Corpus source documents — working data, not tracked (also stored in MinIO).
+corpus-data/**/*.pdf
