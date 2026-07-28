@@ -49,12 +49,13 @@ STAGE=dev docker compose --profile app up -d
 
 ## Documentation
 
-The design set lives under [docs/design/](docs/design/), organized by domain
+Core docs live under [docs/](docs/)
 
 | Doc | Description |
 |---|---|
-| [docs/plan/](docs/plan/) | Project phase plans 1–4 (all closed) + eval evidence (`eval/`) |
-| [docs/design/adr/](docs/design/adr/) | Architecture Decision Records (ADR-0001…0007) |
+| [docs/RegOps.md](docs/RegOps.md) | Platform architecture, phased roadmap, metrics, and decision requests |
+| [docs/development-plan.md](docs/development-plan.md) | Execution-oriented development plan with workstreams, milestones, and quality gates |
+| [docs/executive-summary.md](docs/executive-summary.md) | 1-page leadership summary for funding and stage-gate decisions |
 
 ---
 

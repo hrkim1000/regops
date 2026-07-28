@@ -23,7 +23,7 @@ Answer natural-language queries together with the supporting clause, document ve
 
 **03. Compliance gap analysis & control mapping**
 Decompose regulatory obligations into structured requirements and map them to internal SOPs, controls, and technical documents. On amendment, automatically derive the scope of impact and the non-compliant items.
-*Deliverables: requirement–control matrix, gap report, list of corrective actions*
+*Deliverables: IR (InfoRequirement)-to-control matrix, gap report, list of corrective actions*
 
 **04. SaaS productization for external customers**
 Convert internally validated workflows into a multi-tenant offering. Commercialize with domestic pharma and medical device companies plus CRO/consulting firms as the primary target.
@@ -135,7 +135,7 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 
 | Timing | Stage | Key activities |
 |---|---|---|
-| M1 | Foundation | Finalize data source priorities · openFDA / National Law Information API connectors · source archive · pilot user interviews |
+| M1 | Foundation | Finalize data source priorities · openFDA + MFDS-related public API/RSS connectors · source archive · pilot user interviews |
 | M2 | Normalization & indexing | Clause-level parsing · multilingual handling · change diff logic · hybrid search index · build a 200-item golden query set for evaluation |
 | M3 | Feature implementation | Monitoring dashboard · alert routing · citation-enforced Q&A · evidence-verification agent · confidence scoring |
 | M4 | Pilot & evaluation | 20–30 real users · quantitative metric measurement · blind accuracy assessment by RA staff · Phase 2 expansion design and Go/No-Go report |
@@ -234,5 +234,5 @@ No-Go is confirmed if four or more of the six quantitative metrics fall short
 
 - Form the task force and hold kickoff (W1)
 - Complete data source prioritization and legal review (W2)
-- First run of the openFDA and National Law Information connectors (W3)
+- First run of the openFDA + MFDS-related public source connectors (W3)
 - Begin pilot user interviews and golden query set design (W4)

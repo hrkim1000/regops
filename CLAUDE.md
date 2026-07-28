@@ -10,7 +10,7 @@ always-loaded, invariant rules only. Task-specific knowledge lives in `.claude/s
 ## Repo map
 
 ```text
-docs/design/              # architecture, per-domain designs, ADRs, dev plans
+docs/                     # product/strategy docs (architecture overview, plans, summaries)
 ```
 
 ## Architecture rules (non-negotiable)
