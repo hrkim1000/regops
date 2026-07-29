@@ -100,6 +100,9 @@ answers carrying them are queued for re-verification. That queue is a product fe
 
 ### 5. DocumentVersion is per (document, version, language)
 
+> **Not exercised in Phase 1.** Both gated cells are MFDS and Korean-only, so multilingual handling
+> is modelled here but not built. The EU spike is where it first gets touched, at reduced depth.
+
 EU acts publish in 24 languages; NMPA is Chinese-only; MFDS is Korean. Storing one version row with
 N text columns makes diffing language-dependent in a single row and blocks per-language parser
 profiles.
@@ -162,11 +165,14 @@ ir_standard_citations(ir_id, standard_reference_id)
 2. **IR versioning** — when a cited clause is amended, is the IR versioned in place or re-derived as
    a new IR with a supersedes-link? Re-derivation is cleaner for audit; versioning is cheaper for
    control mappings that already point at it. Decide before Phase 2 gap analysis.
-3. **`canonical_key` derivation** — what makes 화장품법 the same Document across a title change? ELI
-   URI for EU, CFR citation for FDA, 법령ID for MFDS; NMPA has no stable identifier and may need a
-   curated key.
-4. **Effective date vs. published date for diff ordering** — amendments are published before they
-   take effect, and some take effect in stages. Which drives alerting?
+3. **`canonical_key` derivation** — what makes 화장품법 the same Document across a title change?
+   **Phase 1 needs only the MFDS answer** (법령ID / 고시번호). *(Later: ELI URI for EU, CFR citation
+   for FDA; NMPA has no stable identifier and may need a curated key — deferred.)*
+4. ~~**Effective date vs. published date for diff ordering**~~ — resolved in
+   [ADR-0003](ADR-0003-ingestion-and-change-detection.md) decision 5: three separate dates
+   (`retrieved_at`, `published_at`, `effective_date`), none substituting for another.
+   `effective_date` is parse-derived and overridable per clause for staged application; alerting
+   uses the clause-level date where present.
 
 ## What this unblocks
 
