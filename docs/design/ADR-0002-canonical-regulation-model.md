@@ -137,7 +137,8 @@ Illustrative, not final — column types settle when the migration is written.
 
 ```sql
 cells(id, authority, domain, UNIQUE(authority, domain))          -- exactly 8 rows, seeded
-sources(id, cell_id, block, ordinal, title, url, tier, ingestible, ...)
+sources(id, cell_id, block, ordinal, title, url_template, tier, ingestible, ...)
+  -- url_template holds a credential placeholder, never a resolved URL (ADR-0003 dec 13)
 documents(id, canonical_key, title, doc_type, issuing_authority)
 document_cells(document_id, cell_id)                             -- M:N, decision 1
 document_versions(id, document_id, version_group_id, version_label, language,

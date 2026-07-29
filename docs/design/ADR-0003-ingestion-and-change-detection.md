@@ -217,6 +217,25 @@ audit from a manual sample into a continuous cross-check for `law.go.kr` sources
 replace our own diff: their granularity and timing are outside our control, and the citation
 contract requires diffs against versions we archived ourselves.
 
+### 13. Source credentials live in settings, and never reach a stored URL
+
+Some sources authenticate. 국가법령정보 OPEN API takes an `OC` key — **self-designated by the
+account holder**, confirmed under 마이페이지 → API인증키관리 — passed as a **query-string
+parameter**.
+
+- The key lives in environment settings (`LAW_GO_KR_OC`), never in `import-source-map.md`, never in
+  a `sources` row, never in an ADR or fixture. `.env.example` carries the name with an empty value.
+- `sources.url` stores the **URL template** with a credential placeholder. The resolved URL is built
+  at request time and is never persisted.
+- `fetch_observations` records `source_id`, status and hash — **not the resolved request URL**. Any
+  connector logging must redact credential parameters before emitting.
+
+The audit trail is append-only and outlives any key rotation; a credential written into it cannot be
+cleaned up, and Phase 3 exports it to customers. Because the key is user-chosen rather than issued,
+it is also likelier to be low-entropy and reused — one leak is enough.
+
+Applies to any authenticated source, not just this one; treat it as the default connector contract.
+
 ## Schema additions to ADR-0002
 
 ```sql
