@@ -183,10 +183,15 @@ we collect. Getting rate-limited off MFDS during the pilot would take out two ga
 
 *(Added after the [source reconnaissance](spike-2026-07-29-mfds-source-recon.md).)*
 
-The 별표·서식 API returns **metadata and file links only** — annex content arrives as **HWP or PDF
-attachments**, with their own `별표시행일자`. The substantive obligations of the Cosmetic cell (the
-prohibited and restricted ingredient lists in 화장품 안전기준 등에 관한 규정) live in exactly these
-annexes.
+The substantive obligations of the Cosmetic cell — the prohibited and restricted ingredient lists in
+화장품 안전기준 등에 관한 규정 — live in 별표, not in the body's prose clauses.
+
+> **Revised after the live API test (2026-07-29).** The 별표·서식 *목록* API returns metadata and
+> file links only, but **행정규칙 본문조회 returns `<별표단위>` with `<별표내용>` inline** — the annex
+> text arrives in the same response as the body. **HWP/PDF extraction is therefore not on the Phase 1
+> critical path**, which reverses this decision's original premise. The file links
+> (`별표서식파일링크`, `별표서식PDF파일링크`) remain useful as an archival copy and a fallback where
+> `별표내용` is empty, but they are not the ingestion route.
 
 A connector therefore returns a body artefact **plus zero or more attachment artefacts**, each
 archived, hashed and versioned independently. An annex that changes while its parent body does not

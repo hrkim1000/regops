@@ -131,6 +131,13 @@ directly attacking the detection-coverage and false-positive story.
 is resolved by content similarity plus explicit mapping rows, reviewed by RA when confidence is low.
 This is a Phase 1 requirement, not a refinement: MFDS 고시 renumber routinely.
 
+> **The authority supplies this directly** — live API test, 2026-07-29
+> ([memo](spike-2026-07-29-mfds-source-recon.md)). 법령 본문조회 returns **`조문변경여부`,
+> `조문이동이전`, `조문이동이후`** per clause (74 of each on 화장품법), plus `항제개정유형` and
+> `항제개정일자문자열` at paragraph level. For `law.go.kr` sources the move is *stated*, not inferred.
+> Use it as the primary signal; keep content-similarity matching as the fallback for sources that
+> expose nothing — Tier C, and any cell without an equivalent API.
+
 ## Schema sketch
 
 Illustrative, not final — column types settle when the migration is written.

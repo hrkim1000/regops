@@ -71,7 +71,7 @@ What legitimately differs between SaMD and Cosmetic:
 |---|---|---|
 | Typical obligation shape | process/lifecycle duties (documentation, verification, change control) | substance/labelling duties (concentration limits, prohibited ingredients, claim restrictions) |
 | Taxonomy | design control · risk · V&V · postmarket | ingredient · labelling · claims · GMP · notification |
-| Tabular annexes | rare | **common** — Annex-style ingredient tables carry obligations in rows |
+| Tabular annexes | present but sparse (의료기기 기준규격: ~3% table lines) | **table-dense** (화장품 안전기준 별표 1·2: 35–43% table lines) — ingredient tables carry obligations in rows |
 
 **Falsification criterion.** If Cosmetic extraction requires a domain-specific column on `Clause`, a
 second pre-IR pipeline stage, or a separate parser before Section Extraction, the shared-pipeline
@@ -82,14 +82,20 @@ The likeliest breaker is the tabular-annex row above: an ingredient limit table 
 carrier whose natural unit is a *row*, not a prose clause. If that cannot be represented as clauses
 with `path_segments`, it is a genuine finding, not a workaround to code around quietly.
 
-> **Confirmed as the live risk** by the [source reconnaissance](spike-2026-07-29-mfds-source-recon.md).
-> The 별표·서식 API returns metadata and file links only — annex content arrives as **HWP or PDF
-> attachments**, and the prohibited/restricted ingredient lists in 화장품 안전기준 등에 관한 규정 are
-> exactly these 별표. So for `mfds_cosmetic` the obligation-bearing content is not prose clauses in
-> the body at all. Three consequences: HWP extraction is a real workstream; connectors need the
-> attachment path (ADR-0003 decision 10); and the clause model must carry table rows or annex
-> obligations cannot be cited at clause granularity — which would break the citation contract for
-> this cell specifically. Unresolved: whether the 본문조회 API exposes annex text via `<별표단위>`.
+> **Tested against the live API on 2026-07-29 — the falsifier did NOT trigger.** See the
+> [reconnaissance memo](spike-2026-07-29-mfds-source-recon.md) § live API test.
+>
+> 행정규칙 본문조회 returns `<별표단위>` with **`<별표내용>` inline** — annex text arrives through the
+> same call as the body, so no HWP/PDF path is required for ingestion. The tables are
+> **fixed-width box-drawing text** (`┌ ├ │ ┬ ┼` at consistent offsets), not structured rows: 별표 2
+> of 화장품 안전기준 규정 carries 원료명 / **사용한도** / 비고 / CAS No. as text columns.
+>
+> **Why the bet survives:** the same box-drawing annexes appear on the SaMD side (의료기기 기준규격,
+> 311 box-drawing lines) and 별표 3 of the *cosmetic* 고시 is 0% table — pure prose. So the parsing
+> split is **prose vs. table, a content type present in both domains** — not SaMD vs. Cosmetic.
+> Section Extraction needs a table-mode strategy alongside the 조/항/호/목 hierarchy mode, and both
+> domains use both. No domain-specific column on `Clause`, no pre-IR stage, no domain-forked parser.
+> That is a shared pipeline with two content strategies, which is what decision 3 claims.
 
 ### 4. The LLM proposes; a human locks; only locked IRs flow
 
@@ -150,20 +156,24 @@ ir_citations(ir_id, document_version_id, clause_path, effective_date, superseded
 
 ## Open questions
 
-1. **Tabular annex representation** — decision 3's falsifier, now **confirmed live** rather than
-   hypothetical. Reconnaissance established that 화장품 안전기준 규정 annexes are delivered as HWP/PDF
-   attachments with no row-level API. Remaining questions: does 본문조회 expose annex text via
-   `<별표단위>`; can a limit table row (substance · max concentration · product type · condition) be
-   expressed as a `Clause` with `path_segments`, or does it need a distinct obligation carrier?
-   **Test at W3-4 with a real API key**, before the W5-6 cross-domain check, so a failure has room
-   to be handled rather than surfacing with six Phase 2 cells already planned against it.
-2. **Conditional obligations by product class** — duties that apply only to a device class or
+1. ~~**Tabular annex representation**~~ — **resolved** by the live API test (2026-07-29). Annex text
+   is inline in `<별표내용>`; the parsing split is prose vs. table, and both content types occur in
+   both domains, so decision 3 stands. What remains is *implementation*, not an open architectural
+   question: a fixed-width box-drawing table parser keyed on `│` column offsets, emitting one
+   `Clause` per row with `path_segments = [별표N, row]`. Mechanical and deterministic — no LLM in the
+   parsing path.
+2. **Annex scale vs. clause granularity** — 별표 1 of 화장품 안전기준 규정 alone is **340,074 chars /
+   7,367 lines**, and 별표 2 is 218,995. One `Clause` per table row means tens of thousands of rows
+   for a single 고시. Feeds directly into ADR-0002 open question 1 (embedding granularity): embedding
+   every ingredient row is likely wasteful, while embedding the whole annex is useless for
+   retrieval. Needs a decision before the W5-6 retrieval index.
+3. **Conditional obligations by product class** — duties that apply only to a device class or
    product category. One parameterised IR, or one IR per class? Parameterised is smaller; per-class
    maps to controls more directly.
-3. **Cross-references** (`제5조에 따른`, "as specified in Annex III") — resolve to the referenced
+4. **Cross-references** (`제5조에 따른`, "as specified in Annex III") — resolve to the referenced
    clause at extraction, or retain as text? Resolving improves impact propagation; it also means an
    amendment to the *referenced* clause makes the referring IR stale, which may be correct.
-4. **Extraction determinism** — same clause, same rule and model version should yield the same IRs.
+5. **Extraction determinism** — same clause, same rule and model version should yield the same IRs.
    LLM sampling makes this approximate. Decide whether to pin temperature to 0 and treat any delta
    as a regression, or accept variance and gate on the golden-set score only.
 

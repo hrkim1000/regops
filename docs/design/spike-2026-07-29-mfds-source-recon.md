@@ -88,12 +88,92 @@ list to a curated list *plus* a discovery sweep.
 - ADR-0004: decision 3 and OQ1 updated with the concrete annex finding
 - development-plan.md: HWP/attachment parsing added as a Phase 1 workstream item
 
-## Still to verify with an API key
+---
 
-1. Does 본문조회 return annex text in `<별표단위>`, or only a file link?
-2. Ministry code for 식품의약품안전처 in the `org` parameter
-3. Whether 조문별 변경이력 granularity matches our ClauseDiff needs
-4. RSS feed contents — which categories, and whether 고시 amendments appear there
+# Part 2 — live API test (same day, after key approval)
+
+Grants activated for `law`, `eflaw`, `admrul`, `licbyl`. `expc`/`prec` not granted (not needed).
+
+## Auth model — three distinct failure signatures
+
+All return **HTTP 200**. A connector checking only transport status treats every one as success:
+
+| Response | Meaning | Response required |
+|---|---|---|
+| `<result>사용자 정보 검증에 실패하였습니다</result>` + `...IP주소 및 도메인주소를 등록해 주세요` | egress IP no longer matches registration | re-register IP |
+| HTML page `미신청된 목록/본문에 대한 접근입니다` | API scope not granted for that target | fix grants |
+| `resultCode 00 success` with `totalCnt 0` | possibly a malformed query | validate against expected results |
+| non-200 / timeout | authority outage | retry with backoff |
+
+**IP enforcement is confirmed real** — 사용자 검증 is IP/domain based, and this account is registered
+by IP alone (`도메인주소: 도메인 없음`). ADR-0003's egress-IP concern is warranted, not speculative.
+
+Also confirmed: **a malformed query returns `success` with `totalCnt 0`**, indistinguishable from
+"this law does not exist." Silent, and it would record a healthy `fetch_observation`.
+
+## 법령 본문 structure — 화장품법 (ID 002015, 152 KB)
+
+Tag counts from one response:
+
+```
+조문번호 74 · 조문내용 74 · 조문제목 56 · 항 126 · 호 151 · 목 7
+조문시행일자 74 · 조문변경여부 74 · 조문이동이전 74 · 조문이동이후 74
+부칙내용 16 · 부칙공포일자 16 · 부칙공포번호 16
+항제개정유형 6 · 항제개정일자문자열 6
+```
+
+- **ADR-0002 decision 3 confirmed**: 조/항/호/목 arrive as separate fields. The clause hierarchy is
+  given, not inferred.
+- **ADR-0003 decision 5 confirmed**: `조문시행일자` present on all 74 clauses.
+- **ADR-0002 decision 7 improved**: `조문변경여부` / `조문이동이전` / `조문이동이후` mean renumbering is
+  **stated by the authority**, not inferred by content similarity. Similarity becomes the fallback.
+- 부칙 arrives structured (`부칙내용` + `부칙공포일자`) — a clean source for `effective_date` extraction.
+
+## 별표 — the ADR-0004 falsifier, tested
+
+**행정규칙 본문조회 returns `<별표단위 별표키="…">` containing `<별표내용>` inline.** Annex text comes
+through the same call as the body. HWP/PDF is **not** required for ingestion — reversing Part 1's
+biggest concern.
+
+화장품 안전기준 등에 관한 규정 (행정규칙일련번호 2100000276068, 984 KB, 4 annexes):
+
+| 별표 | Title | chars | lines | box-drawing |
+|---|---|--:|--:|--:|
+| 1 | 사용할 수 없는 원료 | 340,074 | 7,367 | **35%** |
+| 2 | 사용상의 제한이 필요한 원료 | 218,995 | 4,235 | **43%** |
+| 3 | 인체 세포·조직 배양액 안전기준 | 6,156 | 179 | 0% |
+| 4 | 유통화장품 안전관리 시험방법 | 68,030 | 1,531 | 2% |
+
+Tables are **fixed-width box-drawing text** — `┌ ├ │ ┬ ┼ ─` at consistent column offsets:
+
+```
+┌─────────────────────┬────────┬────────────┐
+│원료명                │CAS No. │화학물질명   │
+├─────────────────────┼────────┼────────────┤
+│갈라민트리에치오다이드 │65-29-2 │            │
+```
+
+별표 2 carries 원료명 / **사용한도** / 비고 / CAS No. — 사용한도 *is* the obligation.
+
+**Verdict: the falsifier did not trigger.** The same box-drawing annexes appear on the SaMD side
+(의료기기 기준규격, 2 annexes, 311 box-drawing lines), and 별표 3 of the *cosmetic* 고시 is 0% table.
+So the parsing split is **prose vs. table — a content type present in both domains**, not
+SaMD vs. Cosmetic. No domain column on `Clause`, no pre-IR stage, no domain-forked parser.
+ADR-0002 decision 3 and ADR-0004 decision 3 both stand.
+
+## New question this raised
+
+별표 1 alone is 340 K chars / 7,367 lines. One `Clause` per table row means tens of thousands of rows
+per 고시 — which pushes directly on ADR-0002 open question 1 (embedding granularity). Embedding every
+ingredient row is likely wasteful; embedding the whole annex is useless for retrieval. Needs deciding
+before the W5-6 retrieval index.
+
+## Still open
+
+1. Ministry code for 식품의약품안전처 in the `org` parameter (ADR-0003 dec 11 discovery sweep)
+2. Whether 조문별 변경이력 granularity matches ClauseDiff (ADR-0003 dec 12)
+3. RSS feed contents — which categories, and whether 고시 amendments appear there
+4. Whether `별표내용` is ever empty, requiring the file-link fallback
 
 ## Sources
 
