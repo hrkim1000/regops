@@ -100,6 +100,10 @@ Deliverables:
 - Tier A/B ingestion connectors and source archive
 - Monitoring dashboard and citation-enforced Q&A
 - Golden query set and evaluation harness (per domain — SaMD and Cosmetic sets are scored separately)
+- **IR ground-truth markup** — RA hand-marks the obligations in a sample of 화장품법 and 의료기기법
+  clauses, **blind to extractor output** (ADR-0004 decision 7). Without it, extraction *recall* is
+  unmeasurable and the gap-analysis pillar has no evidence base; marking up after seeing the
+  extractor's results inflates recall and produces a number that cannot be defended
 - EU spike findings memo: multilingual and Tier C effort estimate for Phase 2
 
 Exit criteria (6 gates — **No-Go if 4 or more fall short**):
@@ -194,10 +198,16 @@ Weeks 5-6:
 Weeks 7-8:
 - Deliver monitoring dashboard alpha and alert routing
 - Add citation-enforced answer generation path
+- **RA builds the IR ground-truth markup, blind** — runs in parallel with extraction work and must
+  not be shown extractor output. Sequencing it here, before W9-10 scoring, is what keeps recall
+  honest; doing it afterwards turns it into a review of the extractor rather than an independent
+  baseline
 
 Weeks 9-10:
 - Add evidence-verification checks and confidence gating
 - Conduct RA review rounds against both golden query sets (SaMD and Cosmetic scored separately)
+- Score extraction precision, recall and citation correctness against the ground-truth markup,
+  per domain
 
 Weeks 11-12:
 - Freeze build; pilot onboarding (20-30 users) and baseline capture
@@ -218,7 +228,7 @@ Staffing per phase (FTE, from RegOps.md § Organization):
 
 | Role | Scope | P1 | P2 | P3 |
 |---|---|--:|--:|--:|
-| Regulatory domain (RA/QA) | IR quality, golden set design, acceptance criteria | 1 | 3 | 6 |
+| Regulatory domain (RA/QA) | IR quality, golden set design, ground-truth markup, acceptance criteria | 1 | 3 | 6 |
 | Data engineering | Connectors, ingestion reliability, normalization throughput | 2 | 4 | 7 |
 | AI/ML engineering | Retrieval quality, citation precision, confidence calibration | 2 | 4 | 8 |
 | Product/frontend | Workflow UX, dashboard, alert/action loop | 1 | 3 | 6 |
@@ -284,11 +294,15 @@ Release-level gates:
   hallucination rate gated per cell in both Phase 1 and Phase 2
 
 7. Key-person dependency on the single RA domain expert
-- One person is simultaneously golden-set designer, blind accuracy assessor, and final signoff on
-  regulatory interpretation — a single point of failure across the entire quality gate, and the
-  assessor-designer overlap also weakens the blind assessment
+- One person is simultaneously golden-set designer, ground-truth marker, blind accuracy assessor,
+  IR locker, and final signoff on regulatory interpretation — a single point of failure across the
+  entire quality gate, and the overlap makes both "blind" exercises non-blind in practice
+- The ADR-0004 ground-truth markup adds load at W7-8, and it is precisely the task whose value
+  depends on independence from the extractor a second person would provide
 - Mitigation: budget a second RA reviewer from Phase 1 (even part-time or contracted) so golden-set
-  authorship and accuracy assessment are separated; document IR authoring conventions early
+  authorship, ground-truth markup and accuracy assessment are separated; document IR authoring
+  conventions early. At 1 FTE this risk is accepted, not mitigated — state that explicitly at
+  kickoff rather than discovering it at M4
 
 8. Cross-domain architecture assumption proves false
 - If Normalization or Section Parsing has to fork for Cosmetic, Phase 2's six-cell build is invalid
