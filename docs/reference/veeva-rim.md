@@ -98,7 +98,7 @@ Commitments
 | AI Agent           | 최근 AI 기능 추가        |
 | Compliance Engine  | Workflow 기반        |
 
-가장 큰 차이점은 **RegOps는 규정을 분석하여 IR(Information Requirement)을 추출하고 이를 코드와 연결하는 AI 기반 구조**인 반면, Veeva는 **완성된 규제 업무 프로세스와 문서 관리**에 초점을 맞춘다는 점입니다.
+가장 큰 차이점은 **RegOps는 규정을 분석하여 IR(InfoRequirement)을 추출하고 이를 코드와 연결하는 AI 기반 구조**인 반면, Veeva는 **완성된 규제 업무 프로세스와 문서 관리**에 초점을 맞춘다는 점입니다.
 
 ---
 
@@ -327,7 +327,7 @@ Clinical
 RegOps는 기존 제품들과 달리 다음을 통합할 수 있습니다.
 
 * **Canonical Knowledge Model** 기반으로 모든 도메인을 연결
-* 규정(PDF, 가이드라인)에서 **IR(Information Requirement)** 자동 추출
+* 규정(PDF, 가이드라인)에서 **IR(InfoRequirement)** 자동 추출
 * IR과 Git 코드, 테스트, 위험관리, 문서를 자동 연결하는 **Traceability**
 * LLM/에이전트를 활용한 Compliance Gap 분석 및 증적(Evidence) 수집
 * SaMD뿐 아니라 화장품 등 다른 규제 산업으로 확장 가능한 **Regulation Domain** 구조
