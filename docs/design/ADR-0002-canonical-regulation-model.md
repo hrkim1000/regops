@@ -162,9 +162,9 @@ ir_standard_citations(ir_id, standard_reference_id)
 1. **Embedding granularity** — clause, paragraph, or sliding window? Affects retrieval quality and
    index size; needs measurement against the golden query set, not a guess. Blocks the retrieval ADR,
    not this one.
-2. **IR versioning** — when a cited clause is amended, is the IR versioned in place or re-derived as
-   a new IR with a supersedes-link? Re-derivation is cleaner for audit; versioning is cheaper for
-   control mappings that already point at it. Decide before Phase 2 gap analysis.
+2. ~~**IR versioning**~~ — resolved in [ADR-0004](ADR-0004-ir-extraction-and-domain-branching.md)
+   decision 5: re-derive as a new IR with a `supersedes` link, never mutate a locked IR in place.
+   Control mappings are carried forward on RA confirmation rather than automatically.
 3. **`canonical_key` derivation** — what makes 화장품법 the same Document across a title change?
    **Phase 1 needs only the MFDS answer** (법령ID / 고시번호). *(Later: ELI URI for EU, CFR citation
    for FDA; NMPA has no stable identifier and may need a curated key — deferred.)*
