@@ -22,10 +22,11 @@ description: Use when adding or changing a FastAPI endpoint or Celery task in an
 
 - JWT HS256; `TokenPayload` requires `id, email, role, exp, type`.
 - Gate writes with `Depends(require_roles([...]))`, reads with `get_current_user`.
-- **The RegOps role set is not yet decided** — it needs its own ADR. The prior platform's
-  clinical roles (`clinical_expert` and the six ISO 14971 gates) do not apply. Until the ADR lands,
-  do not hard-code a role list; RA review/approval and admin are the shapes to expect.
-- Lock/finality actions (e.g. locking an IR) are the restricted class.
+- Roles: `viewer | ra | admin` ([ADR-0005](../../../docs/design/ADR-0005-service-architecture.md)
+  decision 5). `compliance` arrives in Phase 2 with gap analysis. The prior platform's `developer`,
+  `qa` and `clinical_expert` do not apply.
+- Restricted actions are the ones where a human assertion enters the audit trail: **locking an IR**
+  and **resolving a structure-drift alert**. Both are `ra` or above.
 
 ## Data access
 
