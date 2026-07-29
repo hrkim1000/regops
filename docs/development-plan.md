@@ -58,6 +58,15 @@ Out of scope until Phase 3 readiness:
 1. Data and Ingestion
 - Connectors per scope cell: MFDS, openFDA/Federal Register, EUR-Lex/EC, NMPA — one connector + parser profile per domain x region
 - Immutable source archive and scheduled change detection
+- **Attachment pipeline: HWP and PDF extraction for 별표 (annexes)** — the 별표·서식 API returns file
+  links only, and the prohibited/restricted ingredient lists that carry most `mfds_cosmetic`
+  obligations are delivered this way. HWP is a Korean proprietary format with thin library support;
+  size it as a workstream, not a library call. Annexes carry their own effective dates and must be
+  hashed and versioned independently of the parent body, or every ingredient-list amendment is
+  missed silently
+- **Source discovery sweep for MFDS** — the 행정규칙 API enumerates 고시 by 소관부처, so the curated
+  source map can be reconciled against the authority's own list. A hand-maintained list silently
+  caps detection coverage at whatever someone remembered to add
 - Tier C scraper framework with structure-change monitoring (Phase 2)
 
 2. Normalization and Knowledge Layer
@@ -185,8 +194,14 @@ Weeks 1-2:
 - Finalize data contracts for the two gated cells (MFDS SaMD, MFDS Cosmetic)
 
 Weeks 3-4:
+- Obtain the 국가법령정보 OPEN API key and confirm the three items the reconnaissance left open:
+  does 본문조회 return annex text via `<별표단위>`; the 소관부처 code for 식품의약품안전처; whether
+  조문별 변경이력 granularity matches ClauseDiff
 - Implement first ingestion connectors and source archiving
 - Define IR extraction rules and clause schema — **critical path, do not defer**
+- **Annex representation test** — can a 화장품 안전기준 규정 limit-table row be expressed as a Clause
+  with `path_segments`? This is the ADR-0004 falsifier and must be answered before the W5-6
+  cross-domain check, not during it
 - Start EU SaMD spike (multilingual + Tier C exposure), runs in background through W12
 
 Weeks 5-6:

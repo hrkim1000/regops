@@ -82,6 +82,15 @@ The likeliest breaker is the tabular-annex row above: an ingredient limit table 
 carrier whose natural unit is a *row*, not a prose clause. If that cannot be represented as clauses
 with `path_segments`, it is a genuine finding, not a workaround to code around quietly.
 
+> **Confirmed as the live risk** by the [source reconnaissance](spike-2026-07-29-mfds-source-recon.md).
+> The 별표·서식 API returns metadata and file links only — annex content arrives as **HWP or PDF
+> attachments**, and the prohibited/restricted ingredient lists in 화장품 안전기준 등에 관한 규정 are
+> exactly these 별표. So for `mfds_cosmetic` the obligation-bearing content is not prose clauses in
+> the body at all. Three consequences: HWP extraction is a real workstream; connectors need the
+> attachment path (ADR-0003 decision 10); and the clause model must carry table rows or annex
+> obligations cannot be cited at clause granularity — which would break the citation contract for
+> this cell specifically. Unresolved: whether the 본문조회 API exposes annex text via `<별표단위>`.
+
 ### 4. The LLM proposes; a human locks; only locked IRs flow
 
 Extraction is LLM-assisted and produces `status = draft`. An RA reviews and locks. **Only `locked`
@@ -141,10 +150,13 @@ ir_citations(ir_id, document_version_id, clause_path, effective_date, superseded
 
 ## Open questions
 
-1. **Tabular annex representation** — decision 3's likeliest falsifier. Can an ingredient limit table
-   be represented as clauses, or does it need a distinct obligation carrier? Test against
-   화장품 안전기준 규정 annexes at W3-4, before the W5-6 cross-domain check, so a failure has room to
-   be handled.
+1. **Tabular annex representation** — decision 3's falsifier, now **confirmed live** rather than
+   hypothetical. Reconnaissance established that 화장품 안전기준 규정 annexes are delivered as HWP/PDF
+   attachments with no row-level API. Remaining questions: does 본문조회 expose annex text via
+   `<별표단위>`; can a limit table row (substance · max concentration · product type · condition) be
+   expressed as a `Clause` with `path_segments`, or does it need a distinct obligation carrier?
+   **Test at W3-4 with a real API key**, before the W5-6 cross-domain check, so a failure has room
+   to be handled rather than surfacing with six Phase 2 cells already planned against it.
 2. **Conditional obligations by product class** — duties that apply only to a device class or
    product category. One parameterised IR, or one IR per class? Parameterised is smaller; per-class
    maps to controls more directly.

@@ -179,6 +179,44 @@ identify with a contactable User-Agent, cache-validate with `ETag`/`If-Modified-
 Not optional courtesy: these are government hosts, and Phase 3 sells to customers who will ask how
 we collect. Getting rate-limited off MFDS during the pilot would take out two gated cells at once.
 
+### 10. Attachments are fetched as first-class artefacts, not skipped
+
+*(Added after the [source reconnaissance](spike-2026-07-29-mfds-source-recon.md).)*
+
+The 별표·서식 API returns **metadata and file links only** — annex content arrives as **HWP or PDF
+attachments**, with their own `별표시행일자`. The substantive obligations of the Cosmetic cell (the
+prohibited and restricted ingredient lists in 화장품 안전기준 등에 관한 규정) live in exactly these
+annexes.
+
+A connector therefore returns a body artefact **plus zero or more attachment artefacts**, each
+archived, hashed and versioned independently. An annex that changes while its parent body does not
+must still produce a `ChangeEvent` — hashing only the body would silently miss every ingredient-list
+amendment, which for `mfds_cosmetic` is most of what matters.
+
+HWP is a Korean proprietary format with thin library support; treat extraction as a workstream, not
+a library call.
+
+### 11. MFDS sources are discovered by API, not only curated by hand
+
+The 행정규칙 목록 API filters by `소관부처` (`org`), so every MFDS 고시 can be **enumerated** rather
+than hand-listed.
+
+`import-source-map.md` stays the curated registry of what we *intend* to cover, but for MFDS a
+scheduled discovery sweep reconciles it against the authority's own list and raises an alert on
+anything present upstream and absent locally. A hand-maintained list silently caps detection
+coverage at whatever someone remembered to add — the discovery sweep converts that from an unknown
+into a measurable delta.
+
+### 12. Use the authority's own change history as an independent check
+
+`법령 변경이력 목록`, `일자별 조문 개정 이력` and **`조문별 변경 이력`** APIs exist. Where a source
+offers them, reconcile our computed `ClauseDiff` against the authority's record.
+
+This is free ground truth for the detection-coverage gate and turns the quarterly retrospective
+audit from a manual sample into a continuous cross-check for `law.go.kr` sources. It does **not**
+replace our own diff: their granularity and timing are outside our control, and the citation
+contract requires diffs against versions we archived ourselves.
+
 ## Schema additions to ADR-0002
 
 ```sql
@@ -186,6 +224,9 @@ fetch_observations(id, source_id, fetched_at, http_status, content_hash,
                    connector_version, published_at, notes)
 source_schedules(source_id, interval, next_due_at, override_reason)
 structure_drift_alerts(id, source_id, detected_at, signal, expected, actual, resolved_at)
+attachments(id, document_version_id, kind, title, ordinal, file_format,
+            source_url, content_hash, raw_object_key, effective_date)   -- 별표·서식 (dec 10)
+source_discovery_runs(id, authority, ran_at, upstream_count, matched, unmatched)  -- dec 11
 ```
 
 `document_versions` gains `content_hash`, `retrieved_at`, `published_at` (nullable),
@@ -196,17 +237,19 @@ distinct from the version's, for staged-application instruments.
 
 ## Open questions
 
-1. **Canonicalization per profile is where the effort actually goes.** Every source template needs
-   its own content-region selector, and Tier C sites need re-tuning whenever they drift. Sizing this
-   at W1-2 is the single biggest schedule risk in the ingestion workstream. **Phase 1 scope is MFDS
-   hosts only** (국가법령정보, mfds.go.kr, nedrug, emedi) — a handful of Korean government templates
-   rather than four jurisdictions in four formats. The full 8-cell surface is a Phase 2 estimate.
-2. **Publication timestamps on MFDS sources** — do 국가법령정보 and MFDS 고시·공고 listings expose a
-   machine-readable `published_at`? Both Phase 1 gated cells are MFDS, so if the answer is no,
-   per-event latency is unmeasurable for the entire PoC and the gate is scored only through the
-   retrospective audit sample. **This is the week-1 question** — discovering it at M4 means finding
-   out during the Go/No-Go review that a gate cannot be scored.
-   *(NMPA and EU equivalents: deferred, not a Phase 1 question.)*
+1. ~~**Canonicalization per profile is where the effort actually goes**~~ — **downgraded** by the
+   [source reconnaissance](spike-2026-07-29-mfds-source-recon.md). `law.go.kr` HTML is JS-rendered
+   and unscrapable, so the OPEN API is the only path — and it returns 조문/항/호/목 as separate
+   structured fields, meaning **no canonicalization at all** for the largest Phase 1 source.
+   It is needed only for MFDS listing pages, where `조회수` (view count) is confirmed as the volatile
+   element, and RSS may remove even that. Low risk for Phase 1; **unknown for Phase 2**, where
+   EU/FDA/NMPA templates are untested.
+2. ~~**Publication timestamps on MFDS sources**~~ — **closed** by the
+   [source reconnaissance](spike-2026-07-29-mfds-source-recon.md). The 법령 API returns `공포일자`,
+   `시행일자` and **`조문시행일자`**; the 행정규칙 API returns `발령일자`, `발령번호`, `시행일자`.
+   Per-event latency is measurable for both gated cells. `조문시행일자` and `별표시행일자문자열` also
+   confirm decision 5's clause-level `effective_date` override matches how the authority itself
+   models staged application. *(EU and NMPA equivalents: still deferred.)*
 3. **Effective-date extraction reliability** — 부칙 phrasing varies ("시행한다", "적용한다",
    "…이후 최초로 …하는 분부터"), and conditional or event-triggered application dates ("공포 후 6개월")
    cannot be resolved to a calendar date at parse time. Decide whether such cases store null with the
