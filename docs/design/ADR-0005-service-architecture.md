@@ -143,5 +143,5 @@ product-profile routing, and ADR-0004 open question 2 left conditional-by-class 
 
 Until it exists, an IR applies to a *cell*, not to a *product* — so alerting can only say "something
 in your cell changed," which is the noise problem the monitoring pillar exists to solve, and gap
-analysis has no way to state which IRs are in scope. Candidate **ADR-0006**, and it should land
+analysis has no way to state which IRs are in scope. Candidate **ADR-0007**, and it should land
 before Phase 2 gap analysis.

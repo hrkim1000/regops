@@ -167,9 +167,9 @@ ir_standard_citations(ir_id, standard_reference_id)
 
 ## Open questions
 
-1. **Embedding granularity** — clause, paragraph, or sliding window? Affects retrieval quality and
-   index size; needs measurement against the golden query set, not a guess. Blocks the retrieval ADR,
-   not this one.
+1. ~~**Embedding granularity**~~ — resolved in [ADR-0006](ADR-0006-retrieval-and-citation-enforced-generation.md)
+   decisions 1-2: embed at 조 level with 항/호/목 rolled in, cite at the finest clause used; annex
+   table rows are **not** embedded at all but served from a structured row store by exact match.
 2. ~~**IR versioning**~~ — resolved in [ADR-0004](ADR-0004-ir-extraction-and-domain-branching.md)
    decision 5: re-derive as a new IR with a `supersedes` link, never mutate a locked IR in place.
    Control mappings are carried forward on RA confirmation rather than automatically.
