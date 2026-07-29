@@ -1,11 +1,11 @@
 ---
 name: release-and-commit
-description: Use when committing, tagging, or cutting a release — commit message conventions, CR/Risk trailers, release tagging (vX.Y.Z → change_kind), and what must never be committed.
+description: Use when committing or cutting a release — commit message conventions, ADR and source-map change rules, and what must never be committed.
 ---
 
-# Commits, Tags & Releases
+# Commits & Releases
 
-## Commits (platform repo)
+## Commits
 
 - Conventional style: `type(scope): imperative summary` — `feat|fix|refactor|docs|perf|test|chore`.
 - Body explains **why** and the blast radius; wrap ~72 cols.
@@ -14,27 +14,22 @@ description: Use when committing, tagging, or cutting a release — commit messa
 - **Never commit**: `.env*` (except `.env.example`), credentials, tokens, generated secrets.
   Placeholders only in tests/docs (`user@example.com`, `<your-token>`).
 
-## Traceability trailers (customer/SaMD repos — IEC 62304 §8)
+## Changes that need extra care
 
-Commits implementing a Change Request carry trailers the Evidence Agent (②) reads read-only:
+- **ADRs** live in `docs/design/ADR-000N-<slug>.md`, numbered sequentially from 0001. Never edit an
+  Accepted ADR's decision in place — supersede it with a new ADR and link both ways.
+- **`docs/import-source-map.md`** is the single source catalog. A commit that changes a source URL,
+  tier, or ingestibility flag says in the body **how the change was verified** (fetched on which
+  date, what the old URL returned). Silent URL edits are how a dead connector ships.
+- **`docs/data/` and `docs/reference/` are read-only** (CLAUDE.md § Read-only directories) —
+  a commit touching them needs an explicit reason.
+- Scope-affecting changes (anything touching the 8 cells, Tier D handling, or the citation contract)
+  reference the ADR that authorises them.
 
-```text
-Refs: CR-123          # links commit → change request
-Risk: RISK-45         # links commit → risk item
-```
+## Never commit
 
-These build the `CR ↔ implementation ↔ verification` traceability chain.
+`.env*` (except `.env.example`), credentials, tokens, generated secrets. Placeholders only in
+tests and docs (`user@example.com`, `<your-token>`).
 
-## Releases (customer/SaMD repos)
-
-- A release = a **GitLab Release object** on tag `vX.Y.Z` (frozen tag → immutable commit,
-  ADR-0005). Optional prerelease suffix `vX.Y.Z-rc1` records but suppresses fan-out.
-- `change_kind` derives from the **tag digit transition**: X↑ = major, Y↑ = minor, else patch.
-  A MAJOR bump triggers the re-apply fan-out (re-derivation + regeneration).
-- A Safety Class (A/B/C) change forces MAJOR and escalates to a human — never auto-handled.
-- The platform never pushes to the repo; it only records what it observes (ADR-0002).
-
-## Document versioning (platform records)
-
-Generated documents carry MAJOR/MINOR/PATCH + status lifecycle with appended change history
-on `generated_documents` / `document_sections` — the platform is the document system of record.
+**No Tier D source text, ever** — not as a fixture, not as a test asset, not "temporarily". Standards
+and pharmacopoeias appear as metadata plus an official link (ADR-0002).

@@ -1,9 +1,11 @@
 ---
 name: frontend-page
-description: Use when adding or changing a frontend page or component — Next.js App Router patterns, server vs client data access, ScopeBar cookie scoping, established libraries, naming, and the pre-commit gates.
+description: Use when adding or changing a frontend page or component — Next.js App Router patterns, server vs client data access, cell-based ScopeBar cookie scoping, established libraries, naming, and the pre-commit gates.
 ---
 
 # Frontend Pages
+
+> **Target conventions — no frontend exists yet** (greenfield, [ADR-0001](../../../docs/design/ADR-0001-platform-foundation.md)).
 
 Stack: **Next.js (App Router) + React + TypeScript 5 + Tailwind (dark theme)**.
 Use the established libraries — do not introduce alternatives:
@@ -25,13 +27,14 @@ Playwright (E2E).
 
 ## Scoping
 
-- The active project/product/regulation comes from the **header ScopeBar cookies**
-  (`ctx_project_id` / `ctx_product_id` / `ctx_regulation_id`) — read server-side with
-  `readScope()`. **No per-page project pickers, no `?project_id=` queries.**
-- Version selection inside a page: `?version_id=` + `VersionPicker`, labeling options
-  `repo · version` (a multi-repo product has several identical `v1.0.0`s).
-- Resolve derived entities from their **permanent binding** (e.g. a project's regulation via
-  the project), not from a scope cookie.
+- **The scope axis is the cell** (`authority` × `domain`) — not project/product. The active cell
+  comes from header ScopeBar cookies read server-side with `readScope()`. **No per-page cell
+  pickers, no `?cell=` queries.** The exact cookie names are settled when the frontend is scaffolded.
+- Version selection inside a page: `?version_id=` + `VersionPicker`. A document can have several
+  versions and several **languages** per version — label options so the language is unambiguous.
+- Resolve derived entities from their **permanent binding** (a citation's clause via its pinned
+  `document_version_id`), never from a scope cookie. A citation must render identically regardless
+  of which cell the viewer has selected.
 
 ## Page skeleton
 

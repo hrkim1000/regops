@@ -5,6 +5,9 @@ description: Use when adding or changing a FastAPI endpoint or Celery task in an
 
 # Service Endpoints & Tasks
 
+> **Target conventions — no service code exists yet.** RegOps is greenfield ([ADR-0001](../../../docs/design/ADR-0001-platform-foundation.md));
+> this is what to follow when the first service is written, not a description of a running system.
+
 ## API shape
 
 - URL-versioned: `/api/v1/...` on the service; the browser reaches it via the Next.js
@@ -17,17 +20,21 @@ description: Use when adding or changing a FastAPI endpoint or Celery task in an
 
 ## Auth / RBAC
 
-- JWT HS256 issued by audit-log; `TokenPayload` requires `id, email, role, exp, type`.
+- JWT HS256; `TokenPayload` requires `id, email, role, exp, type`.
 - Gate writes with `Depends(require_roles([...]))`, reads with `get_current_user`.
-  Roles: `developer | qa | clinical_expert | ra | admin`. Lock/finality actions are
-  admin-only; approvals validate signer employment.
+- **The RegOps role set is not yet decided** — it needs its own ADR. The prior platform's
+  clinical roles (`clinical_expert` and the six ISO 14971 gates) do not apply. Until the ADR lands,
+  do not hard-code a role list; RA review/approval and admin are the shapes to expect.
+- Lock/finality actions (e.g. locking an IR) are the restricted class.
 
 ## Data access
 
 - Own tables: service ORM models (re-exported from `regops_shared.models`).
 - **Other services' tables: raw SQL via `sqlalchemy.text()`** — never import a foreign ORM
   model onto this service's `Base`. Batch lookups with `= ANY(:ids)`.
-- `auto_answer()`-style helpers `flush()` but never `commit()` — the caller commits.
+- Helper functions `flush()` but never `commit()` — the caller commits.
+- **Never write regulation text into a Tier D table.** `StandardReference` holds metadata only and
+  has no text column by design (ADR-0002); do not add one.
 
 ## Errors & logging
 
@@ -47,8 +54,12 @@ description: Use when adding or changing a FastAPI endpoint or Celery task in an
 
 - `regops_shared.llm.get_llm_client()` — provider from `settings.llm_provider`
   (`ollama` | `claude`); embeddings are **always** Ollama `nomic-embed-text` (768-dim, fixed).
-- Service-local overrides (e.g. `TESTGEN_LLM_PROVIDER`) must not touch the global provider.
-- Record provenance (`llm_provider` / `llm_model`) on any row an LLM produced.
+- Service-local provider overrides must not touch the global provider.
+- Record provenance (`llm_provider` / `llm_model`) on any row an LLM produced — IRs and generated
+  answers both carry it.
+- **No answer without evidence**: a generation path that cannot produce a citation returns
+  "needs verification". Never emit an unsourced answer, and never let a generated result skip the
+  evidence-verification pass.
 
 ## Dev loop
 
