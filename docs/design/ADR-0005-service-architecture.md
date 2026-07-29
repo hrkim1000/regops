@@ -126,22 +126,24 @@ partner API (Phase 3). Each would be a boundary drawn before its requirements ar
    and the split can be made when the assistant's scaling profile actually diverges. Argument
    against: separating later means moving the embedding tables and rewriting reads as raw SQL —
    cheap now, tedious later. Leaning split; worth a week-1 decision, not a week-8 one.
-2. **Applicability has no owner yet.** No service holds product profiles or IR-applicability
-   determination, because no ADR defines them — see the note below. Likely `regulation` (it is
-   reference-data shaped) or a fourth service if it turns out tenant-heavy.
+2. ~~**Applicability has no owner yet**~~ — resolved in [ADR-0007](ADR-0007-context-map-and-applicability.md):
+   Product and Compliance are their own bounded contexts, tenant-scoped, living inside the
+   `regulation` service until Phase 2 gap analysis justifies a split. Applicability must **not** sit
+   in the Regulation context, or shared reference data becomes tenant-dependent.
 3. **Audit trail retention and immutability** — append-only by convention, or enforced (no UPDATE
    grant, periodic hash-chaining)? 21 CFR Part 11 expects tamper-evidence; convention alone will not
    survive an audit.
 4. **Does the frontend need a BFF?** Three services behind Next.js rewrites is manageable; a fourth
    or a chatty page may argue for aggregation.
 
-## Deferred and still missing: applicability
+## Applicability — deferred here, resolved in ADR-0007
 
 RegOps.md pillar 01 routes changes by "product, market, and business-unit profiles"; pillar 03
 delivers an IR-to-control matrix. Neither has a model. ADR-0003 decision 8 explicitly deferred
 product-profile routing, and ADR-0004 open question 2 left conditional-by-class obligations open.
 
-Until it exists, an IR applies to a *cell*, not to a *product* — so alerting can only say "something
-in your cell changed," which is the noise problem the monitoring pillar exists to solve, and gap
-analysis has no way to state which IRs are in scope. Candidate **ADR-0007**, and it should land
-before Phase 2 gap analysis.
+**Now written up as [ADR-0007](ADR-0007-context-map-and-applicability.md)**: Product and Compliance
+are their own tenant-scoped bounded contexts, and applicability is `Product × Regulation →
+Compliance`. Until that is built, an IR applies to a *cell*, not a *product* — so alerting can only
+say "something in your cell changed," which is the noise problem the monitoring pillar exists to
+solve.

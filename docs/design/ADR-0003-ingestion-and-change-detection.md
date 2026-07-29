@@ -164,8 +164,9 @@ which yields `StandardReference` metadata. The standard itself is never fetched.
 ### 8. Emission fans out to every claiming cell
 
 A `ClauseDiff` produces one `ChangeEvent` per cell claiming the document (ADR-0002 decision 1) — an
-FD&C Act amendment reaches both `fda_samd` and `fda_cosmetic` subscribers. Routing to product
-profiles sits above this and is out of scope here.
+FD&C Act amendment reaches both `fda_samd` and `fda_cosmetic` subscribers. Routing from there to
+product profiles is defined in [ADR-0007](ADR-0007-context-map-and-applicability.md) decision 8:
+ChangeEvent → citing IRs → applicability entries → owning tenant.
 
 Severity grading is deferred: Phase 1 emits ungraded events and measures whether they are *complete*
 and *timely*. Grading quality is a Phase 2 concern once there is a corpus to calibrate against.
