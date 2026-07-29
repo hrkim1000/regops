@@ -60,6 +60,30 @@ docs/                     # product/strategy docs — the working set
   seam; regulation–product–control mapping data is what accumulates value. Pin model versions
   and regression-test against the golden query set before changing them.
 
+## Doc sync to `startup`
+
+Two remotes: `origin` (github.com/hrkim1000/regops — the real repo) and `startup`
+(github.com/kimhwangdata/startup-doc — a shared doc repo owned by another account).
+
+- **`startup` pushes go to the `hrkim` branch only. Never to `startup/main`.**
+- Only `README.md` and `docs/**` are published, **excluding `docs/data/`** (raw source research).
+- `.claude/`, `CLAUDE.md`, `.gitignore` and any future code stay out of `startup` entirely.
+- `git subtree` is wrong here — `startup` keeps docs under `docs/`, and a subtree split would
+  hoist them to the repo root. Publish a filtered snapshot at the same paths instead:
+
+```bash
+git fetch startup hrkim
+GIT_INDEX_FILE=.git/publish-index git read-tree --empty &&
+GIT_INDEX_FILE=.git/publish-index git add README.md docs ':!docs/data' &&
+tree=$(GIT_INDEX_FILE=.git/publish-index git write-tree) &&
+commit=$(git commit-tree $tree -p FETCH_HEAD -m "docs: sync RegOps documentation") &&
+git push startup $commit:hrkim && rm -f .git/publish-index
+```
+
+This publishes the **working tree**, not committed state — commit to `origin` first so the two
+never diverge. Parenting on `FETCH_HEAD` keeps the push a fast-forward; never `--force` a repo
+owned by another account.
+
 ## Security must-follows
 
 - **Never** commit or print `.env*` contents (real keys live there; `.env.example` is the template).
