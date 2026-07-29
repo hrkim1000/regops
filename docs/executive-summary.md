@@ -2,7 +2,13 @@
 
 ## What RegOps Is
 
-RegOps is a citation-traceable regulatory platform for medical device and cosmetic workflows.
+RegOps is a citation-traceable regulatory platform for SaMD (Software as a Medical Device) and Cosmetic Product workflows.
+
+Scope is fixed at two product domains x four regulatory regions:
+- Domains: SaMD, Cosmetic
+- Regions: MFDS (Korea), FDA (US), EU, NMPA (China)
+- Out of scope: pharmaceuticals/biologics, hardware-only medical devices, and all other authorities (PMDA, Health Canada, MHRA, TGA, ASEAN)
+
 It converts fragmented regulations into four business outcomes:
 - change monitoring and alerting,
 - evidence-backed regulatory Q&A,
@@ -13,7 +19,7 @@ The strategic asset is the knowledge layer and IR mapping, not a single LLM mode
 
 ## Why This Matters Now
 
-- Regulatory change velocity is increasing across FDA, EMA, PMDA, NMPA, and MFDS contexts.
+- Regulatory change velocity is increasing across MFDS, FDA, EU, and NMPA contexts for both SaMD and cosmetics.
 - Manual interpretation creates delay, inconsistency, and audit risk.
 - In regulated operations, trust requires evidence, version traceability, and auditable decisions.
 
@@ -22,11 +28,13 @@ RegOps is designed around verifiability: no answer without evidence, confidence-
 ## Delivery Strategy (24 Months)
 
 Phase 1 (Month 0-4): PoC validation
-- Scope: EU MDR + MFDS medical devices, Tier A/B sources, monitoring + Q&A
+- Scope: 2 gated cells (MFDS SaMD + MFDS Cosmetic), Tier A/B sources, monitoring + Q&A
+- One regulator, both domains: tests the shared-pipeline architecture before Phase 2 builds 6 cells on it
+- Plus a non-gated EU SaMD spike to de-risk multilingual and Tier C early
 - Goal: prove technical trust and user value
 
 Phase 2 (Month 5-12): internal scale
-- Scope: wider regulator coverage + Tier C scraping resilience + gap analysis depth
+- Scope: remaining 6 scope cells (FDA and NMPA SaMD, Cosmetic across all four regions) + Tier C scraping resilience + gap analysis depth
 - Goal: company-wide adoption and measurable productivity impact
 
 Phase 3 (Month 13-24): external SaaS
@@ -35,14 +43,16 @@ Phase 3 (Month 13-24): external SaaS
 
 ## Stage Gates (Decision by Numbers)
 
-Phase 1 gates:
+Phase 1 gates (6; No-Go if 4 or more fall short, measured per gated cell):
 - Detection coverage >= 95%
 - Detection latency <= 24h
 - Citation accuracy >= 90%
 - Hallucination rate <= 2%
+- Research time savings >= 30%
 - Pilot retention >= 60%
 
 Phase 2 targets:
+- All 8 cells independently clearing the Phase 1 technical gates
 - Regulatory research time reduction >= 40%
 - Gap analysis lead time reduction >= 50%
 - Missed amendment impact analyses = 0
@@ -78,6 +88,6 @@ Phase 3 targets:
 
 1. Form cross-functional task force and finalize Phase 1 backlog
 2. Complete source/legal review for Tier A/B connector list
-3. Run first openFDA + MFDS-related public source connector ingestion
+3. Run first MFDS SaMD + MFDS Cosmetic public source connector ingestion
 4. Finalize golden query set and RA scoring rubric
 5. Launch pilot recruitment and baseline measurement

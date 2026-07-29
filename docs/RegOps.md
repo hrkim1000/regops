@@ -4,8 +4,8 @@
 
 ## RegOps Platform
 
-> **RegOps** — AI-powered Regulatory platform for Medical Device, Cosmetic Product.  
-A citation-traceable knowledge layer that turns fragmented medical device, and cosmetic regulations into monitored change alerts, sourced answers, and mapped compliance gaps.
+> **RegOps** — AI-powered Regulatory platform for SaMD (Software as a Medical Device) and Cosmetic Product.  
+A citation-traceable knowledge layer that turns fragmented SaMD and cosmetic regulations into monitored change alerts, sourced answers, and mapped compliance gaps.
 
 Pillars: regulatory change monitoring · regulatory Q&A assistant · compliance gap analysis · external SaaS productization
 
@@ -33,13 +33,34 @@ Convert internally validated workflows into a multi-tenant offering. Commerciali
 
 ---
 
+## Scope — two product domains × four regulatory regions
+
+RegOps covers **two product domains** (SaMD, Cosmetic) across **four regulatory regions** (MFDS, FDA, EU, China NMPA). Everything else is explicitly out of scope. The eight cells below are the complete coverage target; a single Import Agent serves all of them, with the differences isolated into per-cell connectors and parser profiles.
+
+| Domain | MFDS (Korea) | FDA (US) | EU (EC) | NMPA (China) |
+|---|---|---|---|---|
+| **SaMD** | 의료기기법 · 디지털의료제품법 · SW/AI device review guidelines | FD&C Act · 21 CFR 820 (QMSR)·11·803·806·807 · SaMD & AI/ML guidance | MDR (EU) 2017/745 · IVDR (EU) 2017/746 · MDCG guidance · EUDAMED | Regulations for the Supervision and Administration of Medical Devices · software & AI device registration guidance · YY standards |
+| **Cosmetic** | 화장품법 · 안전기준 규정 · 기능성화장품 심사 규정 | FD&C Act · MoCRA · FPLA · 21 CFR 700·701·710·740 | Regulation (EC) No 1223/2009 · CPNP · CosIng · SCCS opinions | CSAR · registration/filing measures · IECIC |
+
+> The authoritative per-cell inventory of laws, guidance, and official source URLs lives in [import-source-map.md](import-source-map.md) — one section per cell. This table is the summary; that file is what the connectors are built against.
+
+### Out of scope
+
+- **Product domains** — pharmaceuticals and biologics, non-software (hardware) medical devices, food and health supplements
+- **Regions** — every authority outside the four above (PMDA, Health Canada, MHRA, TGA, ASEAN ACD, and EMA drug procedures). Not "later" — not modeled at all until the scope decision is revisited
+- **Content** — Tier D copyright-protected standards and pharmacopoeia source text (see Data Strategy below)
+
+> Scope discipline is what makes the Go/No-Go gates meaningful. Detection coverage ≥ 95% is measurable only because the denominator — 2 domains × 4 regions — is fixed and written down.
+
+---
+
 ## Data Strategy — data sources fall into four tiers, and the last tier is never crossed
 
 | Tier | Category | Sources | Constraints |
 |---|---|---|---|
-| **A** | Public APIs — collectable immediately | openFDA (drugs, devices, MAUDE, 510(k), PMA), Federal Register API, Regulations.gov API, Health Canada MDALL, Korea National Law Information OPEN API, Public Data Portal MFDS datasets | Most of openFDA is CC0 — commercial redistribution permitted |
-| **B** | Static files / RSS — batch collection | EMA public JSON (refreshed twice daily), FDA Orange/Purple Book, FDA AI medical device list, MFDS RSS (notices, legislative notices, amendments) | License terms must be checked individually |
-| **C** | Scraping — requires fragility management | FDA guidance DB, warning letters, Form 483, EUDAMED (no official API), PMDA, NMPA, MHRA, TGA, MDCG guidance, ICH·IMDRF PDFs | Structure-change detection and recovery pipeline are mandatory |
+| **A** | Public APIs — collectable immediately | openFDA (devices, MAUDE, 510(k), PMA), Federal Register API, Regulations.gov API, Korea National Law Information OPEN API, Public Data Portal MFDS datasets | Most of openFDA is CC0 — commercial redistribution permitted |
+| **B** | Static files / RSS — batch collection | EUR-Lex / EC cosmetics portal documents, CosIng, EU Safety Gate (RAPEX), FDA AI-enabled medical device list, FDA MoCRA pages, MFDS RSS (notices, legislative notices, amendments) | License terms must be checked individually |
+| **C** | Scraping — requires fragility management | FDA guidance DB, warning letters, import alerts, Form 483, EUDAMED (no official API), MDCG guidance, NMPA notices and CSAR documents, IECIC, MFDS nedrug/emedi portals | Structure-change detection and recovery pipeline are mandatory |
 | **D** | Copyright-protected — **source text collection prohibited** | Standards and pharmacopoeias such as ISO 13485 / 14971, IEC 62304 / 60601 / 62366, ISO 27001, USP-NF, Ph.Eur. | ISO explicitly prohibits use for AI training → handle only metadata, revision history, and citations, and link to the official copy |
 
 > Stating Tier D as the product boundary is not a risk but a basis for trust — **regulated customers buy only when "what we do not collect" can be written into the contract.**
@@ -103,7 +124,8 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 ### Phase 1 · months 0–4 — PoC
 **Narrow the scope to validate the technical and value hypotheses**
 
-- Target: two regulatory areas — EU MDR + MFDS medical devices
+- Gated target: two of the eight scope cells — MFDS SaMD + MFDS Cosmetic (one regulator, both domains — this is what tests the shared-pipeline architecture before Phase 2 builds six more cells on it)
+- Non-gated spike: EU SaMD at reduced depth, to expose multilingual normalization and the first Tier C source early
 - Ingest Tier A/B sources only (API · RSS)
 - Implement only two features: monitoring + Q&A
 - Pilot users: 20–30 people in one business unit
@@ -112,7 +134,7 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 ### Phase 2 · months 5–12 — internal expansion
 **Company-wide rollout + gap analysis capability**
 
-- Expand regulatory coverage: FDA · EMA · PMDA · NMPA
+- Complete the scope matrix: add FDA and NMPA, and add the Cosmetic domain across all four regions
 - Build the Tier C scraping pipeline
 - Implement the knowledge graph + control mapping
 - Integrate internal SOPs and technical documents
@@ -135,7 +157,7 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 
 | Timing | Stage | Key activities |
 |---|---|---|
-| M1 | Foundation | Finalize data source priorities · openFDA + MFDS-related public API/RSS connectors · source archive · pilot user interviews |
+| M1 | Foundation | Finalize data source priorities · MFDS SaMD + MFDS Cosmetic connectors (국가법령정보 API, MFDS RSS) · source archive · pilot user interviews |
 | M2 | Normalization & indexing | Clause-level parsing · multilingual handling · change diff logic · hybrid search index · build a 200-item golden query set for evaluation |
 | M3 | Feature implementation | Monitoring dashboard · alert routing · citation-enforced Q&A · evidence-verification agent · confidence scoring |
 | M4 | Pilot & evaluation | 20–30 real users · quantitative metric measurement · blind accuracy assessment by RA staff · Phase 2 expansion design and Go/No-Go report |
@@ -144,7 +166,7 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 
 | Metric | Threshold | Measurement method |
 |---|---|---|
-| Detection coverage | ≥ 95% | Share of actual amendments/announcements in the target regulatory areas that the system captured (verified by after-the-fact manual comparison) |
+| Detection coverage | ≥ 95% | Share of actual amendments/announcements in the target scope cells that the system captured (verified by after-the-fact manual comparison) |
 | Detection latency | ≤ 24 hours | Elapsed time from the authority's publication to the owner's alert |
 | Citation accuracy | ≥ 90% | Share of cited clauses that actually support the given answer (blind assessment by RA staff) |
 | Hallucination rate | ≤ 2% | Share of outputs citing non-existent clauses/documents or contradicting the source text |
@@ -186,7 +208,7 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 | Gap analysis lead time | 50% shorter |
 | Missed amendment impact analyses | 0 |
 | Monthly active users | 300+ |
-| Regulatory authorities covered | 6+ countries |
+| Scope cells covered | 8 of 8 (2 domains × 4 regions) |
 
 | Phase 3 · business results | Target |
 |---|---:|
@@ -209,7 +231,7 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 |---|---|---|---|
 | Copyright infringement | High | ISO standards and pharmacopoeias prohibit AI training and source-text storage | Write the Tier D no-source-text principle into both the architecture and the contract. Provide only metadata, revision history, and deep links to the official copy |
 | Misjudgment from AI hallucination | High | Incorrect regulatory interpretation translates directly into approval delays or non-compliance | Citation enforcement + evidence-verification agent + human review below the confidence threshold. State in the UI that final judgment rests with the human |
-| Fragile scraping pipeline | Medium | No official APIs for PMDA, NMPA, EUDAMED, etc. | Phase 1 uses API sources only. Tier C is introduced in Phase 2 together with structure-change detection, alerting, and manual fallback |
+| Fragile scraping pipeline | Medium | No official APIs for NMPA, EUDAMED, etc. | Phase 1 uses API sources only. Tier C is introduced in Phase 2 together with structure-change detection, alerting, and manual fallback |
 | Suite bundling competition (Veeva et al.) | Medium | Existing customers choose bundles for integration convenience | Enter as a complement for "change detection and impact analysis" rather than a head-on replacement, and secure references before Veeva's agentic features ship |
 | Underestimating GxP validation cost | Medium | Part 11, quality agreements, and customer audit response are organizational capabilities that precede the product | Assign quality staff from Phase 2 and pre-allocate certification and consulting costs in the Phase 3 budget |
 | Potential EU AI Act applicability to ourselves | Watch | AI embedded in medical devices applies from 2028-08-02; transparency obligations from 2026-08-02 | Document the product itself to a level that can support a high-risk classification. Turn the dual position — subject of regulation and tool for regulatory response — into a marketing asset |
@@ -219,7 +241,7 @@ Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket 
 ## Decision Request — decisions requested today
 
 **01. Approve Phase 1 PoC kickoff and a KRW 450M budget**
-4 months, targeting two regulatory areas: EU MDR + MFDS medical devices
+4 months, gating two of the eight scope cells: MFDS SaMD + MFDS Cosmetic (plus a non-gated EU SaMD spike)
 
 **02. Assign one full-time domain expert from the RA organization**
 Requirement structuring and accuracy evaluation are impossible without a regulatory expert
@@ -234,5 +256,5 @@ No-Go is confirmed if four or more of the six quantitative metrics fall short
 
 - Form the task force and hold kickoff (W1)
 - Complete data source prioritization and legal review (W2)
-- First run of the openFDA + MFDS-related public source connectors (W3)
+- First run of the MFDS SaMD + MFDS Cosmetic public source connectors (W3)
 - Begin pilot user interviews and golden query set design (W4)
