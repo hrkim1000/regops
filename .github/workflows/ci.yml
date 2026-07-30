@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push: {branches: [main]}
+  pull_request:
+
+jobs:
+  guards:
+    name: Guards (Tier D, secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Tier D scan
+        run: python scripts/tier_d_scan.py
+      - name: No committed .env
+        run: |
+          leaked=$(git ls-files | grep -E '^\.env' | grep -v '^\.env\.example$' || true)
+          if [ -n "$leaked" ]; then
+            echo "Committed env files: $leaked" >&2
+            exit 1
+          fi
+          echo "no .env files committed"
+
+  lint:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e ./shared[dev]
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy shared/regops_shared --ignore-missing-imports
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e ./shared[dev]
+      - run: python -m pytest shared/tests -q

@@ -7,6 +7,7 @@ Deterministic guardrail (Layer 3):
 - printing secret env files (`cat .env*`)            → secrets never enter the transcript
 Exit 2 blocks and feeds stderr to the model; exit 0 allows.
 """
+
 import json
 import re
 import sys

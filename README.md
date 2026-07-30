@@ -107,25 +107,28 @@ deterministic **pipeline**.
 
 ## Quick start
 
-> **Greenfield — no service code exists yet** ([ADR-0001](docs/design/ADR-0001-platform-foundation.md)).
-> This is the target shape, recorded so the first scaffold matches it.
+> Phase 0 is built: the stack comes up, migrations apply, and login works end to end.
+> Regulation logic starts at [phase1.0](docs/plan/phase1.0_ingestion.md).
 
 ```bash
-# 1. Copy env template
+# 1. Copy the env template and fill in real values
 cp .env.example .env.dev
 
 # 2. Start infrastructure (db, redis, minio, pgadmin, flower)
 STAGE=dev docker compose up -d
 
-# 3. Optional: run Ollama inside Docker
-STAGE=dev docker compose --profile local-llm up -d
-
-# 4. Run migrations, then start the app layer
+# 3. Apply migrations — seeds the 8 cells, sets up the append-only audit trail
 docker compose run --rm migrate
+
+# 4. Start the services
 STAGE=dev docker compose --profile app up -d
+
+# 5. Optional: run Ollama inside Docker instead of natively
+STAGE=dev docker compose --profile local-llm up -d
 ```
 
-**Monitoring**: Flower `:15555` · pgAdmin `:15051` · MinIO console `:19001`.
+**Monitoring**: Flower `:25555` · pgAdmin `:25051` · MinIO console `:29001`.
+**Services**: platform-core `:28000` · regulation `:28001` · monitoring `:28002` · assistant `:28003`.
 
 ---
 
@@ -155,6 +158,7 @@ STAGE=dev docker compose --profile app up -d
 | [ADR-0008](docs/design/ADR-0008-service-composition.md) | Service composition — agents, pipelines, shared |
 | [ADR-0009](docs/design/ADR-0009-service-boundaries-per-pillar.md) | Service boundaries per pillar, phased |
 | [ADR-0010](docs/design/ADR-0010-semantic-enrichment-and-graph-model.md) | Semantic enrichment and the knowledge graph model |
+| [ADR-0011](docs/design/ADR-0011-audit-trail-immutability.md) | Audit-trail immutability — grants plus hash chain |
 
 ---
 
@@ -213,7 +217,7 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
 | Architecture decisions | [ADR-0001 – ADR-0010](docs/design/) | 🟢 proposed, complete for Phase 1 |
 | Phase plan — 13 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
-| Foundation — stack, shared lib, platform-core | [phase0](docs/plan/phase0_foundation.md) | ⬜ planned (W0–2) |
+| Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
 | Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | ⬜ planned (W1–4) |
 | Normalization — clause schema, diff | [phase1.1](docs/plan/phase1.1_normalization.md) | ⬜ planned (W3–6) |
 | IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | ⬜ planned (W3–8) |

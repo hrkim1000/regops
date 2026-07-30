@@ -8,6 +8,7 @@ edit or overwrite them. `.env.example` (the committed template) stays editable.
 Contract: hook input JSON on stdin; exit 2 blocks the tool call and feeds stderr back
 to the model; exit 0 allows.
 """
+
 import json
 import re
 import sys
