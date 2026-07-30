@@ -137,9 +137,11 @@ partner API (Phase 3). Each would be a boundary drawn before its requirements ar
    Product and Compliance are their own bounded contexts, tenant-scoped, living inside the
    `regulation` service until Phase 2 gap analysis justifies a split. Applicability must **not** sit
    in the Regulation context, or shared reference data becomes tenant-dependent.
-3. **Audit trail retention and immutability** — append-only by convention, or enforced (no UPDATE
-   grant, periodic hash-chaining)? 21 CFR Part 11 expects tamper-evidence; convention alone will not
-   survive an audit.
+3. ~~**Audit trail retention and immutability**~~ — **resolved** in
+   [ADR-0011](ADR-0011-audit-trail-immutability.md): enforced, not conventional. The app role holds
+   only SELECT/INSERT and is deliberately *not* the table owner (an owner bypasses its own grants),
+   and a per-row hash chain makes the residual superuser case detectable. Retention is still open
+   and moves to that ADR.
 4. **Does the frontend need a BFF?** Three services behind Next.js rewrites is manageable; a fourth
    or a chatty page may argue for aggregation.
 
