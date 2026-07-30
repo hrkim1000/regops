@@ -1,14 +1,93 @@
-# RegOps AI Platform
+# RegOps
 
-**An AI knowledge layer that keeps life sciences companies ahead of every regulatory change, with the source citation attached**
+**AI-powered Regulatory platform for SaMD and Cosmetic Product**
 
+A citation-traceable knowledge layer that turns fragmented SaMD and cosmetic regulations into
+monitored change alerts, sourced answers, and mapped compliance gaps — with the source citation
+attached to every claim.
 
-A citation-traceable knowledge layer that turns fragmented medical device, and cosmetic regulations into monitored change alerts, sourced answers, and mapped compliance gaps.
+> In the regulatory space, AI competes on **verifiability**, not generation quality.
+> No answer without evidence: when a clause-level citation cannot be produced, the answer is
+> returned as *"needs verification."*
 
-## tag : Regulation, made queryable
+---
+
+## What it does
+
+| Pillar | What the platform automates |
+|---|---|
+| **Change monitoring** | Collect and normalize authority source texts → clause-level diffs → route to affected owners. Daily change briefing, impact grading, owner-assigned tickets |
+| **Q&A / RAG assistant** | Natural-language queries answered with the supporting clause, document version, and effective date. Deep links to source text, full query audit trail |
+| **Gap analysis** | Decompose obligations into structured requirements → map to internal SOPs and controls → derive impact scope on amendment. IR-to-control matrix, gap report, corrective actions |
+| **SaaS productization** | The same knowledge layer deployed multi-tenant — tenant isolation, validation package, partner API |
+
+---
+
+## Scope
+
+**Two product domains × four regulatory regions.** Everything else is explicitly out of scope —
+not "later," but not modeled at all until the scope decision is revisited.
+
+| Domain | MFDS (Korea) | FDA (US) | EU (EC) | NMPA (China) |
+|---|---|---|---|---|
+| **SaMD** | ● gated PoC | Phase 2 | ○ spike | Phase 2 |
+| **Cosmetic** | ● gated PoC | Phase 2 | Phase 2 | Phase 2 |
+
+● gated PoC cell · ○ non-gated spike
+
+Out of scope: pharmaceuticals and biologics, hardware-only devices, food and supplements; every
+authority outside the four above (PMDA, Health Canada, MHRA, TGA, ASEAN ACD, EMA drug procedures).
+
+The authoritative per-cell inventory of laws, guidance, and source URLs is
+[docs/import-source-map.md](docs/import-source-map.md) — the single source catalog.
+
+---
 
 ## Architecture
 
+**Five layers, ingestion to applications** — see [docs/RegOps.md](docs/RegOps.md) for the full spec
+and [docs/design/](docs/design/) for the ADRs.
+
+```text
+L1 Ingestion      Tier A/B/C → fetch → sha256 → WORM archive (immutable)
+                  Tier D  ✕  never ingested — recognition record + deep link only
+L2 Normalization  parse → clause segmentation → DocumentVersion → ClauseDiff → ChangeEvent
+L3 Knowledge graph  clause · IR · concept · cross-reference · product · control
+L4 Retrieval      hybrid search → graph expansion → citation-enforced generation
+                  → evidence verification → confidence score
+L5 Applications   monitoring · Q&A · gap analysis · multi-tenant portal
+```
+
+Services follow the product pillars and arrive by phase
+([ADR-0009](docs/design/ADR-0009-service-boundaries-per-pillar.md)):
+
+| Service | Phase | Role |
+|---|---|---|
+| `platform-core` | 1 | Identity, roles, sessions, audit trail |
+| `regulation` | 1 | L1–L3 — ingest, parse, version, diff, change events, IR extraction |
+| `monitoring` | 1 | Subscription matching, impact grading, alert delivery |
+| `assistant` | 1 | Retrieval, citation-enforced generation, evidence verification |
+| `frontend` | 1 | Next.js / React / TypeScript |
+| `compliance` | 2 | Applicability, control mapping, gap findings |
+| `tenancy` | 3 | Provisioning, billing, partner gateway |
+
+Everything that writes the clause store is `regulation`; `monitoring` begins where writing ends,
+reading `change_events` one-way.
+
+### Agents, pipelines, and shared
+
+A service is composed of these three, and none is a deployment boundary
+([ADR-0008](docs/design/ADR-0008-service-composition.md)). An **agent** invokes an LLM, records
+`llm_provider`/`llm_model`, and cannot be trusted without a separate gate — everything else is a
+deterministic **pipeline**.
+
+| Phase 1 agents | Gate |
+|---|---|
+| Requirement Extraction (`regulation`) | human lock by an `ra` — only locked IRs flow downstream |
+| Reasoning (`assistant`) | evidence-verification agent, then confidence score |
+| Evidence verification (`assistant`) | the gate itself — can fail an answer |
+
+---
 
 ## Tech stack
 
@@ -17,16 +96,19 @@ A citation-traceable knowledge layer that turns fragmented medical device, and c
 | Frontend | Next.js · React · TypeScript · Tailwind CSS |
 | Backend | FastAPI · Python 3.12 · `regops_shared` library |
 | Database | PostgreSQL (single DB, Alembic migrations) |
-| Vector search | pgvector · `nomic-embed-text` 768-dim HNSW *(built — phase 3: `regulation_embeddings` migration 0011; Regulation Search + grounded Q&A)* |
-| Queue | Redis · Celery (per-domain queues) |
-| Storage | MinIO (local) / S3 (cloud) |
-| LLM (generation) | Ollama (dev) / Anthropic Claude (test) — pluggable |
-| LLM (embeddings) | Ollama · `nomic-embed-text` |
-| Auth | JWT · RBAC — shipped roles `qa` / `ra` / `admin` (ADR-0005); `developer` / `clinical_expert` are platform-phase targets |
+| Vector search | pgvector · `nomic-embed-text` 768-dim HNSW cosine |
+| Queue | Redis · Celery (one queue per service) |
+| Storage | MinIO (local) / S3 (cloud) — content-addressed WORM archive |
+| LLM (generation) | Ollama (dev) / Anthropic Claude (test) — pluggable behind `get_llm_client()` |
+| LLM (embeddings) | Ollama · `nomic-embed-text` — pinned regardless of generation provider |
+| Auth | JWT · RBAC (`viewer` / `ra` / `admin`) |
 
 ---
 
 ## Quick start
+
+> **Greenfield — no service code exists yet** ([ADR-0001](docs/design/ADR-0001-platform-foundation.md)).
+> This is the target shape, recorded so the first scaffold matches it.
 
 ```bash
 # 1. Copy env template
@@ -38,10 +120,10 @@ STAGE=dev docker compose up -d
 # 3. Optional: run Ollama inside Docker
 STAGE=dev docker compose --profile local-llm up -d
 
-# 4. Start the app layer (platform-core, regulation + worker, migrate, frontend)
+# 4. Run migrations, then start the app layer
+docker compose run --rm migrate
 STAGE=dev docker compose --profile app up -d
 ```
-
 
 **Monitoring**: Flower `:15555` · pgAdmin `:15051` · MinIO console `:19001`.
 
@@ -49,39 +131,99 @@ STAGE=dev docker compose --profile app up -d
 
 ## Documentation
 
-Core docs live under [docs/](docs/)
-
 | Doc | Description |
 |---|---|
-| [docs/RegOps.md](docs/RegOps.md) | Platform architecture, phased roadmap, metrics, and decision requests |
-| [docs/development-plan.md](docs/development-plan.md) | Execution-oriented development plan with workstreams, milestones, and quality gates |
-| [docs/executive-summary.md](docs/executive-summary.md) | 1-page leadership summary for funding and stage-gate decisions |
+| [docs/RegOps.md](docs/RegOps.md) | Platform architecture, scope, data tiers, phased roadmap, metrics |
+| [docs/import-source-map.md](docs/import-source-map.md) | **Single source catalog** — per-cell laws, guidance, and source URLs |
+| [docs/import-agent.md](docs/import-agent.md) | Import Agent spec — how sources are fetched, normalized, parsed |
+| [docs/development-plan.md](docs/development-plan.md) | Execution plan — workstreams, milestones, quality gates |
+| [docs/executive-summary.md](docs/executive-summary.md) | 1-page leadership summary for stage-gate decisions |
+| [docs/regulation-library-structure.md](docs/regulation-library-structure.md) | Per-cell library layout |
+
+### Architecture Decision Records
+
+| ADR | Decision |
+|---|---|
+| [ADR-0001](docs/design/ADR-0001-platform-foundation.md) | Platform foundation — greenfield, what does not carry over |
+| [ADR-0002](docs/design/ADR-0002-canonical-regulation-model.md) | Canonical regulation data model — Document, Version, Clause, Citation |
+| [ADR-0003](docs/design/ADR-0003-ingestion-and-change-detection.md) | Ingestion and change detection |
+| [ADR-0004](docs/design/ADR-0004-ir-extraction-and-domain-branching.md) | IR extraction and domain branching |
+| [ADR-0005](docs/design/ADR-0005-service-architecture.md) | Service architecture, tenancy split, RBAC roles |
+| [ADR-0006](docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md) | Retrieval and citation-enforced generation |
+| [ADR-0007](docs/design/ADR-0007-context-map-and-applicability.md) | Context map and applicability |
+| [ADR-0008](docs/design/ADR-0008-service-composition.md) | Service composition — agents, pipelines, shared |
+| [ADR-0009](docs/design/ADR-0009-service-boundaries-per-pillar.md) | Service boundaries per pillar, phased |
+| [ADR-0010](docs/design/ADR-0010-semantic-enrichment-and-graph-model.md) | Semantic enrichment and the knowledge graph model |
 
 ---
 
-## Regulatory standards
+## Data strategy
 
-| Standard | Coverage |
-|---|---|
-| **IEC 62304** | SaMD lifecycle, change control, problem resolution, Safety Class A/B/C |
-| **ISO 14971** | Risk management — hazards, harms, risk controls, SOUP risk |
-| **ISO 13485** | QMS — SOP, training, CAPA, change control, DHF |
-| **MFDS GMP** | GMP checklist, submission readiness, two-approver gate for Safety Class B/C |
-| **FDA** | 510(k), PCCP (future expansion) |
+Sources fall into four tiers, and the last tier is never crossed.
+
+| Tier | Category | Constraint |
+|---|---|---|
+| **A** | Public APIs — openFDA, Federal Register, Regulations.gov, 국가법령정보 OPEN API | Collectable immediately; most of openFDA is CC0 |
+| **B** | Static files / RSS — EUR-Lex, CosIng, EU Safety Gate, MFDS RSS | License terms checked individually |
+| **C** | Scraping — FDA guidance DB, warning letters, EUDAMED, NMPA notices, IECIC | Structure-change detection and recovery pipeline mandatory |
+| **D** | **Copyright-protected — source text collection prohibited** | ISO 13485/14971, IEC 62304/60601/62366, ISO 27001, USP-NF, Ph.Eur. |
+
+**Tier D is the product boundary.** ISO explicitly prohibits use of standard content for AI
+training, so RegOps stores only the recognition record — number, edition, recognition number,
+effective and withdrawal dates, harmonized status — and deep-links the official copy. This holds
+even where a regulation makes the standard legally binding: cite the requirement, link the standard,
+store neither.
+
+> Stating what we do **not** collect is not a limitation but a basis for trust — regulated customers
+> buy only when it can be written into the contract.
 
 ---
 
 ## RBAC roles
 
-Shipped enum (Phase 1, ADR-0005): `qa` | `ra` | `admin`.
+Phase 1 enum ([ADR-0005](docs/design/ADR-0005-service-architecture.md) decision 5):
+`viewer` | `ra` | `admin`. `compliance` arrives in Phase 2 with gap analysis.
 
 | Role | Key permissions |
 |---|---|
-| `ra` | IR review/edit, Lock, amend, publish — the write gates |
-| `admin` | Everything `ra` can, plus settings, prompt overrides, user management |
+| `viewer` | Read alerts, answers, citations; run queries |
+| `ra` | Everything `viewer` can, plus **lock IRs**, adjudicate structure-drift alerts, confirm control-mapping carry-forward, sign ground-truth markup |
+| `admin` | Everything `ra` can, plus users, settings, prompt and model configuration |
+
+The restricted actions are the ones where a human assertion enters the audit trail.
 
 ---
 
 ## License
 
 Private / proprietary. All rights reserved.
+
+---
+
+## Status
+
+Build state by workstream. Update the **State** column as work lands — keep it in sync with
+[docs/development-plan.md](docs/development-plan.md).
+
+| Component | Reference | State |
+|---|---|---|
+| Scope, data tiers, roadmap | [docs/RegOps.md](docs/RegOps.md) | 🟢 settled |
+| Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
+| MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
+| Architecture decisions | [ADR-0001 – ADR-0010](docs/design/) | 🟢 proposed, complete for Phase 1 |
+| Connectors — MFDS SaMD + Cosmetic | [docs/import-agent.md](docs/import-agent.md) | ⬜ planned (M1) |
+| Clause schema + parser profiles | [ADR-0002](docs/design/ADR-0002-canonical-regulation-model.md) | ⬜ planned (W3-4) |
+| IR extraction | [ADR-0004](docs/design/ADR-0004-ir-extraction-and-domain-branching.md) | ⬜ planned (W3-4) |
+| Retrieval + citation-enforced Q&A | [ADR-0006](docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md) | ⬜ planned (W5-6) |
+| Monitoring + alert routing | [ADR-0009](docs/design/ADR-0009-service-boundaries-per-pillar.md) | ⬜ planned (M3) |
+| Semantic enrichment + graph | [ADR-0010](docs/design/ADR-0010-semantic-enrichment-and-graph-model.md) | ⬜ Phase 2 |
+
+> Legend: 🟢 done / settled · 🟡 partial · ⬜ planned.
+>
+> **No service code exists yet.** RegOps is greenfield ([ADR-0001](docs/design/ADR-0001-platform-foundation.md)):
+> the repository currently holds documentation and architecture decisions only. The ADRs are the
+> contract the first scaffold is built against.
+>
+> **Phase 1 gates** — the PoC produces numbers, not a demo. Detection coverage ≥95% · detection
+> latency ≤24h · citation accuracy ≥90% · hallucination rate ≤2% · research time savings ≥30% ·
+> pilot retention ≥60%. No-Go if four or more of the six fall short.
