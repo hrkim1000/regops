@@ -137,6 +137,7 @@ STAGE=dev docker compose --profile app up -d
 | [docs/import-source-map.md](docs/import-source-map.md) | **Single source catalog** — per-cell laws, guidance, and source URLs |
 | [docs/import-agent.md](docs/import-agent.md) | Import Agent spec — how sources are fetched, normalized, parsed |
 | [docs/development-plan.md](docs/development-plan.md) | Execution plan — workstreams, milestones, quality gates |
+| [docs/plan/README.md](docs/plan/README.md) | **Phase plan** — one build file per phase (`phase0` … `phase3.0`), with the critical path |
 | [docs/executive-summary.md](docs/executive-summary.md) | 1-page leadership summary for stage-gate decisions |
 | [docs/regulation-library-structure.md](docs/regulation-library-structure.md) | Per-cell library layout |
 
@@ -211,12 +212,19 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
 | Architecture decisions | [ADR-0001 – ADR-0010](docs/design/) | 🟢 proposed, complete for Phase 1 |
-| Connectors — MFDS SaMD + Cosmetic | [docs/import-agent.md](docs/import-agent.md) | ⬜ planned (M1) |
-| Clause schema + parser profiles | [ADR-0002](docs/design/ADR-0002-canonical-regulation-model.md) | ⬜ planned (W3-4) |
-| IR extraction | [ADR-0004](docs/design/ADR-0004-ir-extraction-and-domain-branching.md) | ⬜ planned (W3-4) |
-| Retrieval + citation-enforced Q&A | [ADR-0006](docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md) | ⬜ planned (W5-6) |
-| Monitoring + alert routing | [ADR-0009](docs/design/ADR-0009-service-boundaries-per-pillar.md) | ⬜ planned (M3) |
-| Semantic enrichment + graph | [ADR-0010](docs/design/ADR-0010-semantic-enrichment-and-graph-model.md) | ⬜ Phase 2 |
+| Phase plan — 13 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
+| Foundation — stack, shared lib, platform-core | [phase0](docs/plan/phase0_foundation.md) | ⬜ planned (W0–2) |
+| Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | ⬜ planned (W1–4) |
+| Normalization — clause schema, diff | [phase1.1](docs/plan/phase1.1_normalization.md) | ⬜ planned (W3–6) |
+| IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | ⬜ planned (W3–8) |
+| Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | ⬜ planned (W5–10) |
+| Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | ⬜ planned (W7–10) |
+| Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | ⬜ planned (W7–12) |
+| Evaluation + pilot — the 6 gates | [phase1.6](docs/plan/phase1.6_evaluation.md) | ⬜ planned (W7–16) |
+| Tier C + remaining 6 cells | [phase2.0](docs/plan/phase2.0_tier_c_scale.md) | ⬜ Phase 2 |
+| Semantic enrichment + graph | [phase2.1](docs/plan/phase2.1_semantic_graph.md) | ⬜ Phase 2 |
+| Compliance — applicability, gap analysis | [phase2.2](docs/plan/phase2.2_compliance.md) | ⬜ Phase 2 |
+| External SaaS — tenancy, validation | [phase3.0](docs/plan/phase3.0_saas.md) | ⬜ Phase 3 |
 
 > Legend: 🟢 done / settled · 🟡 partial · ⬜ planned.
 >

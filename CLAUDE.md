@@ -32,6 +32,17 @@ Guardrails are in `.claude/settings.json` hooks; delegation in `.claude/agents/`
 
 Commit or push **only when explicitly asked**.
 
+## Plan Documentation
+
+- Plans live in `docs/plan/`, one file per phase: `phase0_foundation.md` … `phase3.0_saas.md`.
+  Start at [docs/plan/README.md](docs/plan/README.md) for the phase map and critical path.
+- **The integer part of a plan number is the roadmap phase.** `phase1.3` is the fourth build slice
+  of roadmap Phase 1 (months 0–4), so "Phase 2" means months 5–12 everywhere — in RegOps.md, in
+  development-plan.md, in every ADR, and in the plan files. There is no second numbering scheme.
+- **After completing each step, update the corresponding phase plan file.** Mark items `[x]` and
+  record deviations in that file's *Deviations & decisions* section.
+- A decision that changes architecture goes in an **ADR**, not a plan file.
+
 ## Project Overview
 
 RegOps covers **two product domains × four regulatory regions** and delivers four application
@@ -61,6 +72,7 @@ docs/                     # product/strategy docs — the working set
   executive-summary.md    # 1-page exec summary
   regulation-library-structure.md   # per-cell library layout example
   design/                 # ADRs — ADR-000N-<slug>.md, numbered from 0001
+  plan/                   # build plans, one per phase — phase0 … phase3.0; see plan/README.md
   data/<region>/          # READ-ONLY raw source research (mfds, fda, eu, china, other)
   memo/                   # superseded drafts — never authoritative, may contradict the rules
   reference/              # READ-ONLY, DO NOT CONSULT — parked material
