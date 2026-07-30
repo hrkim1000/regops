@@ -170,9 +170,12 @@ ir_citations(ir_id, document_version_id, clause_path, effective_date, superseded
 3. **Conditional obligations by product class** — duties that apply only to a device class or
    product category. One parameterised IR, or one IR per class? Parameterised is smaller; per-class
    maps to controls more directly.
-4. **Cross-references** (`제5조에 따른`, "as specified in Annex III") — resolve to the referenced
-   clause at extraction, or retain as text? Resolving improves impact propagation; it also means an
-   amendment to the *referenced* clause makes the referring IR stale, which may be correct.
+4. ~~**Cross-references**~~ (`제5조에 따른`, "as specified in Annex III") — **resolved** in
+   [ADR-0010](ADR-0010-semantic-enrichment-and-graph-model.md) decision 7: neither option exactly.
+   The clause text is retained verbatim and the resolution is stored beside it in
+   `clause_references`, produced by a deterministic pipeline rather than at extraction time — so
+   this ADR's W3-4 scope is unchanged. Staleness propagation via the referring clause is confirmed
+   correct and becomes the mechanism behind impact grading.
 5. **Extraction determinism** — same clause, same rule and model version should yield the same IRs.
    LLM sampling makes this approximate. Decide whether to pin temperature to 0 and treat any delta
    as a regression, or accept variance and gate on the golden-set score only.

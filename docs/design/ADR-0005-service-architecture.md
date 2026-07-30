@@ -22,6 +22,13 @@ Phase 3 is a multi-tenant external SaaS, so boundaries drawn now should not have
 
 ### 1. Three backend services plus a frontend — not one per pipeline stage
 
+> **Superseded by [ADR-0009](ADR-0009-service-boundaries-per-pillar.md) (2026-07-30).** Services now
+> follow the product pillars and arrive by phase: `platform-core` · `regulation` · `monitoring` ·
+> `assistant` in Phase 1, `compliance` in Phase 2, `tenancy` in Phase 3. The reasoning below —
+> boundaries from ownership and failure isolation, never per pipeline stage — is what ADR-0009 is
+> built on and still governs; only the count and the monitoring boundary changed. ADR-0009 decision 3
+> also fills the alerting-table gap this decision left open.
+
 | Service | Owns | Why it is separate |
 |---|---|---|
 | **platform-core** | identity, roles, sessions, audit trail | Different security posture and change cadence; every other service depends on it and nothing depends on them |

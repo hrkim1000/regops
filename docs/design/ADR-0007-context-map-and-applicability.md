@@ -47,9 +47,11 @@ Deliberately excluded, with reasons:
 - **Engineering and Clinical are out of scope entirely.** No repos, no `software_versions`, no
   clinical gates. RegOps *cites* ISO 14971; it does not run approvals against it.
 
-**Four contexts, three services.** Product and Compliance get their own models and language
+**Four contexts, four Phase 1 services** ([ADR-0009](ADR-0009-service-boundaries-per-pillar.md);
+three at the time this ADR was written). Product and Compliance get their own models and language
 immediately but live inside the `regulation` service until Phase 2 gap analysis gives them a reason
-to split. Conflating context with service is how a 6.5-FTE team ends up operating nine deployments.
+to split — at which point ADR-0009 decision 5 ships them together as `compliance`. Conflating
+context with service is how a 6.5-FTE team ends up operating nine deployments.
 
 ### 2. The context boundary is the tenancy boundary
 
