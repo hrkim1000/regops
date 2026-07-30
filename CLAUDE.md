@@ -24,6 +24,7 @@ docs/                     # product/strategy docs — the working set
   regulation-library-structure.md   # per-cell library layout example
   design/                 # ADRs — ADR-000N-<slug>.md, numbered from 0001
   data/<region>/          # READ-ONLY raw source research (mfds, fda, eu, china, other)
+  memo/                   # superseded drafts — never authoritative, may contradict the rules
   reference/              # READ-ONLY, DO NOT CONSULT — parked material
 ```
 
@@ -32,6 +33,9 @@ docs/                     # product/strategy docs — the working set
 - **`docs/data/`** — raw source research. Consult it for facts; **never edit it.** Corrections
   belong in `import-source-map.md`, which is what connectors are built against. Do not treat
   anything in here as a scope or roadmap statement.
+- **`docs/memo/`** — superseded drafts, kept for provenance. **Never cite as authoritative.**
+  Contents predate or contradict the current rules; the live statement is in `RegOps.md`,
+  `import-source-map.md`, or an ADR. Do not "fix" a memo — supersede it.
 - **`docs/reference/`** — parked material. **Do not read it and do not cite it** when answering
   questions or making changes. It is retained for provenance only.
 
@@ -66,7 +70,9 @@ Two remotes: `origin` (github.com/hrkim1000/regops — the real repo) and `start
 (github.com/kimhwangdata/startup-doc — a shared doc repo owned by another account).
 
 - **`startup` pushes go to the `hrkim` branch only. Never to `startup/main`.**
-- Only `README.md` and `docs/**` are published, **excluding `docs/data/`** (raw source research).
+- Only `README.md` and `docs/**` are published, **excluding `docs/data/`** (raw source research)
+  and **`docs/memo/`** (superseded drafts — they contradict the current rules, so they must not
+  reach a shared repo).
 - `.claude/`, `CLAUDE.md`, `.gitignore` and any future code stay out of `startup` entirely.
 - `git subtree` is wrong here — `startup` keeps docs under `docs/`, and a subtree split would
   hoist them to the repo root. Publish a filtered snapshot at the same paths instead:
@@ -74,7 +80,7 @@ Two remotes: `origin` (github.com/hrkim1000/regops — the real repo) and `start
 ```bash
 git fetch startup hrkim
 GIT_INDEX_FILE=.git/publish-index git read-tree --empty &&
-GIT_INDEX_FILE=.git/publish-index git add README.md docs ':!docs/data' &&
+GIT_INDEX_FILE=.git/publish-index git add README.md docs ':!docs/data' ':!docs/memo' &&
 tree=$(GIT_INDEX_FILE=.git/publish-index git write-tree) &&
 commit=$(git commit-tree $tree -p FETCH_HEAD -m "docs: sync RegOps documentation") &&
 git push startup $commit:hrkim && rm -f .git/publish-index

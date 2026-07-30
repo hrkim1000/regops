@@ -71,20 +71,72 @@ RegOps covers **two product domains** (SaMD, Cosmetic) across **four regulatory 
 
 ## Architecture — five layers, from ingestion to applications
 
-**L1. Ingestion**
-API connectors · RSS · scraping workers · change-detection scheduler · immutable source archive (WORM)
+```text
+                        SCOPE — 8 cells, and nothing else
+        ┌────────────┬──────────┬──────────┬──────────┬──────────┐
+        │            │   MFDS   │   FDA    │    EU    │   NMPA   │
+        ├────────────┼──────────┼──────────┼──────────┼──────────┤
+        │  SaMD      │  ● P1    │    P2    │  ○ spike │    P2    │
+        │  Cosmetic  │  ● P1    │    P2    │    P2    │    P2    │
+        └────────────┴──────────┴──────────┴──────────┴──────────┘
+          ● gated PoC cell   ○ non-gated spike   P2 · P3 = later phase
+          Per-cell laws, guidance, and source URLs → import-source-map.md
+          (the only source catalog — never restate it elsewhere)
 
-**L2. Normalization**
-Document parsing · clause-level segmentation · multilingual translation (with source text alongside) · version management · clause-level diff extraction
-
-**L3. Regulatory Knowledge Graph**
-Link regulatory authorities, laws/notices, clauses, requirements, product families, markets, and internal SOPs/controls as entities. Compute impact-propagation paths on amendment.
-
-**L4. AI layer (Retrieval & Reasoning)**
-Hybrid search (BM25 + vector) · graph-based context expansion · citation-enforced generation · evidence-verification agent · answer confidence score
-
-**L5. Applications**
-Monitoring dashboard · Q&A assistant · gap analysis workbench · alert/ticket integration · multi-tenant SaaS portal · public API
+  L1  INGESTION                        one Import Agent · per-cell connectors
+ ══════════════════════════════════════════════════════════════════════════
+      Tier A  public API     ┐
+      Tier B  static / RSS   ├─→  fetch ─→ sha256 ─→ WORM archive (immutable)
+      Tier C  scraping       ┘                └─ unchanged re-fetch records a
+                                                 fetch_observation, no version
+      change-detection scheduler drives every tier
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      Tier D  ISO · IEC · USP-NF · Ph.Eur.        ✕  never ingested
+              StandardReference: number, edition, recognition/OJ number,
+              dates, status, official URL.  No body text, ever.
+                                    │
+                                    ▼
+  L2  NORMALIZATION
+ ══════════════════════════════════════════════════════════════════════════
+      parse ─→ clause-level segmentation ─→ DocumentVersion
+                                            (immutable, one per version+language)
+      multilingual, source text retained alongside
+      ClauseDiff ─→ ChangeEvent ─→ routed to every claiming cell
+      renumbering resolved explicitly, never reported as delete + add
+                                    │
+                                    ▼
+  L3  REGULATORY KNOWLEDGE GRAPH                              ← the asset
+ ══════════════════════════════════════════════════════════════════════════
+      authority · document · clause · IR (InfoRequirement)
+      product family · market · internal SOP / control
+      IR.domain_profile ∈ samd|cosmetic — the only branch by domain
+      only locked IRs flow downstream · impact-propagation paths on amendment
+                                    │
+                                    ▼
+  L4  RETRIEVAL & REASONING                    LLM behind a pluggable seam
+ ══════════════════════════════════════════════════════════════════════════
+      hybrid search (BM25 + vector) ─→ graph context expansion
+        ─→ citation-enforced generation ─→ evidence-verification agent
+                                        ─→ confidence score
+      citation pinned to an immutable version, never "current"
+      no citation → "needs verification"   ·   below threshold → human review
+                                    │
+                                    ▼
+  L5  APPLICATIONS
+ ══════════════════════════════════════════════════════════════════════════
+      01 Change monitoring & alerting  P1 │ 02 Q&A / RAG assistant        P1
+         daily change briefing            │    answers with citations
+         impact grading                   │    deep links to source text
+         owner-routed tickets             │    query audit trail
+    ────────────────────────────────────────────────────────────────────────
+      03 Gap analysis & control map    P2 │ 04 SaaS productization        P3
+         IR-to-control matrix             │    tenant isolation
+         gap report                       │    validation package
+         corrective action list           │    partner API
+                                    │
+                                    ▼
+      RA · QA · engineering owners        →  P3: external tenants, auditors
+```
 
 ### Requirements common to all layers
 
