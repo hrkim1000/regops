@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The third HTTP-200 failure signature, and the quietest: a malformed query returns `success`
+  with totalCnt 0, indistinguishable from "this law does not exist".
+-->
+<법령>
+  <resultCode>00</resultCode>
+  <resultMsg>success</resultMsg>
+  <totalCnt>0</totalCnt>
+</법령>

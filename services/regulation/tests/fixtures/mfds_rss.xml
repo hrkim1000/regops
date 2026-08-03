@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>식품의약품안전처 공지사항</title>
+    <link>https://www.mfds.go.kr</link>
+    <item>
+      <title>화장품 안전기준 등에 관한 규정 일부개정고시</title>
+      <link>https://www.mfds.go.kr/brd/m_207/view.do?seq=100001</link>
+      <guid>mfds-100001</guid>
+      <pubDate>Thu, 15 Jan 2026 09:00:00 +0900</pubDate>
+      <category>고시</category>
+    </item>
+    <item>
+      <title>의료기기 허가·신고·심사 등에 관한 규정 일부개정고시</title>
+      <link>https://www.mfds.go.kr/brd/m_207/view.do?seq=100002</link>
+      <guid>mfds-100002</guid>
+      <pubDate>Fri, 09 Jan 2026 09:00:00 +0900</pubDate>
+      <category>고시</category>
+    </item>
+  </channel>
+</rss>

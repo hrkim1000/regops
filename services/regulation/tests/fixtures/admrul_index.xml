@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic 행정규칙 목록 (lawSearch.do) response, shaped after the live call of 2026-08-03.
+
+  Note 행정규칙상세링크: the authority echoes the OC parameter straight back inside every row. The
+  value below is a deliberate placeholder, never a real key — and the point of the fixture is that
+  the connector must not carry it into anything persisted. UpstreamRule has no link field at all.
+
+  The 식품 rows are here on purpose: 511 of these exist upstream and most belong to no RegOps cell,
+  so the relevance filter has to drop them or the sweep becomes 500 false positives.
+-->
+<AdmRulSearch>
+  <target>admrul</target>
+  <totalCnt>5</totalCnt>
+  <page>1</page>
+  <numOfRows>5</numOfRows>
+  <resultCode>00</resultCode>
+  <resultMsg>success</resultMsg>
+  <admrul>
+    <행정규칙일련번호>2100000275404</행정규칙일련번호>
+    <행정규칙명>HACCP 발전 협의회 운영 규정</행정규칙명>
+    <행정규칙종류>훈령</행정규칙종류>
+    <발령일자>20260303</발령일자>
+    <발령번호>272</발령번호>
+    <소관부처명>식품의약품안전처</소관부처명>
+    <제개정구분명>제정</제개정구분명>
+    <행정규칙ID>96299</행정규칙ID>
+    <행정규칙상세링크>/DRF/lawService.do?OC=PLACEHOLDER-NOT-A-REAL-KEY&amp;target=admrul</행정규칙상세링크>
+    <시행일자>20260303</시행일자>
+  </admrul>
+  <admrul>
+    <행정규칙일련번호>2100000276068</행정규칙일련번호>
+    <행정규칙명>화장품 안전기준 등에 관한 규정</행정규칙명>
+    <행정규칙종류>고시</행정규칙종류>
+    <발령일자>20260318</발령일자>
+    <발령번호>2026-15</발령번호>
+    <소관부처명>식품의약품안전처</소관부처명>
+    <제개정구분명>일부개정</제개정구분명>
+    <행정규칙ID>37098</행정규칙ID>
+    <행정규칙상세링크>/DRF/lawService.do?OC=PLACEHOLDER-NOT-A-REAL-KEY&amp;target=admrul</행정규칙상세링크>
+    <시행일자>20260318</시행일자>
+  </admrul>
+  <admrul>
+    <행정규칙일련번호>2100000280001</행정규칙일련번호>
+    <행정규칙명>화장품 색소 종류와 기준 및 시험방법</행정규칙명>
+    <행정규칙종류>고시</행정규칙종류>
+    <발령일자>20251120</발령일자>
+    <발령번호>2025-77</발령번호>
+    <소관부처명>식품의약품안전처</소관부처명>
+    <제개정구분명>일부개정</제개정구분명>
+    <행정규칙ID>41988</행정규칙ID>
+    <행정규칙상세링크>/DRF/lawService.do?OC=PLACEHOLDER-NOT-A-REAL-KEY&amp;target=admrul</행정규칙상세링크>
+    <시행일자>20251120</시행일자>
+  </admrul>
+  <admrul>
+    <행정규칙일련번호>2100000280002</행정규칙일련번호>
+    <행정규칙명>의료기기 사이버보안 허가·심사 가이드라인</행정규칙명>
+    <행정규칙종류>고시</행정규칙종류>
+    <발령일자>20260210</발령일자>
+    <발령번호>2026-9</발령번호>
+    <소관부처명>식품의약품안전처</소관부처명>
+    <제개정구분명>제정</제개정구분명>
+    <행정규칙ID>42010</행정규칙ID>
+    <행정규칙상세링크>/DRF/lawService.do?OC=PLACEHOLDER-NOT-A-REAL-KEY&amp;target=admrul</행정규칙상세링크>
+    <시행일자>20260210</시행일자>
+  </admrul>
+  <admrul>
+    <행정규칙일련번호>2100000280003</행정규칙일련번호>
+    <행정규칙명>건강기능식품 기능성 원료 및 기준·규격 인정에 관한 규정</행정규칙명>
+    <행정규칙종류>고시</행정규칙종류>
+    <발령일자>20251001</발령일자>
+    <발령번호>2025-60</발령번호>
+    <소관부처명>식품의약품안전처</소관부처명>
+    <제개정구분명>일부개정</제개정구분명>
+    <행정규칙ID>39001</행정규칙ID>
+    <행정규칙상세링크>/DRF/lawService.do?OC=PLACEHOLDER-NOT-A-REAL-KEY&amp;target=admrul</행정규칙상세링크>
+    <시행일자>20251001</시행일자>
+  </admrul>
+</AdmRulSearch>

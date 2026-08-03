@@ -22,6 +22,8 @@ dependencies = [
     "minio>=7.2",
     "structlog>=24.4",
     "httpx>=0.27",
+    # Connector responses are XML from external hosts; stdlib ElementTree is XXE-exposed.
+    "defusedxml>=0.7",
 ]
 
 [project.optional-dependencies]

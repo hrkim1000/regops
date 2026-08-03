@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  HTTP 200 with an error body: the egress IP no longer matches the account's registration.
+  A connector checking only transport status would record this as a healthy fetch.
+-->
+<result>사용자 정보 검증에 실패하였습니다. 서비스를 이용하실 IP주소 및 도메인주소를 등록해 주세요.</result>

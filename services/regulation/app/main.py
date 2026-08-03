@@ -1,7 +1,8 @@
-"""regulation — scaffolded in phase 0, health check only.
+"""regulation — L1 ingestion: crawl → archive → version.
 
-No regulation logic lives here yet. Content arrives in the phase 1.x plans:
-see docs/plan/README.md for which slice fills this service.
+Phase 1.0 stops there. Parse, diff and change-event emission are phase 1.1; everything that
+*writes* the clause store belongs to this service, and `monitoring` begins where writing ends
+(CLAUDE.md § The seam).
 """
 
 from __future__ import annotations
@@ -11,12 +12,15 @@ from fastapi import FastAPI
 from regops_shared.api import install_exception_handlers, ok
 from regops_shared.logging import configure_logging
 
+from .api.v1.sources import router as sources_router
+
 SERVICE_NAME = "regulation"
 
 configure_logging(SERVICE_NAME)
 
-app = FastAPI(title="RegOps regulation", version="0.1.0")
+app = FastAPI(title="RegOps regulation", version="0.2.0")
 install_exception_handlers(app)
+app.include_router(sources_router)
 
 
 @app.get("/health", tags=["ops"])
