@@ -38,16 +38,35 @@ BODY_TEXT_MARKERS = (
 )
 
 
-def tracked_files() -> list[Path]:
-    out = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True)
-    return [REPO / line for line in out.stdout.splitlines() if line]
+def scanned_files() -> list[Path]:
+    """Tracked files **plus** untracked-but-not-ignored ones.
+
+    Scanning only tracked files means a newly added file passes until it is committed — which is
+    how this script once passed locally and failed in CI on the very next push. A guard that only
+    sees history cannot stop something entering it.
+    """
+    out = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return [REPO / line for line in dict.fromkeys(out.stdout.splitlines()) if line]
+
+
+#: This file necessarily contains every marker it searches for, so it would always flag itself.
+#: Excluded by path rather than by obfuscating the markers — the list should stay greppable.
+SELF = Path(__file__).resolve().relative_to(REPO).as_posix()
 
 
 def main() -> int:
     violations: list[str] = []
 
-    for path in tracked_files():
+    for path in scanned_files():
         rel = path.relative_to(REPO).as_posix()
+        if rel == SELF:
+            continue
         if rel.startswith("docs/"):
             continue  # prose cites standards by design
 
@@ -78,7 +97,7 @@ def main() -> int:
         )
         return 1
 
-    print(f"Tier D scan clean ({len(tracked_files())} tracked files).")
+    print(f"Tier D scan clean ({len(scanned_files())} files scanned).")
     return 0
 
 
