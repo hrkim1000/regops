@@ -4,7 +4,7 @@ Per-cell inventory of primary laws, regulations, guidance, and official source U
 
 This file is the source of truth the Import Agent connectors and parser profiles are built against; the scope tables in the planning docs are summaries of it.
 
-**Ingestion priority is the subsection order within each cell.** `Primary Laws` is always first and is the top tier — the binding statute a cell cannot be ingested without. Subsequent blocks (Regulations, Standards, Guidance, Registration, Ingredient, GMP, Safety) descend in priority and vary by cell. `Official Sources` is always last and lists the portals every block above is fetched from.
+**Ingestion priority is the subsection order within each cell.** `Primary Laws` is always first and is the top tier — the binding statute a cell cannot be ingested without. Subsequent blocks (Regulations, Standards, Guidance, Registration, Ingredient, Safety) descend in priority and vary by cell. `Official Sources` is always last and lists the portals every block above is fetched from.
 
 **`Standards` blocks are metadata-only — Tier D.** ISO/IEC standards and pharmacopoeias (ISO 13485, ISO 14971, IEC 62304, IEC 62366, ISO 27001, …) prohibit source-text storage and AI training. Connectors ingest only the *recognition record* — standard number, edition, recognition/listing number, effective and withdrawal dates, harmonized status — and deep-link to the official copy. Never the standard's body text, even when a regulation makes it legally binding (e.g. QMSR incorporates ISO 13485:2016 by reference, effective 2026-02-02: cite the requirement, link the standard, store neither). See [RegOps.md](RegOps.md) § Data Strategy.
 
@@ -31,10 +31,6 @@ This file is the source of truth the Import Agent connectors and parser profiles
 * 제조업
 * 책임판매업
 * 기능성화장품 심사
-
-### GMP
-
-* CGMP
 
 ### Ingredient
 
@@ -63,10 +59,12 @@ This file is the source of truth the Import Agent connectors and parser profiles
 * 의료기기법
 * 의료기기법 시행령
 * 의료기기법 시행규칙
+* 디지털의료제품법
+* 디지털의료제품법 시행령
+* 디지털의료제품법 시행규칙
 
 ### Regulations
 
-* 디지털의료제품법
 * 의료기기 허가·신고·심사 규정
 * 의료기기 소프트웨어 허가심사 가이드라인
 

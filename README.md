@@ -159,6 +159,8 @@ STAGE=dev docker compose --profile local-llm up -d
 | [ADR-0009](docs/design/ADR-0009-service-boundaries-per-pillar.md) | Service boundaries per pillar, phased |
 | [ADR-0010](docs/design/ADR-0010-semantic-enrichment-and-graph-model.md) | Semantic enrichment and the knowledge graph model |
 | [ADR-0011](docs/design/ADR-0011-audit-trail-immutability.md) | Audit-trail immutability — grants plus hash chain |
+| [ADR-0012](docs/design/ADR-0012-annex-version-identity.md) | Annexes are child Documents, not attachments on a version |
+| [ADR-0013](docs/design/ADR-0013-unresolvable-effective-dates.md) | An unresolvable effective date is null plus the raw phrase |
 
 ---
 
@@ -215,10 +217,10 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Scope, data tiers, roadmap | [docs/RegOps.md](docs/RegOps.md) | 🟢 settled |
 | Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
-| Architecture decisions | [ADR-0001 – ADR-0010](docs/design/) | 🟢 proposed, complete for Phase 1 |
+| Architecture decisions | [ADR-0001 – ADR-0013](docs/design/) | 🟢 proposed, complete for Phase 1 |
 | Phase plan — 13 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
 | Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
-| Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | ⬜ planned (W1–4) |
+| Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | 🟡 core done — 13 sources live; 3 MFDS surfaces await W3 recon |
 | Normalization — clause schema, diff | [phase1.1](docs/plan/phase1.1_normalization.md) | ⬜ planned (W3–6) |
 | IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | ⬜ planned (W3–8) |
 | Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | ⬜ planned (W5–10) |

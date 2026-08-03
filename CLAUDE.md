@@ -53,10 +53,11 @@ pillars on one shared knowledge layer:
 3. Compliance gap analysis & control mapping
 4. SaaS productization for external customers
 
-**Current state: documentation only.** RegOps is greenfield ([ADR-0001](docs/design/ADR-0001-platform-foundation.md))
-— there is no service code, no `docker-compose.yml`, and no database. Architecture is settled
-through [ADR-0001 – ADR-0010](docs/design/); everything below marked *target* describes what to
-build, not what runs. Read the relevant ADR before writing new code.
+**Current state: phase 0 and the core of phase 1.0 are built.** The compose stack, `regops_shared`,
+`platform-core` (auth · RBAC · audit chain) and the `regulation` L1 ingestion pipeline exist and run;
+`monitoring` and `assistant` are still health-check-only scaffolds, and there is no frontend.
+Architecture is settled through [ADR-0001 – ADR-0013](docs/design/); anything below still marked
+*target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 
 Phase 1 (PoC, 4 months) gates two of the eight cells — MFDS SaMD + MFDS Cosmetic — with a
 non-gated EU SaMD spike, and ships pillars 1 and 2 only.
@@ -136,8 +137,10 @@ from pipeline stages.*
 | `compliance` | 2 | Product + Compliance contexts — applicability, control mapping, gap findings |
 | `tenancy` | 3 | provisioning, billing, API keys, white-label configuration |
 
-Service ports are assigned when services are scaffolded. Infrastructure ports are fixed:
-Flower `15555`, pgAdmin `15051`, MinIO console `19001`.
+Ports are assigned (phase0 deviation 4 — the `2xxxx` block, so RegOps can run alongside another
+local stack). Services: platform-core `28000` · regulation `28001` · monitoring `28002` ·
+assistant `28003`. Infrastructure: postgres `25432` · redis `26379` · minio `29000`/console `29001` ·
+pgAdmin `25051` · flower `25555`. Ollama stays shared on `11434`.
 
 ### The seam
 
@@ -159,16 +162,27 @@ Reads across a boundary are raw SQL; never import another service's ORM model.
 ```text
 platform-core : users · roles · sessions · audit_log
 regulation    : cells · sources · source_schedules · fetch_observations
-                documents · document_cells · document_versions · clauses
+                source_discovery_runs · documents · document_cells
+                document_versions · attachments · clauses
                 clause_diffs · change_events · structure_drift_alerts
                 standard_references · irs · ir_citations · extraction_runs
-                clause_classifications
+                ir_standard_citations · clause_classifications
                 concepts · concept_labels · concept_relations
                 clause_concepts · clause_references · enrichment_runs
 monitoring    : alert_subscriptions · alerts · alert_deliveries
 assistant     : clause_embeddings · queries · answers · answer_citations
                 verification_results
 ```
+
+`annex_rows` ([ADR-0006](docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md)) is
+deliberately absent: whether it exists at all, and which service owns it, is ADR-0006 open question 3.
+Resolve it in an ADR before creating the table — not by picking a service at migration time.
+[ADR-0012](docs/design/ADR-0012-annex-version-identity.md) settled only the *container* — a 별표 is a
+child `Document` with its own versions — not the row granularity inside it.
+
+`attachments` is the authority's own file links per version (별표서식파일링크 and the like), kept as
+an archival copy and as the fallback for an empty `별표내용`. It is **not** where annex content
+lives: annex text arrives inline and becomes a child `Document`.
 
 Regulation data is **shared reference data**; only the mapping layer is tenant-scoped. Tenant-scoped
 tables carry `tenant_id` from the first migration ([ADR-0005](docs/design/ADR-0005-service-architecture.md) decision 2).
@@ -220,6 +234,11 @@ contracts, not behaviour, and **never calls a service**.
 - `llm/` — `get_llm_client()`, provider from settings (`ollama` | `claude`); embeddings always
   Ollama `nomic-embed-text` 768-dim, fixed regardless of generation provider
 - `auth/` — `get_current_principal()` → `decode_token()`, stateless per-service JWT verification
+- `db/` — async engine for FastAPI, **sync** engine (`sync_session()`) for Celery workers: a prefork
+  worker has no long-lived event loop, and an asyncpg pool cached across `asyncio.run()` calls binds
+  to a loop that has already closed
+- `storage/` — MinIO plus the WORM archive: `archive_bytes()` is content-addressed and write-once,
+  and never overwrites an existing object
 - audit-trail writer — append-only table in `platform-core`; audit is **not** a service
 - constants — no magic literals in service code
 
@@ -228,17 +247,25 @@ the authoritative dump and is updated in the same change.
 
 ## Commands
 
-Nothing runs yet. The only working procedure today is the doc sync below; the rest are the target
-shapes recorded by the skills.
-
 ```bash
-# Target — once the stack exists
-docker compose up -d                       # infrastructure + services
+docker compose --profile app up -d         # infrastructure + services + regulation worker/beat
 docker compose run --rm migrate            # alembic upgrade head, then exits
+docker compose exec -T regulation python /scripts/seed_sources.py    # idempotent source registry
 docker compose exec -T <svc> python -m pytest tests/unit -q
 docker compose logs <svc> --tail=30
-npm run typecheck && npm run lint          # from frontend/
+
+# integration — separate database, selected by REGOPS_DB_NAME (never by DATABASE_URL in
+# .env.test: compose sets it under `environment:`, which wins over `env_file:`)
+STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm regulation \
+    python -m pytest tests/integration -q
+
+# host-side gates
+ruff check . && ruff format --check . && mypy shared/regops_shared --ignore-missing-imports
+python -m pytest shared/tests services/*/tests/unit -q
+python scripts/tier_d_scan.py
 ```
+
+Still target-only: `npm run typecheck && npm run lint` (no `frontend/` until phase 1.5).
 
 ## Doc sync to `startup`
 

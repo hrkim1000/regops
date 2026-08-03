@@ -180,7 +180,14 @@ ir_standard_citations(ir_id, standard_reference_id)
    [ADR-0003](ADR-0003-ingestion-and-change-detection.md) decision 5: three separate dates
    (`retrieved_at`, `published_at`, `effective_date`), none substituting for another.
    `effective_date` is parse-derived and overridable per clause for staged application; alerting
-   uses the clause-level date where present.
+   uses the clause-level date where present. Where the text states a condition rather than a date,
+   [ADR-0013](ADR-0013-unresolvable-effective-dates.md) keeps `effective_date` NULL and retains the
+   raw 부칙 phrase.
+
+Decision 1's M:N claim now also covers annexes:
+[ADR-0012](ADR-0012-annex-version-identity.md) makes a 별표 a child `Document` with its own
+versions, so it is ingested once, claimed by every claiming cell, and versions independently of its
+parent body.
 
 ## What this unblocks
 

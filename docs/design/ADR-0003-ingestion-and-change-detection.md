@@ -199,6 +199,11 @@ archived, hashed and versioned independently. An annex that changes while its pa
 must still produce a `ChangeEvent` — hashing only the body would silently miss every ingredient-list
 amendment, which for `mfds_cosmetic` is most of what matters.
 
+> **Amended by [ADR-0012](ADR-0012-annex-version-identity.md).** "Versioned independently" and the
+> `attachments(document_version_id, …)` sketch below contradict each other: a child row of a version
+> cannot out-version its parent. An annex is a child `Document` with its own `document_versions`;
+> `attachments` keeps the narrower job of recording the authority's own file links.
+
 HWP is a Korean proprietary format with thin library support; treat extraction as a workstream, not
 a library call.
 
@@ -212,6 +217,22 @@ scheduled discovery sweep reconciles it against the authority's own list and rai
 anything present upstream and absent locally. A hand-maintained list silently caps detection
 coverage at whatever someone remembered to add — the discovery sweep converts that from an unknown
 into a measurable delta.
+
+> **First live sweep, 2026-08-03.** `org=1471000` (식품의약품안전처) returns **511 행정규칙**, of
+> which **72** name 화장품 / 의료기기 / 디지털의료제품 and **6** are covered. The delta this decision
+> was written to expose is therefore real and large; see
+> [phase1.0](../plan/phase1.0_ingestion.md) § Risks.
+>
+> Two properties the sweep needs to stay usable:
+>
+> - **A relevance filter is mandatory, not a refinement.** Most of the 511 are 식품 and
+>   건강기능식품, which belong to no RegOps cell. Reporting all of them would be ~500 false
+>   positives and the sweep would be muted within a week. The filter is deliberately
+>   over-inclusive — a 고시 missed because the filter was clever is a coverage hole, one wrongly
+>   listed costs a glance — and the unfiltered total is recorded next to the filtered one so the
+>   narrowing is visible rather than silent.
+> - **Titles are compared normalized.** The catalog and the authority differ on 중점 (`·` vs `ㆍ`)
+>   and spacing without naming a different instrument; comparing raw would manufacture gaps.
 
 ### 12. Use the authority's own change history as an independent check
 
@@ -242,6 +263,25 @@ it is also likelier to be low-entropy and reused — one leak is enough.
 
 Applies to any authenticated source, not just this one; treat it as the default connector contract.
 
+> **The credential also arrives inbound.** *(Added 2026-08-03, from the first live sweep.)*
+> 국가법령정보's **목록** endpoints echo the `OC` parameter back inside the response body:
+> `행정규칙상세링크` on every row is a fully-formed URL containing the key. So the outbound rules
+> above are necessary but not sufficient — a response we never logged and never built a URL from
+> can still carry the credential.
+>
+> Two structural consequences, both implemented:
+>
+> - **The WORM archive refuses any payload containing a configured source credential.** Not
+>   redaction: the archive stores the raw response *unmodified*, so there is no variant that keeps
+>   the evidence intact and the key out. The check sits inside `archive_bytes` rather than at its
+>   call sites, so no future caller can omit it.
+> - **The discovery sweep's row model has no link field.** `source_discovery_runs.details` is
+>   persisted JSON; the safe design is one where the credential-bearing value is never carried far
+>   enough to be written, mirroring `fetch_observations` having no request-URL column.
+>
+> The 본문조회 endpoints do **not** echo it — verified against all 13 archived documents. Only the
+> 목록/검색 responses do, which is why the sweep consumes them in memory and archives nothing.
+
 ## Schema additions to ADR-0002
 
 ```sql
@@ -250,7 +290,7 @@ fetch_observations(id, source_id, fetched_at, http_status, content_hash,
 source_schedules(source_id, interval, next_due_at, override_reason)
 structure_drift_alerts(id, source_id, detected_at, signal, expected, actual, resolved_at)
 attachments(id, document_version_id, kind, title, ordinal, file_format,
-            source_url, content_hash, raw_object_key, effective_date)   -- 별표·서식 (dec 10)
+            source_url, content_hash, raw_object_key)   -- file links only; see ADR-0012
 source_discovery_runs(id, authority, ran_at, upstream_count, matched, unmatched)  -- dec 11
 ```
 
@@ -275,11 +315,11 @@ distinct from the version's, for staged-application instruments.
    Per-event latency is measurable for both gated cells. `조문시행일자` and `별표시행일자문자열` also
    confirm decision 5's clause-level `effective_date` override matches how the authority itself
    models staged application. *(EU and NMPA equivalents: still deferred.)*
-3. **Effective-date extraction reliability** — 부칙 phrasing varies ("시행한다", "적용한다",
-   "…이후 최초로 …하는 분부터"), and conditional or event-triggered application dates ("공포 후 6개월")
-   cannot be resolved to a calendar date at parse time. Decide whether such cases store null with the
-   raw phrase retained, or a computed date with a confidence flag. Null-plus-phrase is safer for
-   citations; a computed date is more useful for alert prioritisation.
+3. ~~**Effective-date extraction reliability**~~ — **closed** by
+   [ADR-0013](ADR-0013-unresolvable-effective-dates.md): `effective_date` stays NULL when the text
+   states a condition rather than a calendar date, and the raw 부칙 phrase is retained in
+   `effective_date_phrase`. A computed date is never written into the column that forms part of the
+   Citation tuple, because there it would be indistinguishable from an authoritative one.
 4. **Diff synchronously or async?** Parsing then diffing inline is simpler; splitting them lets a
    re-parse with an improved profile re-diff historical versions without re-fetching. Leaning split,
    but it costs a stage boundary.

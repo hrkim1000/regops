@@ -1,340 +1,404 @@
-결론부터 말하면 **같은 Import Agent를 사용하는 것이 가장 좋은 설계**입니다. 다만 Import Agent는 **도메인 독립적(Generic)** 으로 만들고, SaMD와 Cosmetic의 차이는 **Connector와 Parser Profile**로 분리하는 것이 확장성과 유지보수 측면에서 유리합니다.
+# Import Agent
 
-RegOps 아키텍처에서는 다음과 같이 구성하는 것을 권장합니다.
+**How sources are fetched, archived, and versioned.** The catalog of *what* to fetch is
+[import-source-map.md](import-source-map.md) and is never duplicated here — a catalog in two places
+means one of them is stale and nothing says which.
+
+- **Governed by:** [ADR-0002](design/ADR-0002-canonical-regulation-model.md) (canonical model),
+  [ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) (ingestion contract),
+  [ADR-0008](design/ADR-0008-service-composition.md) (composition),
+  [ADR-0012](design/ADR-0012-annex-version-identity.md) (annex identity),
+  [ADR-0013](design/ADR-0013-unresolvable-effective-dates.md) (effective dates)
+- **Built in:** [phase1.0](plan/phase1.0_ingestion.md) (fetch → archive → version),
+  [phase1.1](plan/phase1.1_normalization.md) (parse → diff → emit)
+- **Verified against the live 국가법령정보 API** on 2026-08-03; findings marked *(live)* below
+
+> **"Import Agent" is a pipeline, not an agent.** It invokes no LLM, writes no row carrying model
+> provenance, and needs no separate verification gate — it fails all three of
+> [ADR-0008](design/ADR-0008-service-composition.md) decision 2's tests. The name is **grandfathered
+> as a proper noun and confers no agent obligations** (ADR-0008 decision 3). Determinism is the
+> point: a regulation's text must arrive byte-identical to what the authority published, and nothing
+> in this path is permitted to paraphrase it.
+
+---
+
+## Scope
+
+Eight cells — `{authority}_{domain}`, `authority ∈ mfds|fda|eu|nmpa`, `domain ∈ samd|cosmetic`.
+Phase 1 builds **`mfds_samd` and `mfds_cosmetic`** only; FDA, EU and NMPA appear below solely as
+design constraints the contract must remain wide enough to accept.
+
+The generic structure exists for maintainability, **not as grounds for widening scope**.
+Pharmaceuticals, biologics, food, health functional food and every other regulator are out of scope
+([RegOps.md](RegOps.md) § Scope).
+
+## Pipeline
+
+Five stages, each idempotent and independently resumable, committing incrementally so a retry skips
+completed rows.
 
 ```text
-                    Regulation Import Service
-                           │
-                 Generic Import Agent
-                           │
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-   Source Connector   Change Detector   Scheduler
-        │
-        ▼
- ┌─────────────────────────────────────────────┐
- │                Source Profile               │
- ├─────────────────────────────────────────────┤
- │ MFDS SaMD          MFDS Cosmetic           │
- │ FDA  SaMD          FDA  Cosmetic           │
- │ EU   SaMD          EU   Cosmetic           │
- │ NMPA SaMD          NMPA Cosmetic           │
- └─────────────────────────────────────────────┘
-        (8 cells — 2 domains × 4 regions, 전체)
-        │
-        ▼
-         Parser
-        │
-        ├── PDF
-        ├── HTML
-        ├── XML
-        ├── DOCX
-        ├── HWP
-        └── ZIP
-        │
-        ▼
- Normalized Document
-        │
-        ▼
- Regulation Library
+  fetch ──→ archive ──→ parse ──→ diff ──→ emit
+    │          │           │        │        │
+  bytes +   sha256      clauses  ClauseDiff  ChangeEvent
+  headers   WORM blob      +     per path    per claiming cell
+  (+ published_at    effective_date
+   where exposed)   (부칙 / entry-into-force)
+    │
+    └─ fetch_observation recorded on EVERY attempt, changed or not
+  └────── phase 1.0 ──────┘└──────────── phase 1.1 ────────────┘
 ```
 
-### Import Agent가 담당하는 공통 기능
+Per-cell variation is isolated into exactly two places — **Connectors** and **Parser Profiles**.
+Everything else is shared across all eight cells.
 
-SaMD와 Cosmetic 모두 동일하게 수행할 수 있는 기능입니다.
+## Connectors
 
-* 웹사이트 크롤링
-* RSS 감시
-* PDF 다운로드
-* HTML 수집
-* ZIP 압축 해제
-* 버전 비교
-* SHA256 생성
-* 변경 감지
-* 메타데이터 생성
-* OCR 수행
-* 원문 저장(MinIO 등)
-* 재시도 및 오류 처리
-* 감사 로그 생성
+A connector's whole job is `Source → [FetchedArtifact]`. **Connectors fetch; they do not parse**
+([ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 1). Fetching MFDS RSS and
+fetching EUR-Lex are different problems; parsing 화장품법 and 의료기기법 is the *same* problem, so
+fusing the two would multiply the work instead of adding to it.
 
-즉, **Import 로직은 규제 분야와 무관하게 재사용**됩니다.
+Where the line falls:
 
----
+| Connector | Parser Profile (phase 1.1) |
+|---|---|
+| talk to the host, honour cache validators, back off | clause segmentation into 조/항/호/목 |
+| identify which artefacts a response carries (body, each 별표) | `effective_date` from 부칙 |
+| read dates the API envelope hands over | anything requiring the regulation to be *read* |
+| produce the canonicalized bytes change detection hashes | |
 
-### 달라지는 부분은 Source Profile
+`effective_date` is therefore absent from a connector's output even where the envelope states
+시행일자 outright: it is a parse output
+([ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 5) and rides in artefact
+metadata until phase 1.1 writes it.
 
-예를 들어 다음과 같이 설정만 바뀝니다.
+### Politeness is part of the contract
 
-| Field          | SaMD             | Cosmetic             |
-| -------------- | ---------------- | -------------------- |
-| Domain         | `samd`           | `cosmetic`           |
-| Authority      | `mfds`           | `mfds`               |
-| Parser Profile | `mfds_samd`      | `mfds_cosmetic`      |
-| IR Profile     | SaMD Requirement | Cosmetic Requirement |
-| Schedule       | Daily            | Daily                |
+Per-host minimum interval, exponential backoff with jitter on 429/5xx, `Retry-After` honoured,
+a contactable `User-Agent`, and `ETag`/`If-Modified-Since` wherever offered — a 304 is the cheapest
+possible `fetch_observation`.
 
-`domain`은 `samd` | `cosmetic` 두 값만 갖는다. "Medical Device", "Device", "MDR" 등은 사용하지 않는다 — 셀 식별자는 `{authority}_{domain}` 하나로 통일한다.
+Not optional courtesy: these are government hosts, and being rate-limited off MFDS during the pilot
+would take out both gated cells at once. Phase 3 also sells to customers who will ask how we collect.
 
-예시:
+### Credentials — in both directions
 
-```yaml
-source:
-  authority: mfds
-  domain: cosmetic
-  profile: mfds_cosmetic
-```
+The 국가법령정보 key is **self-designated by the account holder** and passed as a query-string
+parameter, so it is likelier to be low-entropy and reused than an issued token. One leak is enough.
 
-```yaml
-source:
-  authority: fda
-  domain: samd
-  profile: fda_samd
-```
+**Outbound** ([ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 13):
 
----
+- The key lives in settings (`LAW_GO_KR_OC`) — never in this document, the source map, a `sources`
+  row, an ADR, or a fixture.
+- `sources.url_template` stores a template with a `{OC}` placeholder. The resolved URL is built at
+  request time and **is never persisted**.
+- `fetch_observations` has **no column** a request URL could occupy. Any logging redacts credential
+  parameters first.
 
-### Parser Profile도 분리
+**Inbound** *(live, and the reason "never log the URL" is insufficient)*: 국가법령정보's **목록**
+endpoints echo the key straight back inside the response body — `행정규칙상세링크` on every row is a
+fully-formed URL containing it. Consequences, both structural:
 
-예를 들어 같은 MFDS라도 문서 구조가 다를 수 있습니다.
+- The WORM archive **refuses** any payload containing a configured source credential. Refusal, not
+  redaction: the archive stores the raw response unmodified, so no variant keeps both the evidence
+  intact and the key out. The check lives inside the archive helper, not at its call sites.
+- The discovery sweep's row model has **no link field at all**, mirroring `fetch_observations`.
 
-```text
-Parser
- ├── mfds_samd.py       ├── mfds_cosmetic.py
- ├── fda_samd.py        ├── fda_cosmetic.py
- ├── eu_samd.py         ├── eu_cosmetic.py
- └── nmpa_samd.py       └── nmpa_cosmetic.py
-```
+The 본문조회 endpoints do **not** echo it — verified across every archived document. Only 목록/검색
+does, which is why sweep responses are consumed in memory and archived never.
 
-8개 셀에 1:1로 대응하는 8개 프로파일 — 누락된 셀이 있으면 그 셀은 수집되지 않는다.
+### Non-ingestible sources are unfetchable by construction
 
-공통 PDF Parser는 하나이고,
+`sources.ingestible = false` for Tier D and for login-gated portals (EU CPNP, EUDAMED — commentary,
+neither in Phase 1 scope). The scheduler skips them **and** every connector refuses them at its
+entry point. A Tier D source has no code path that could write body text.
 
-* Heading Rule
-* Table Rule
-* Notice Rule
-* Metadata Rule
+## 국가법령정보 OPEN API
 
-만 프로파일마다 다르게 적용합니다.
+`law.go.kr` HTML is JS-rendered and returns only the page title to a plain fetch, so the OPEN API is
+the only viable path. It returns 조문/항/호/목 as **separate structured fields**, which is why the
+clause hierarchy is *given* rather than inferred.
 
----
+### Two endpoints, and they are not interchangeable
 
-### Regulation Library도 하나
+| Purpose | Endpoint |
+|---|---|
+| 본문조회 — the document text | `GET /DRF/lawService.do` |
+| 목록/검색 — enumeration | `GET /DRF/lawSearch.do` |
 
-Regulation Library를 SaMD와 Cosmetic으로 분리하지 말고 하나의 Canonical 모델로 관리하는 것이 좋습니다.
+Calling `lawSearch.do` with an `ID` returns a *list*, not 본문. Getting this wrong fails silently.
 
-```text
-RegulationDocument
- ├── authority
- ├── jurisdiction
- ├── regulation_type
- ├── domain
- ├── product_category
- ├── document_type
- ├── source
- └── version
-```
+### Targets
 
-예를 들면:
+| Target | Grant | Used | Note |
+|---|---|---|---|
+| `law` | ✅ | ✅ | 법령 본문. 9 documents across the two gated cells |
+| `admrul` | ✅ | ✅ | 행정규칙 (고시) 본문, including `<별표단위>` |
+| `eflaw` | ✅ | ⬜ **phase 1.1** | 시행일법령 — 시행예정 versions. See *Known gaps* |
+| `licbyl` | ✅ | ✅ *(metadata only)* | 별표·서식 목록 — file links, kept as fallback |
+| `expc` / `prec` | ❌ | ❌ | 법령해석 / 판례. Not granted, **not needed** — not regulation text and absent from the source map |
 
-| Authority | Domain     | Cell ID          |
-| --------- | ---------- | ---------------- |
-| `mfds`    | `samd`     | `mfds_samd`      |
-| `fda`     | `samd`     | `fda_samd`       |
-| `eu`      | `samd`     | `eu_samd`        |
-| `nmpa`    | `samd`     | `nmpa_samd`      |
-| `mfds`    | `cosmetic` | `mfds_cosmetic`  |
-| `fda`     | `cosmetic` | `fda_cosmetic`   |
-| `eu`      | `cosmetic` | `eu_cosmetic`    |
-| `nmpa`    | `cosmetic` | `nmpa_cosmetic`  |
+Common parameters: `OC` (required), `target` (required), `type=XML`, `display` (≤100), `page`,
+plus `ID`/`MST`/`LM` for 본문조회 and `query`/`org` for 목록.
 
----
+### Every failure signature is HTTP 200 *(live)*
 
-### 추천 아키텍처
+A connector checking only transport status records a healthy observation for a fetch that retrieved
+nothing. Each is detected explicitly:
 
-사용자의 프로젝트는 **SaMD와 Cosmetic을 모두 지원하는 규제 플랫폼**을 목표로 하고 있으므로, **Import Agent는 Regulation Domain의 공통 서비스**로 두는 것이 적합합니다.
+| Response | Meaning | Handling |
+|---|---|---|
+| `사용자 정보 검증에 실패…IP주소 및 도메인주소를 등록` | egress IP no longer matches registration | `auth_failure` drift alert |
+| HTML `미신청된 목록/본문에 대한 접근입니다` | API scope not granted | `auth_failure` drift alert |
+| `resultCode 00 success` with `totalCnt 0` | malformed query — indistinguishable from "does not exist" | `zero_records` drift alert |
+| non-200 / timeout | authority outage | retry with backoff |
 
-이후 단계는 도메인별로 분기합니다.
+**IP enforcement is confirmed real.** The account is registered by IP alone, so any change of egress
+network reopens this.
+
+### Source discovery
+
+`lawSearch.do?target=admrul&org=…` enumerates every 고시 by 소관부처, so the curated catalog can be
+reconciled against the authority's own list rather than trusted
+([ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 11).
+
+**소관부처 code for 식품의약품안전처 is `1471000`** *(live)* — a public identifier, held in
+`regops_shared.constants.MFDS_ORG_CODE`, deliberately **not** in an env file where it would be
+unreviewable.
+
+Two properties keep the sweep usable rather than noisy:
+
+- **The relevance filter is mandatory.** Most of the 511 MFDS 고시 are 식품 and 건강기능식품, which
+  belong to no cell. It is deliberately over-inclusive — a 고시 missed because the filter was clever
+  is a coverage hole; one wrongly listed costs a glance — and the unfiltered total is recorded
+  alongside the filtered one so the narrowing is visible.
+- **Titles compare normalized.** The catalog writes `·` where the authority writes `ㆍ`, and spacing
+  differs; comparing raw would manufacture gaps that are not there.
+
+Output is a `source_discovery_runs` row: a **triage list for a human**, never an ingestion trigger.
+
+## Change detection
+
+`content_hash = sha256(canonicalized body)` — and **never** `sha256(response bytes)`. Nav chrome,
+session tokens, rotating banners and view counts change on every request, so hashing raw bytes makes
+every poll look like an amendment and buries the detection-coverage gate in false positives on day
+one ([ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 2).
+
+Two hashes, and conflating them is the mistake:
+
+| | Value | Role |
+|---|---|---|
+| `raw_object_key` | `sha256(raw response bytes)` | WORM key — **this is what gets cited** |
+| `content_hash` | `sha256(canonicalized body)` | what change detection keys on |
+
+- unchanged → record a `fetch_observation`, stop. **No version, no parse, no diff.**
+- changed → new `DocumentVersion`, then parse → diff → emit.
+
+Canonicalization effort varies sharply by source. The structured 본문조회 responses need only a
+stable serialization — there is no page chrome to strip. MFDS listing rows carry **`조회수`**
+(view count), the confirmed volatile element; dropping it is the entire job there, and the test
+proving it is the one protecting the coverage gate.
+
+## Parser Profiles
+
+> **The split is prose vs. table — a content type present in both domains — not SaMD vs. Cosmetic.**
+
+Profiles are *addressed* per cell, but they must not **fork** the pipeline. The same two modes serve
+both domains:
+
+| Mode | Input | Output |
+|---|---|---|
+| hierarchy | 조/항/호/목 from 본문조회 | one `Clause` per node, `path_segments` ordered |
+| table | fixed-width box-drawing annexes (`┌ ├ │ ┬ ┼` at consistent offsets) | one row per line, `path_segments = [별표N, row]` |
+
+Both are mechanical and deterministic. **No LLM anywhere in the parsing path.**
+
+**Falsification criterion** ([ADR-0002](design/ADR-0002-canonical-regulation-model.md) decision 3):
+if the cross-domain check requires a Cosmetic-only column on `Clause`, or a second parser stage
+before Section Extraction, the shared-pipeline assumption has failed and Phase 2 must be re-planned.
+**Escalate rather than adding the column.**
+
+*(live)* The falsifier did not trigger. Box-drawing annexes appear on the SaMD side (의료기기
+기준규격) and 별표 3 of the *cosmetic* 고시 is 0% table — so the content types cross the domain
+boundary in both directions.
+
+## Where the domain branch happens
+
+**Import → Normalization → Section Parsing is shared by all eight cells. The first domain-specific
+step is IR extraction — and there is no branch before it.**
 
 ```text
 Source Import
       │
       ▼
-Regulation Library
-      │
-      ▼
-Document Normalization
-      │
-      ▼
-Section Extraction
+Regulation Library       ─┐
+      │                   │  shared across all 8 cells:
+      ▼                   │  no domain-specific column, no domain-forked
+Document Normalization    │  parser, no pre-IR stage
+      │                   │
+      ▼                   │
+Section Extraction       ─┘
       │
       ├────────► SaMD IR Extract
       │
       └────────► Cosmetic IR Extract
 ```
 
-즉, **Import → Normalization → Section Parsing**까지는 100% 공통으로 사용하고, **IR 추출과 규정 해석(Interpretation), Compliance Rule 생성**부터 SaMD와 Cosmetic 전용 파이프라인으로 분기하는 것이 가장 확장성과 재사용성이 높은 구조입니다.
+Domain divergence lives in `IR.domain_profile` (`samd` | `cosmetic`) and the extraction rules keyed
+by it ([ADR-0002](design/ADR-0002-canonical-regulation-model.md) decision 3,
+[ADR-0004](design/ADR-0004-ir-extraction-and-domain-branching.md) decision 3).
 
-> 도메인 분기 구조가 일반적(generic)인 것은 유지보수를 위한 설계일 뿐, 범위 확장의 근거가 아니다. RegOps의 범위는 SaMD·Cosmetic × MFDS·FDA·EU·NMPA **8개 셀로 고정**되어 있으며, 의약품·바이오·식품·건강기능식품 및 그 외 규제기관은 범위 밖이다. 확장은 범위 결정을 다시 하기 전까지 하지 않는다 — [RegOps.md](RegOps.md) § Scope.
+This is the architecture bet Phase 2's six-cell build rests on, which is why the two gated cells hold
+the *regulator* constant and vary the *domain*: MFDS SaMD and MFDS Cosmetic differ in exactly the
+dimension the claim is about. Moving the branch earlier is not a refinement — it invalidates the
+Phase 2 estimate.
 
-아래는 **RegOps Regulation Import Agent Specification v1.1** 형태의 통합 문서입니다. 이 문서는 **SaMD + Cosmetics**, **한국(MFDS)·미국(FDA)·EU·중국(NMPA)** 8개 셀을 지원하는 Import Agent의 사양을 정의합니다.
+## Annexes (별표)
 
-# RegOps Regulation Import Agent
+The substantive obligations of the Cosmetic cell — the prohibited and restricted ingredient lists —
+live in 별표, not in the body's prose clauses.
 
-## Global Raw Regulation Source Catalog
+**행정규칙 본문조회 returns `<별표단위>` containing `<별표내용>` inline** *(live)*, and so does
+법령 본문조회 — 의료기기법 시행규칙 returns 93 of them. Annex text arrives with the body, so
+**HWP/PDF extraction is not on the Phase 1 path at all**.
 
-**Version:** 1.1
+**An annex is a child `Document`, not a row on a version**
+([ADR-0012](design/ADR-0012-annex-version-identity.md)):
 
-**Purpose**
+- `doc_type = 'annex'`, `parent_document_id` → the body, `canonical_key = {parent}#별표{n}`
+- its own `document_versions`, `effective_date`, and diff lineage
 
-본 문서는 RegOps Regulation Domain의 Import Agent **사양**을 정의한다. 수집 대상 문서 목록 자체는 [`import-source-map.md`](import-source-map.md)에 있으며, 본 문서는 그것을 어떻게 수집·정규화·파싱하는지를 규정한다.
+A row keyed on `document_version_id` could not version independently of its parent, which is exactly
+what amending 별표 2 alone requires. `attachments` keeps the narrower job of recording the
+authority's file links (`별표서식파일링크`) as an archival copy and as the fallback for an empty
+`별표내용`.
 
-지원 분야
+*(live)* 별표번호 arrives **zero-padded** (`0001`). It is normalized to `1`, because every human
+citation and every cross-reference in the text says 별표 1.
 
-* SaMD (Software as a Medical Device)
-* Cosmetics
+## Dates — three, none substituting for another
 
-지원 지역
+| Field | Source | Always present? | Used for |
+|---|---|---|---|
+| `retrieved_at` | our clock at fetch | yes | audit trail, latency **upper bound** |
+| `published_at` | 공포일자 / 발령일자 / RSS `pubDate` | **no** | the detection-latency gate |
+| `effective_date` | parse-derived from 부칙 | usually | citations, applicability, alert priority |
 
-* Korea (MFDS)
-* United States (FDA)
-* European Union (EC)
-* China (NMPA)
+**Never default `published_at` to `retrieved_at`.** Latency is "authority publishes → owner
+alerted"; using our own fetch clock makes the ≤24h gate pass by construction and measure nothing.
+Where a source exposes no publication timestamp it stays **null** and latency is reported
+**unmeasurable rather than zero**.
 
-Import Agent는 아래 Source를 주기적으로 수집하여 Raw Regulation Library를 구축하며, 이후 Normalization → Section Parsing → IR Extraction 파이프라인으로 전달한다.
+**Never guess `effective_date`.** Where the text states a condition rather than a calendar date
+("공포 후 6개월"), the column stays NULL and the raw 부칙 phrase is retained in
+`effective_date_phrase` ([ADR-0013](design/ADR-0013-unresolvable-effective-dates.md)). A computed
+date there would be indistinguishable from an authoritative one to every downstream reader, and
+`effective_date` is part of the Citation tuple.
 
----
+**Staged application** is real, not hypothetical: one amending act routinely carries several
+시행일자. `effective_date` is recorded per version **and** overridable per clause — which matches how
+the authority itself models it (`조문시행일자`, `별표시행일자문자열`).
 
-# Canonical Source Structure
+## Poll cadence
 
-```
-Region
-    └── Authority
-            └── Domain
-                    ├── Laws
-                    ├── Regulations
-                    ├── Guidance
-                    ├── Standards
-                    ├── Registration
-                    ├── Labeling
-                    ├── Ingredient
-                    ├── GMP
-                    ├── Safety
-                    ├── Recall
-                    ├── Notice
-                    └── FAQ
-```
+Derived from the source's block plus tier, **never hand-set per source**
+([ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 4), so adding a source
+inherits a sane cadence instead of requiring a scheduling decision.
 
----
+| Block | Interval | Rationale |
+|---|---|---|
+| Primary Laws, Regulations, Registration, Ingredient | daily | where legal change actually lands |
+| Standards | daily | binding 고시 unless the tier floor applies |
+| Safety | daily | time-sensitive by nature |
+| Guidance, Official Sources | weekly | changes a few times a year; portals are navigation |
 
-# Source Registry
+A **tier floor** then applies: Tier C no faster than daily, **Tier D monthly** — recognition lists
+move slowly, and monthly is a property of the tier, not of the block. In the MFDS cells the
+`Standards` block holds Tier A 고시 (화장품 안전기준 등에 관한 규정 among them), so a monthly
+cadence there would miss the ≤24h gate by a factor of thirty on the cell's most important content.
 
-수집 대상 Source의 **단일 원본은 [`import-source-map.md`](import-source-map.md)** 이다. 8개 셀(SaMD·Cosmetic × MFDS·FDA·EU·NMPA)의 법령·규정·가이던스·표준·등록·안전 항목과 공식 소스 URL이 셀 단위로 정리되어 있으며, Connector와 Parser Profile은 그 파일을 기준으로 구현한다.
+Overrides are allowed but `interval_override_seconds` and `interval_override_reason` are set
+together, enforced by a CHECK constraint: an override without a recorded reason is an accident, not
+a decision.
 
-본 문서에는 Source 목록을 중복 기재하지 않는다. 카탈로그가 두 곳에 존재하면 한쪽이 반드시 뒤처지고, 어느 쪽이 유효한지 판단할 방법이 없다.
+## Structure drift is an operator alert, never a ChangeEvent
 
-`import-source-map.md`에서 반드시 함께 읽어야 할 규칙:
+A site redesign changes everything at once. Emitting that as regulatory change would generate
+thousands of false alerts and destroy trust in the monitoring pillar.
 
-* **Ingestion priority = 셀 내부 subsection 순서.** `Primary Laws`가 최상위 tier, `Official Sources`가 마지막.
-* **`Standards` 블록은 Tier D — 메타데이터만.** ISO/IEC 표준·약전은 원문 저장 및 AI 학습이 금지된다. 표준 번호·판·인정번호·발효일·정합 상태만 수집하고 정품 링크로 연결한다. QMSR이 ISO 13485:2016을 참조편입하여 법적 요건이 된 경우에도 동일하다 — 요건은 인용하되 원문은 저장하지 않는다.
-* **수집 대상이 아닌 포털**은 셀 안에 명시되어 있다(EU CPNP, EU EUDAMED 등 로그인 기반 신고 시스템). 규제 원문이 아니므로 Connector를 붙이지 않는다.
+The parse stage fails closed on drift signals — zero records, record count beyond threshold, missing
+root, an authority error behind HTTP 200, an empty `별표내용`. It raises a `structure_drift_alert`
+against the source, creates **no** version and emits **no** change event. Resolution is restricted to
+`ra`: it is one of exactly two Phase 1 actions where a human assertion enters the audit trail.
 
----
+## Tier D — metadata only
 
-# Common Raw Formats
+ISO/IEC standards and pharmacopoeias prohibit source-text storage and AI training. This is enforced
+by there being **nowhere to put the text**, not by policy
+([ADR-0002](design/ADR-0002-canonical-regulation-model.md) decision 2):
 
-Import Agent는 다음 형식을 모두 지원한다.
+1. `standard_references` has no `text` column and no varchar over 512 characters
+2. every connector refuses a Tier D source at its entry point
+3. the recognition-list connector returns records and **no artefacts** — nothing on this path can
+   reach the archive
+4. seeded Tier D rows carry no connector and no URL
 
-* HTML
-* PDF
-* XML
-* RSS
-* JSON
-* DOC/DOCX
-* HWP
-* XLS/XLSX
-* ZIP
+Freshness is tracked through the recognition/harmonized **list**, an ingestible Tier B page. The
+standard itself is never fetched. This holds even where a regulation makes the standard legally
+binding — QMSR incorporates ISO 13485:2016 by reference: cite the requirement, link the standard,
+store neither. A CI string scan is the backstop, not the mechanism.
 
----
+## Formats
 
-# Common Metadata
+**In use:** XML (본문조회, RSS), HTML (listing and recognition tables).
 
-모든 Raw Document는 다음 Metadata를 생성한다.
+**Not used, and not planned for Phase 1:** PDF, HWP, DOCX, XLS, ZIP. The reconnaissance reversed the
+original premise here — annex text arrives inline, so the attachment pipeline records *links*, not
+extracted content. Binary archival is opt-in per source and off by default: fetching every government
+attachment on every poll is a politeness cost with no Phase 1 payoff.
 
-* Document ID
-* Region
-* Authority
-* Domain
-* Regulation Category
-* Document Type
-* Regulation Number
-* Title
-* Version
-* Status
-* Effective Date
-* Revision Date
-* Language
-* Source URL
-* File Format
-* SHA-256 Checksum
-* Imported Time
-* Crawl Version
-* Original Raw File
-* Parsed Text
-* OCR Text
-* Parser Version
+**OCR is not performed.** It appeared in earlier drafts of this spec; nothing in the Phase 1 path
+needs it, and running OCR over a Tier D document would produce exactly the stored standard text the
+architecture forbids.
 
----
+## Metadata actually recorded
 
-# Recommended Crawling Frequency
+Mapped to real columns rather than aspiration. Absences are as load-bearing as presences.
 
-| Category      | Frequency |
-| ------------- | --------- |
-| Laws          | Weekly    |
-| Regulations   | Daily     |
-| Guidance      | Daily     |
-| Standards     | Weekly    |
-| Registration  | Daily     |
-| Safety Alerts | Daily     |
-| Recall        | Daily     |
-| Notices       | Daily     |
-| FAQ           | Weekly    |
+| Concept | Where it lives |
+|---|---|
+| document identity | `documents.canonical_key` — 법령ID / 행정규칙ID from the **response**, so querying by 법령명 does not weaken it |
+| cell claim | `document_cells` — **M:N**; a statute claimed by two cells is ingested once |
+| version identity | `document_versions(document_id, language, content_hash)` unique |
+| raw bytes | `raw_object_key` — content-addressed, write-once, never mutated |
+| language | `document_versions.language` + shared `version_group_id` across variants |
+| dates | `retrieved_at`, `published_at`, `effective_date`, `effective_date_phrase` |
+| every fetch attempt | `fetch_observations` — written on **every** attempt, changed or not |
+| parser provenance | `document_versions.parser_version`, `fetch_observations.connector_version` |
+| Tier D | `standard_references` — recognition record only |
+| drift | `structure_drift_alerts` |
+| catalog delta | `source_discovery_runs` |
 
----
+**Deliberately absent:** a request-URL column anywhere (credentials), a body-text column on
+`standard_references` (Tier D), and `authority`/`domain` as scalars on `documents` — the last would
+force duplicate ingestion of any statute two cells share, which is what `document_cells` exists to
+prevent.
 
-# Import Agent Pipeline
+## Known gaps
 
-```
-Scheduler
-      │
-      ▼
-Source Registry
-      │
-      ▼
-Crawler / Downloader
-      │
-      ▼
-Raw File Storage
-      │
-      ▼
-Metadata Generator
-      │
-      ▼
-Checksum & Version Detection
-      │
-      ▼
-Normalizer
-      │
-      ▼
-Section Parser
-      │
-      ▼
-Canonical Regulation Library
-      │
-      ▼
-IR Extraction
-      │
-      ├── SaMD Pipeline
-      └── Cosmetics Pipeline
-```
-
-이 문서는 **RegOps Regulation Domain**의 **Import Agent 표준 명세**이며, 대상은 8개 셀(SaMD·Cosmetic × MFDS·FDA·EU·NMPA)로 고정된다. 그 외 규제기관은 범위 밖이며, 범위 결정을 다시 하기 전까지 추가하지 않는다 — [RegOps.md](RegOps.md) § Scope.
+- **시행예정 (`eflaw`) is not yet ingested — phase 1.1.** Polling 현행 only means an amendment is
+  invisible from 공포 until 시행. *(live)* 8 amendments across the 9 gated 법령 are already 공포'd and
+  unseen, the oldest promulgated seven months prior; latency for those is 시행 − 공포, between
+  2 months and 2.4 years. **Until this ships, detection latency for the 법령 sources is not
+  measurable** and must be reported as such rather than given a number.
+  A version is one **MST** (법령일련번호), not one 시행일자 — several 시행일자 on one MST are staged
+  application belonging at clause level.
+- **Catalog coverage is 6 of 72 in-scope MFDS 고시** *(live)*. The sweep measures it; closing it is
+  an RA triage decision against `import-source-map.md`, not a code change.
+- **Three MFDS surfaces are seeded disabled** — RSS, the 제개정고시등 listing, the recognition list.
+  Connectors are built and tested against recorded fixtures; the endpoints are unconfirmed, and
+  firing guessed URLs at a government host to find out is the wrong way to learn.
+- **History (연혁) is out of Phase 1.** `eflaw` also returns superseded versions, but those are
+  baselines we did not archive ourselves, which the citation contract does not accept.
+- **Tier C scraping is phase 2.0.** The drift hook is built now regardless.
