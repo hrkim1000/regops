@@ -1,6 +1,6 @@
 # Phase 1.6 — Evaluation & pilot
 
-- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W16 · **Status:** ⬜ planned
+- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W2–W16 (golden set starts W2; the rest is W7–W16) · **Status:** ⬜ planned
 - **Governed by:** [ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) decision 7, [ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md), [development-plan.md](../development-plan.md) § 5
 - **Depends on:** all of 1.0–1.5
 - **Owner:** Regulatory domain (RA/QA), with AI/ML for the harness
@@ -28,8 +28,10 @@ Go/No-Go report.
 ### Golden query set (W2 → W8)
 
 - [ ] 200 items, built per domain — **SaMD and Cosmetic scored separately.** A shared score hides one domain failing behind the other passing
-- [ ] Composition must include identifier lookups, paraphrased conceptual queries, and cross-domain questions. A set of only identifier lookups measures the easy half
+- [ ] Composition must cover **all four axes [ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) open question 4 names** — identifier lookups, paraphrased conceptual queries, **effective-date-straddling cases**, and **deliberate mis-citation traps**. A set of only identifier lookups measures the easy half; the last two were previously omitted, and they are the ones that exercise decision 8 and the verification agent
+- [ ] Cross-domain questions — asked in the wrong cell, where the correct behaviour is to decline rather than answer from the neighbouring cell ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 9)
 - [ ] Include known-unanswerable questions — the "needs verification" path is a correct outcome and must be scored as one
+- [ ] **200 items across two domains is thin for six axes** (ADR-0006 open question 4 says so itself). Either size up or state per-axis coverage explicitly, so a passing score cannot rest on a handful of items in the hard categories
 - [ ] Authored by RA, with expected clause and expected answer recorded
 
 ### IR ground-truth markup (W7–8) — sequencing is load-bearing
@@ -44,6 +46,7 @@ Go/No-Go report.
 - [ ] Automated regression over both golden sets; per-domain, per-cell reporting
 - [ ] Extraction precision, recall, and citation correctness against the ground truth
 - [ ] Citation accuracy and hallucination rate measured here — **not inferred from unit coverage**
+- [ ] **"Needs verification" rate reported per domain beside them** ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 7). It is not a gate, and it is what keeps two of the gates honest: a system that refuses every question scores perfectly on citation accuracy and hallucination rate. Report answer rate and refusal rate with every scored run
 - [ ] Model and prompt versions pinned and recorded with every run
 
 ### Pilot (W11–16)
@@ -76,6 +79,12 @@ Go/No-Go report.
 | Pilot retention | ≥ 60% | Voluntary use ≥ 1×/week for 4 consecutive weeks |
 
 **A cell that misses is not offset by the other passing.** No-Go if four or more fall short.
+
+Two failure modes the six gates do **not** catch, both reported alongside them rather than gated:
+the **"needs verification" rate** (refuse everything → citation accuracy and hallucination rate both
+pass) and **alert precision** (alert on everything → detection coverage and latency both pass, see
+[phase1.4](phase1.4_monitoring.md)). Neither is a gate in Phase 1; both belong in the Go/No-Go
+report, because a gate set that can be satisfied by a degenerate system is evidence of nothing.
 
 ## Acceptance criteria
 

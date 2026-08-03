@@ -39,7 +39,7 @@ re-derivation on amendment.
 - [ ] `irs(id, domain_profile, bearer, modal, statement, condition_text, taxonomy_code, status, supersedes_ir_id, stale_since, extraction_run_id, locked_by, locked_at)`
 - [ ] `status ∈ draft | locked | stale | superseded`
 - [ ] `ir_citations(ir_id, document_version_id, clause_path, effective_date, superseded_at)`
-- [ ] `ir_standard_citations(ir_id, standard_reference_id)` — resolves to a deep link, never stored text
+- [ ] `ir_standard_citations(ir_id, standard_reference_id)` — resolves to a deep link, never stored text. **Depends on `standard_references`, created in [phase1.0](phase1.0_ingestion.md)**; this FK previously pointed at a table no phase built
 - [ ] `extraction_runs(id, rule_version, prompt_version, llm_provider, llm_model, started_at)`
 - [ ] `clause_classifications(clause_id, kind, exclusion_reason, classified_by, classified_at)`
 
@@ -59,7 +59,7 @@ re-derivation on amendment.
 
 ## Acceptance criteria
 
-- [ ] Two reviewers extracting the same clause produce the same IR count — the atomicity rule is operative, not advisory
+- [ ] The atomicity rule is operative, not advisory — measured as inter-rater agreement on IR count over a fixed clause sample. **Requires two raters, and Phase 1 staffs 1 RA** (development-plan.md § 7, risk 7). Either the part-time second RA is funded, or this degrades to same-rater test–retest at ≥ 2 weeks' separation — which detects an ambiguous *rule* but not a rater's consistent private interpretation of it. Choose deliberately and record it; do not discover at W9 that the criterion was never runnable
 - [ ] An uncited extraction is rejected; no null-citation row can be written
 - [ ] A `viewer` cannot lock; an `ra` can — negative-path test
 - [ ] A draft IR is invisible to retrieval and impact grading

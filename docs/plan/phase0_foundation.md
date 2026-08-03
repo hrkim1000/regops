@@ -75,14 +75,20 @@ and `assistant` are scaffolded as health-check-only services; their content is p
 - [x] `cells` contains exactly 8 rows and rejects a 9th
 - [x] An LLM call through `get_llm_client()` succeeds against Ollama and records provider/model
 - [x] Green **locally**: ruff, ruff format, mypy, 32 tests, Tier D scan, secret check
-- [ ] Confirmed green on GitHub Actions — not yet run (workflow added, needs a push)
+- [x] Green on GitHub Actions (run on `ee1a9a5`) — red on the first run; see Deviation 6
 
 ## Risks & open questions
 
-- **Four services at 6.5 FTE** — ADR-0009 records this as the real cost and names `monitoring` as
-  the cheapest reversal. Decide in W1 whether to open with four or merge `monitoring` into
-  `regulation` until W7; do not defer this to W8.
-- **ADR-0005 open question 1** — whether `regulation` and `assistant` stay split. Same W1 decision.
+- 🔴 **Four services at 6.5 FTE — the W1 decision has lapsed and defaulted by construction.** Phase 0
+  scaffolded all four services, so "open with four" is now the de facto answer; it was never taken
+  as a decision. ADR-0009 names `monitoring` as the cheapest reversal (three tables and one seam)
+  and that stays true only until [phase1.4](phase1.4_monitoring.md) starts at W7. **Confirm or
+  reverse before W7**, and record it — an unmade decision is not the same as a made one, and this
+  is exactly the W8 discovery the original entry warned against.
+- 🔴 **ADR-0005 open question 1** — whether `regulation` and `assistant` stay split. Same lapse, same
+  W7 deadline: the ADR leans split and notes that separating later means moving the embedding tables
+  and rewriting reads as raw SQL. [phase1.3](phase1.3_retrieval_qa.md) builds `assistant` from W5,
+  so the reversal window closes earlier than for `monitoring`.
 - ~~**ADR-0005 open question 3**~~ — **resolved** in
   [ADR-0011](../design/ADR-0011-audit-trail-immutability.md): enforced, not conventional.
 
@@ -115,3 +121,13 @@ services 28000–28003. Ollama stays shared on 11434.
 
 **5. pytest uses `--import-mode=importlib`.** Four services each own a `tests/` directory, which
 collides under the default prepend import mode.
+
+**6. The Tier D guard failed its own first CI run, and the reason mattered more than the fix.**
+`scripts/tier_d_scan.py` necessarily contains every marker string it searches for, so once it was
+committed it matched its own source. It had passed locally because the scan enumerated
+`git ls-files` — tracked files only — and the script was still untracked when it ran. **A guard that
+only sees history cannot stop something entering it**: any newly added file passed until the commit
+that made it visible, which is the opposite of what this guard is for. Now scans tracked *plus*
+untracked-but-not-ignored, so local and CI see the same set, with self-exclusion by path rather than
+by obfuscating the markers. Verified both directions — clean on the repo, exits 1 on a planted
+fixture containing standard front matter.

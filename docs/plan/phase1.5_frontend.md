@@ -28,6 +28,8 @@ for 4 consecutive weeks) is a UX outcome, so "absorbs slack" is not "can be skip
 - [ ] `/api/<svc>/*` rewrites to the four services
 - [ ] `serverGet<Svc>()` for Server Components; `api<Svc>` axios instances for client islands — envelope unwrap and 401 refresh built in
 - [ ] Prefer Server Components; client components only where interactivity requires it
+- [ ] **`tsc --noEmit` wired into CI** — deferred from [phase0](phase0_foundation.md) ("no frontend yet"); 1.5's acceptance asserts a clean typecheck, so the gate has to exist, not just the command
+- [ ] **`frontend.depends_on` gates on service health** — the other phase 0 deferral, unblocked now that there is a frontend to gate
 
 ### Scoping
 
@@ -48,6 +50,7 @@ for 4 consecutive weeks) is a UX outcome, so "absorbs slack" is not "can be skip
 - [ ] Question → answer with citations rendered as deep links to clause text
 - [ ] **"Needs verification" is a first-class result state**, not an error toast — it is the product working correctly
 - [ ] Confidence displayed; sub-threshold answers visibly marked as pending human review
+- [ ] **Every answer renders the version and effective date it relied on** — *"시행일 2026-04-02 기준"* ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 8) — and flags visibly when its clauses straddle an effective-date boundary. An answer that silently mixes in-force and not-yet-effective provisions looks identical to a correct one
 - [ ] Query history with the audit trail
 - [ ] Superseded-citation banner on stored answers whose evidence has since been amended
 
