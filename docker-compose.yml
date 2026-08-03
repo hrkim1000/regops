@@ -10,13 +10,32 @@
 #   services   platform-core 28000 · regulation 28001 · monitoring 28002 · assistant 28003
 #   frontend   23000
 
+# `environment:` WINS OVER `env_file:` in Compose. The keys below are therefore fixed by the
+# compose topology and cannot be changed from `.env.<STAGE>` — a DATABASE_URL set there is silently
+# ignored. That is deliberate: every one of them names something defined in *this* file, so letting
+# a stage file half-override it produces a mismatch that only shows up at first use.
+#
+# Everything NOT listed here (JWT_SECRET, LLM_*, LAW_GO_KR_OC, …) does come from the stage file,
+# which is what makes `.env.test` useful: a test stage with a blank LAW_GO_KR_OC cannot reach
+# law.go.kr at all.
+#
+# The database name is the one part a test run must change, so it gets its own knob rather than
+# fighting that precedence:
+#
+#   STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm regulation \
+#       python -m pytest tests/integration -q
 x-service-base: &service-base
   env_file:
     - ".env.${STAGE:-dev}"
   environment:
-    DATABASE_URL: postgresql+asyncpg://regops_app:${REGOPS_APP_DB_PASSWORD:-regops-app}@db:5432/regops
+    DATABASE_URL: postgresql+asyncpg://regops_app:${REGOPS_APP_DB_PASSWORD:-regops-app}@db:5432/${REGOPS_DB_NAME:-regops}
     REDIS_URL: redis://redis:6379/0
     MINIO_ENDPOINT: minio:9000
+    # Pinned here, not left to the stage file: the MinIO *server* below reads these same
+    # host-interpolated values, so a stage file setting only the client half produces a
+    # SignatureDoesNotMatch at the first archive write rather than at startup.
+    MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-regops}
+    MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-regops-secret}
   volumes:
     - ./shared:/shared
   depends_on:
@@ -57,7 +76,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: regops
+      # Same two variables the services read — one source, so they cannot drift apart.
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-regops}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-regops-secret}
     ports: ["29000:9000", "29001:9001"]
     volumes: ["regops_miniodata:/data"]
@@ -118,6 +138,33 @@ services:
     <<: *service-base
     build: {context: ., dockerfile: services/regulation/Dockerfile}
     ports: ["28001:8000"]
+    volumes:
+      - ./shared:/shared
+      - ./services/regulation:/app
+      - ./scripts:/scripts
+    profiles: [app]
+
+  # The ingestion chain runs here: fetch -> archive -> version, committing incrementally so a
+  # retry skips completed rows. Concurrency stays low on purpose — these are government hosts.
+  regulation-worker:
+    <<: *service-base
+    build: {context: ., dockerfile: services/regulation/Dockerfile}
+    command: celery -A app.celery_app.celery_app worker -Q regulation -c 2 -l info
+    volumes:
+      - ./shared:/shared
+      - ./services/regulation:/app
+      - ./scripts:/scripts
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    profiles: [app]
+
+  # Beat lives with `regulation`: it drives source_schedules and has no other consumer.
+  regulation-beat:
+    <<: *service-base
+    build: {context: ., dockerfile: services/regulation/Dockerfile}
+    command: celery -A app.celery_app.celery_app beat -l info
     volumes:
       - ./shared:/shared
       - ./services/regulation:/app

@@ -157,3 +157,7 @@ $RECYCLE.BIN/
 
 # Corpus source documents — working data, not tracked (also stored in MinIO).
 corpus-data/**/*.pdf
+
+# Downloaded regulation originals. The archive of record is the WORM bucket, which is
+# content-addressed and immutable; a git copy would be a second, drifting one.
+data/

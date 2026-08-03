@@ -47,7 +47,13 @@ These encode invariants that are cheaper to catch in CI than in an audit:
 ```bash
 # services (inside the compose stack)
 docker compose exec -T <svc> python -m pytest tests/unit -q
-docker compose exec -T <svc> python -m pytest tests/integration -q   # stack must be up
+
+# integration: a separate database, selected by REGOPS_DB_NAME.
+# NOT by DATABASE_URL in .env.test — compose sets it under `environment:`, which wins over
+# `env_file:`, so a DATABASE_URL there is silently ignored.
+REGOPS_DB_NAME=regops_test docker compose run --rm migrate          # once, to head
+STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm <svc> \
+    python -m pytest tests/integration -q
 
 # frontend (from frontend/)
 npm run typecheck && npm run lint
