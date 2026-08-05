@@ -129,10 +129,17 @@ partner API (Phase 3). Each would be a boundary drawn before its requirements ar
 
 ## Open questions
 
-1. **Do `regulation` and `assistant` merge for Phase 1?** Two services is less to operate at 6.5 FTE,
-   and the split can be made when the assistant's scaling profile actually diverges. Argument
-   against: separating later means moving the embedding tables and rewriting reads as raw SQL —
-   cheap now, tedious later. Leaning split; worth a week-1 decision, not a week-8 one.
+1. ~~**Do `regulation` and `assistant` merge for Phase 1?**~~ — **resolved 2026-08-05: they stay
+   split.** Taken against the cost curve in
+   [decision-2026-08-05](decision-2026-08-05-lapsed-service-boundaries.md): retrieval and generation
+   fail differently from ingestion — a hung LLM call must not stall the fetch scheduler — and the
+   embedding tables are genuinely `assistant`-owned state. The reversal was cheapest before
+   [phase1.3](../plan/phase1.3_retrieval_qa.md) starts at W5, which is why the deadline was real;
+   after it, merging means moving `clause_embeddings` between services and rebuilding the index.
+
+   The accepted cost is that `assistant` reads `clauses` constantly and every such read is raw SQL
+   by rule. That is the price of the failure isolation, not an oversight — if it becomes the
+   dominant cost, revisit it with evidence rather than by drift.
 2. ~~**Applicability has no owner yet**~~ — resolved in [ADR-0007](ADR-0007-context-map-and-applicability.md):
    Product and Compliance are their own bounded contexts, tenant-scoped, living inside the
    `regulation` service until Phase 2 gap analysis justifies a split. Applicability must **not** sit

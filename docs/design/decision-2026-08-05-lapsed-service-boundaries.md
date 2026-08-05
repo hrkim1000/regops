@@ -1,9 +1,8 @@
 # Decision brief — the two lapsed service-boundary decisions
 
 - **Date:** 2026-08-05
-- **Status:** **Open. This is a brief, not a decision** — it exists so the decision can be taken,
-  and it becomes an ADR (or an amendment to [ADR-0005](ADR-0005-service-architecture.md) /
-  [ADR-0009](ADR-0009-service-boundaries-per-pillar.md)) the moment it is.
+- **Status:** **Decision 1 taken 2026-08-05** (split retained → [ADR-0005](ADR-0005-service-architecture.md)
+  open question 1). **Decision 2 held, deliberately, until W7.**
 - **Owner:** whoever owns the plan. Not the implementer.
 - **Why now:** both were scoped as **W1** decisions. Phase 0 closed without taking them, phase 1.0
   closed without taking them, and [phase1.1](../plan/phase1.1_normalization.md) runs W3–W6 — so the
@@ -24,9 +23,11 @@ actually matters.
 
 ---
 
-## Decision 1 — do `regulation` and `assistant` stay split?
+## Decision 1 — do `regulation` and `assistant` stay split? · **TAKEN: yes**
 
-**Source:** [ADR-0005](ADR-0005-service-architecture.md) open question 1 · **Due: W5**
+**Source:** [ADR-0005](ADR-0005-service-architecture.md) open question 1 · **Due: W5** ·
+**Decided 2026-08-05: they stay split.** Recorded in ADR-0005 open question 1; nothing below is
+outstanding. Kept here for the reasoning, not as a pending item.
 
 [phase1.3](../plan/phase1.3_retrieval_qa.md) builds `assistant` from W5. It owns
 `clause_embeddings`, `queries`, `answers`, `answer_citations`, `verification_results`.
@@ -54,10 +55,23 @@ at W9 that nobody chose costs the index build.
 
 ---
 
-## Decision 2 — four services, or fold `monitoring` into `regulation`?
+## Decision 2 — four services, or fold `monitoring` into `regulation`? · **HELD to W7**
 
 **Source:** [phase0](../plan/phase0_foundation.md) risks ·
-[ADR-0009](ADR-0009-service-boundaries-per-pillar.md) · **Due: W7**
+[ADR-0009](ADR-0009-service-boundaries-per-pillar.md) · **Due: W7** ·
+**Held 2026-08-05, deliberately.**
+
+This is not a third lapse, and the difference is worth stating because it is the whole point of
+writing the brief. The first two deferrals were silent — nobody chose, and the scaffold chose for
+them. This one is a recorded decision to wait, with a date on it and a named reason: `monitoring`
+is still a health-check-only scaffold, so no evidence has arrived that would change the answer, and
+the reversal stays at three tables and one seam until [phase1.4](../plan/phase1.4_monitoring.md)
+begins.
+
+**What makes the hold safe, and what would void it.** It is safe only while nothing is built into
+the boundary. The moment 1.4 writes subscription matching, impact grading or delivery inside
+`monitoring`, the cheap reversal is gone whether or not anyone noticed. So: **W7 is not a reminder,
+it is the last moment the hold is free.** If 1.4 is pulled forward, the decision moves with it.
 
 `monitoring` owns three tables — `alert_subscriptions`, `alerts`, `alert_deliveries` — and reads
 `change_events` one-way by raw SQL. Today it is a health-check-only scaffold.

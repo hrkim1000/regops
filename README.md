@@ -218,7 +218,7 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Scope, data tiers, roadmap | [docs/RegOps.md](docs/RegOps.md) | 🟢 settled |
 | Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
-| Lapsed service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🔴 open — due W5 and W7 |
+| Service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🟡 `assistant` split taken; `monitoring` held to W7 |
 | Architecture decisions | [ADR-0001 – ADR-0013](docs/design/) | 🟢 proposed, complete for Phase 1 |
 | Phase plan — 13 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
 | Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
