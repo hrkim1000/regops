@@ -71,24 +71,50 @@ per-connector canonicalizers this phase takes over.
       inside it**. [phase1.3](phase1.3_retrieval_qa.md) assumes a structured row store exists and
       accepts on exact-match ingredient lookup; nothing currently creates one. 1.3 inherits the
       answer and cannot build the index without it
-- [ ] **Measured, not estimated (2026-08-05).** Counting the content lines of every ingested annex:
+- [ ] **Measured, not estimated (2026-08-05).** Two earlier numbers in this file were wrong, and
+      the correction changes the answer rather than refining it.
 
       | | |
       |---|---|
-      | annex documents | **278** |
-      | content lines, whole corpus | **31,971** — the upper bound if one `Clause` per line |
-      | table-shaped / prose | **204 / 74** |
-      | largest single annex | 별표 1 사용할 수 없는 원료 — **3,680 lines, 100% box-drawing** |
-      | 화장품 안전기준 등에 관한 규정 | 4 annexes, **6,519 lines** (89% box) |
-      | 의료기기법 시행규칙 | 93 annexes, **8,105 lines** (62% box) |
+      | annex documents | 278 — but **173 are 서식** (blank application forms), 24 별지, only **81 별표** |
+      | physical lines | 31,971 total · 20,265 of them in the 81 별표 |
+      | **logical table rows** | **1,967** total, of which **1,904 sit in 별표-kind annexes** |
+      | tables carrying obligations | **22**, and 별표 1 사용할 수 없는 원료 is 1,078 rows — **55% of everything** |
 
-      Earlier drafts of this file estimated "~12,000 rows for that 고시 alone" and "tens of
-      thousands per 고시". Both were too high per document and the corpus total was never counted.
-      **31,971 rows is an ordinary table**, which argues for `clauses` carrying annex rows directly
-      rather than a separate store — decide on this number, not on the estimate it replaces
-      ([ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) open question 2)
-- [ ] **Table mode is the majority case, not the exception** — 204 of 278. A parser that treats
-      prose as the norm and tables as a special case has the ratio backwards
+      **A logical row spans several physical lines.** Inside a box-drawing table a single row wraps
+      — `글루타랄(펜탄-1,5-디알)` occupies three lines — so rows are delimited by `├──┼──┤` rules,
+      not by newlines. Counting lines overstates the row count by roughly 16×, which is how "tens of
+      thousands per 고시" got into this file.
+
+      **Most annexes are forms, not content.** 173 서식 and 24 별지 are templates to be filled in;
+      they carry 39 and 24 table rows between them, and none of it is obligation text. Parsing a
+      서식 as data rows would manufacture thousands of meaningless clauses. The parser must branch on
+      `별표구분`, which the connector already records in `canonical_key` and `annex_no`.
+
+- [ ] **The premise behind `annex_rows` has collapsed — do not create the table without re-arguing it.**
+      [ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) open question 3
+      leans toward a separate row store but says explicitly: *"revisit if the row count makes sync a
+      burden."* **1,967 rows is not a burden** — it is one ordinary table with an index, and one
+      annex is more than half of it.
+
+      Recommendation, to be confirmed in the ADR: **rows live in `clauses`** with
+      `path_segments = [별표1, row_N]` and the column values in a structured field. That keeps the
+      citation contract free — an annex row is addressed by `clause_path` exactly like 제8조, so
+      `ir_citations` needs no branch — and it removes the duplication ADR-0006 calls "acceptable
+      denormalisation" rather than managing it. Decisions 1 and 2 of ADR-0006 are untouched: annex
+      rows are still **not embedded**, and still served by exact match. That is a *retrieval*
+      decision, not a *storage* one, and the two were being conflated.
+
+      Note the falsifier points the same way: "an annex row round-trips as a `Clause` addressable by
+      `clause_path`" is this phase's acceptance criterion. A separate store would route around the
+      test rather than pass it.
+
+- [ ] **Open sub-question the ADR must also answer: how are row columns typed?** 별표 2 has five
+      columns (원료명 · 사용한도 · 비고 · CAS No. · 화학물질명), 별표 1 has three, and every table
+      differs. A fixed schema is impossible, so this needs a per-table column map — `jsonb` or
+      equivalent. That is a parser decision independent of *where* rows are stored, and it is what
+      makes exact-match lookup (`"갈라민트리에치오다이드는 사용할 수 있나?"`) actually work.
+
 - [ ] Outcome goes in an **ADR**, not this file — it changes the storage model and 1.3 reads it
 
 ### 시행예정 (pending-effect) versions — **carried over from [phase1.0](phase1.0_ingestion.md), and it gates detection latency**
@@ -191,7 +217,7 @@ for an answer. The point of a falsifier is that it stops something.
   to **one Document claimed by two cells** — verified live on three boards. The duplicate this risk
   predicted cannot occur, and Phase 1 now has a real M:N case rather than only a synthetic one.
 
-- **Annex row granularity** ([ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) open question 2) — **measured 2026-08-05: 31,971 content lines across 278 annexes, 204 of them table-shaped.** Smaller than this file previously estimated, and small enough that a separate row store may not be warranted. **Owned here and due W4** (see *Annex row granularity* above); previously this file deferred it to 1.3 while 1.3 deferred it back here, leaving a critical-path decision with no owner.
+- **Annex row granularity** ([ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) open question 2) — **measured 2026-08-05: 1,967 logical table rows, 1,904 of them in the 81 별표; the other 197 annexes are 서식/별지 forms.** An order of magnitude below what this file estimated, and below the threshold ADR-0006 open question 3 set for wanting a separate store. **Owned here and due W4** (see *Annex row granularity* above); previously this file deferred it to 1.3 while 1.3 deferred it back here, leaving a critical-path decision with no owner.
 - **Diff synchronously or async?** [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) open question 4 — now carried as a task above rather than only as a risk, because it is due in the same W3–4 window as the clause schema.
 - **Multilingual is modelled, not built.** First real exercise is the EU spike. Do not let Korean-only assumptions leak into the schema.
 - **Detection latency stays unmeasurable for the 법령 sources until 시행예정 ships.** Report it as unmeasurable rather than quoting a number the pipeline cannot produce.

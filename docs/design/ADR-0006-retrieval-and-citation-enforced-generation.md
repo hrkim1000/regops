@@ -157,6 +157,24 @@ verification_results(answer_id, claim_index, verdict, reason, verifier_model)
 3. **Annex row-store vs. clause store duplication** — `annex_rows` and `clauses` hold the same
    content in two shapes. Acceptable denormalisation for lookup speed, or a single store with a
    structured overlay? Leaning the former; revisit if the row count makes sync a burden.
+
+   > **The row count was measured on 2026-08-05, and it removes the premise.** This question leans
+   > toward a separate store *conditionally* — "revisit if the row count makes sync a burden" — and
+   > that condition is not met. The whole gated corpus holds **1,967 logical table rows**, 1,904 of
+   > them in 별표-kind annexes, with 별표 1 사용할 수 없는 원료 alone accounting for 1,078. Earlier
+   > estimates of "tens of thousands per 고시" counted *physical lines*: a row inside a box-drawing
+   > table wraps across several, so line counts overstate rows by roughly 16×.
+   >
+   > 1,967 rows is one ordinary table with an index. Nothing about sync is a burden at that size, so
+   > the argument that favoured `annex_rows` no longer applies and the duplication it accepts buys
+   > nothing.
+   >
+   > **Decisions 1 and 2 above are untouched.** Annex rows are still not embedded and are still
+   > served by exact match — that is a *retrieval* decision. Where the rows are *stored* is separate,
+   > and the two were being conflated. [phase1.1](../plan/phase1.1_normalization.md) owns the
+   > resolution, due W4, and leans toward rows living in `clauses` addressed by `clause_path` so the
+   > citation contract needs no branch. Also unresolved and belonging in the same ADR: how per-table
+   > columns are typed, since every table has a different column set.
 4. **Golden query set composition** — must include identifier lookups, paraphrased conceptual
    questions, effective-date-straddling cases, and deliberate mis-citation traps. 200 items split
    across two domains is thin for that many axes.
