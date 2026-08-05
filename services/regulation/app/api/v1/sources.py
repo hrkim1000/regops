@@ -22,8 +22,6 @@ from regops_shared.db import AsyncSession, get_db
 from regops_shared.models.base import utcnow
 
 from ...models import (
-    Document,
-    DocumentVersion,
     FetchObservation,
     Source,
     SourceSchedule,
@@ -160,66 +158,6 @@ async def trigger_fetch(
         "data": {"id": str(source_id), "task_id": task.id},
         "meta": None,
     }
-
-
-@router.get("/documents")
-async def list_documents(
-    db: DbSession,
-    _: CurrentUser,
-    parent_only: bool = Query(False, description="Exclude annex child documents"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=200),
-) -> dict[str, Any]:
-    stmt = select(Document).order_by(Document.canonical_key)
-    if parent_only:
-        # Annexes are child documents (ADR-0012), so a count of "instruments" has to say so.
-        stmt = stmt.where(Document.parent_document_id.is_(None))
-
-    total = len(list(await db.scalars(stmt)))
-    rows = list(await db.scalars(stmt.offset((page - 1) * page_size).limit(page_size)))
-    return ok(
-        [
-            {
-                "id": str(row.id),
-                "canonical_key": row.canonical_key,
-                "title": row.title,
-                "doc_type": row.doc_type.value,
-                "annex_no": row.annex_no,
-                "parent_document_id": (
-                    str(row.parent_document_id) if row.parent_document_id else None
-                ),
-            }
-            for row in rows
-        ],
-        meta=Meta(page=page, page_size=page_size, total=total),
-    )
-
-
-@router.get("/documents/{document_id}/versions")
-async def list_versions(document_id: uuid.UUID, db: DbSession, _: CurrentUser) -> dict[str, Any]:
-    rows = list(
-        await db.scalars(
-            select(DocumentVersion)
-            .where(DocumentVersion.document_id == document_id)
-            .order_by(DocumentVersion.retrieved_at.desc())
-        )
-    )
-    return ok(
-        [
-            {
-                "id": str(row.id),
-                "version_label": row.version_label,
-                "language": row.language,
-                "content_hash": row.content_hash,
-                "raw_object_key": row.raw_object_key,
-                "retrieved_at": row.retrieved_at.isoformat(),
-                "published_at": row.published_at.isoformat() if row.published_at else None,
-                "effective_date": row.effective_date.isoformat() if row.effective_date else None,
-                "effective_date_phrase": row.effective_date_phrase,
-            }
-            for row in rows
-        ]
-    )
 
 
 @router.get("/drift-alerts")
