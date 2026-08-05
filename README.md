@@ -225,7 +225,7 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | ⬜ planned (W3–8) |
 | Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | ⬜ planned (W5–10) |
 | Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | ⬜ planned (W7–10) |
-| Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | ⬜ planned (W7–12) |
+| Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | 🟡 foundation + regulation browser built early |
 | Evaluation + pilot — the 6 gates | [phase1.6](docs/plan/phase1.6_evaluation.md) | ⬜ planned (W7–16) |
 | Tier C + remaining 6 cells | [phase2.0](docs/plan/phase2.0_tier_c_scale.md) | ⬜ Phase 2 |
 | Semantic enrichment + graph | [phase2.1](docs/plan/phase2.1_semantic_graph.md) | ⬜ Phase 2 |

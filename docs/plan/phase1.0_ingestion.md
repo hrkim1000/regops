@@ -224,7 +224,33 @@ identical acts — 의료기기법 and 화장품법 — sat under `Primary Laws`
 instruments. All three 법령ID verified live 2026-08-03. Catalog corrected and the seed follows it;
 `law_go_kr_law` sources are now 9.
 
-**11. `.env.test` could not have worked, and the reason generalises.**
+**11. 별표번호 alone does not identify an annex — 105 units were silently merged.**
+Found on 2026-08-05 while building the phase 1.5 viewer, which is the point of building one: the
+list showed 디지털의료제품법 시행규칙 with 56 annexes where the archived response holds 76. The
+authority reuses 별표번호 across **별표구분** (별표 vs 서식 share a number space) and across
+**별표가지번호** (42, 42의2, 42의3). `canonical_key = {parent}#별표{번호}` therefore collided, and
+`_upsert_document` returns the existing row on a key match — so the second annex's text was written
+as a new **version** of the first.
+
+Corpus-wide before the fix: **105 of 261 annex units had no document of their own**, and 66 annex
+documents held 105 versions that were not revisions but other annexes' content. Phase 1.1's diff
+stage would have emitted every one as a change event, on the cell whose obligations live in annexes.
+
+Identity is now `(별표구분, 별표번호, 별표가지번호)` — exactly what the authority's own `별표키`
+encodes — and the connector **fails closed** on any remaining duplicate rather than merging.
+`connector_version` bumped to 1.1.0 so observations are attributable. Re-ingested: 278 annexes, zero
+annex documents with multiple versions. Regression fixture and suite added; the original fixtures
+missed it because their 별표번호 were unique, which is the lesson.
+[ADR-0012](../design/ADR-0012-annex-version-identity.md) amended — the decision stands, its key
+recipe was under-specified.
+
+**12. `doc_type` is read from the envelope, not fixed per connector.**
+The same viewer showed 화장품법 시행규칙 labelled 법률. `법종구분` states 총리령 outright in the
+법령 envelope, and `DocType.DECREE` / `ENFORCEMENT_RULE` were defined but unreachable — the exact
+smell of an enum value nothing produces. Now mapped: 3 laws, 3 decrees, 3 enforcement rules, 6
+notices.
+
+**13. `.env.test` could not have worked, and the reason generalises.**
 The `guard_env` hook blocks the agent from writing any `.env.*`, so the file was created by hand —
 and wiring it up exposed a defect in the phase-0 compose file that had been latent all along:
 **`environment:` wins over `env_file:` in Compose.** `x-service-base` pinned `DATABASE_URL`,
@@ -241,7 +267,7 @@ The same split-brain then surfaced on MinIO: the *server* password came from hos
 while the *client* password came from the stage file, so the first archive write failed with
 `SignatureDoesNotMatch`. Both now read the same interpolated variable, and the compose file says why.
 
-**12. Service images install `[dev]` extras.**
+**14. Service images install `[dev]` extras.**
 The documented way to run a service suite is inside the stack, but the images installed `/shared`
 without dev extras — so `docker compose run --rm regulation python -m pytest` failed on a clean
 image and only worked after someone pip-installed pytest by hand into a running container. That is

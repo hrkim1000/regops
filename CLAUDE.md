@@ -55,7 +55,8 @@ pillars on one shared knowledge layer:
 
 **Current state: phase 0 and the core of phase 1.0 are built.** The compose stack, `regops_shared`,
 `platform-core` (auth · RBAC · audit chain) and the `regulation` L1 ingestion pipeline exist and run;
-`monitoring` and `assistant` are still health-check-only scaffolds, and there is no frontend.
+`monitoring` and `assistant` are still health-check-only scaffolds; the `frontend` has its 1.5
+foundation plus a read-only regulation browser.
 Architecture is settled through [ADR-0001 – ADR-0013](docs/design/); anything below still marked
 *target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 
@@ -265,7 +266,7 @@ python -m pytest shared/tests services/*/tests/unit -q
 python scripts/tier_d_scan.py
 ```
 
-Still target-only: `npm run typecheck && npm run lint` (no `frontend/` until phase 1.5).
+npm run typecheck && npm run lint     # from frontend/ — both wired into CI
 
 ## Doc sync to `startup`
 
