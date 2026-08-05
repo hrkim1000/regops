@@ -139,6 +139,7 @@ STAGE=dev docker compose --profile local-llm up -d
 | [docs/RegOps.md](docs/RegOps.md) | Platform architecture, scope, data tiers, phased roadmap, metrics |
 | [docs/import-source-map.md](docs/import-source-map.md) | **Single source catalog** — per-cell laws, guidance, and source URLs |
 | [docs/import-agent.md](docs/import-agent.md) | Import Agent spec — how sources are fetched, normalized, parsed |
+| [docs/local-development.md](docs/local-development.md) | **Local ports and where each credential comes from** |
 | [docs/development-plan.md](docs/development-plan.md) | Execution plan — workstreams, milestones, quality gates |
 | [docs/plan/README.md](docs/plan/README.md) | **Phase plan** — one build file per phase (`phase0` … `phase3.0`), with the critical path |
 | [docs/executive-summary.md](docs/executive-summary.md) | 1-page leadership summary for stage-gate decisions |

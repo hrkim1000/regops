@@ -71,6 +71,7 @@ docs/                     # product/strategy docs — the working set
   import-source-map.md    # SINGLE SOURCE OF TRUTH for per-cell regulation sources (8 cells)
   import-agent.md         # Import Agent spec — how sources are fetched/normalized/parsed
   development-plan.md     # delivery plan, workstreams, stage gates
+  local-development.md    # local ports + where each credential lives (values are NOT restated)
   executive-summary.md    # 1-page exec summary
   regulation-library-structure.md   # per-cell library layout example
   design/                 # ADRs — ADR-000N-<slug>.md, numbered from 0001
