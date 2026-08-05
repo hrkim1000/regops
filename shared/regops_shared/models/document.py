@@ -76,9 +76,14 @@ class Document(UUIDPrimaryKey, TimestampMixin, Base):
         return f"<Document {self.canonical_key} {self.doc_type}>"
 
     @staticmethod
-    def annex_canonical_key(parent_key: str, annex_no: str) -> str:
-        """Annexes get a derived key so they are addressable without a second identifier scheme."""
-        return f"{parent_key}#별표{annex_no}"
+    def annex_canonical_key(parent_key: str, kind: str, annex_no: str) -> str:
+        """Annexes get a derived key so they are addressable without a second identifier scheme.
+
+        ``kind`` is 별표구분 (별표 · 서식 · 별지 …) and is **not** decoration: the authority reuses
+        별표번호 across kinds and across 가지번호, so a key built from the number alone collides and
+        merges unrelated annexes (ADR-0012, amended 2026-08-05).
+        """
+        return f"{parent_key}#{kind}{annex_no}"
 
 
 class DocumentCell(Base):

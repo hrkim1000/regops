@@ -186,3 +186,33 @@ def test_cache_validators_are_sent_and_a_304_short_circuits() -> None:
     assert result.artifacts == ()
     assert stub.seen_etag == 'W/"abc"'
     assert stub.seen_last_modified == "Thu, 15 Jan 2026 00:00:00 GMT"
+
+
+# --- instrument kind comes from the response ----------------------------------
+
+
+def test_doc_type_is_read_from_the_envelope() -> None:
+    """법종구분 states 법률 / 대통령령 / 총리령 outright. Filing 화장품법 시행규칙 as a 법률 is a
+    fidelity loss with no excuse, and it is what left DocType.DECREE unreachable."""
+    from regops_shared.constants import DocType
+
+    def parse(kind: str) -> DocType:
+        body = (
+            f"<법령><기본정보><법령ID>1</법령ID><법종구분>{kind}</법종구분></기본정보>"
+            "<조문><조문단위><조문내용>x</조문내용></조문단위></조문></법령>"
+        ).encode()
+        return LawConnector(fetcher=StubFetcher()).parse(body, spec=LAW_SPEC)[0].ref.doc_type
+
+    assert parse("법률") is DocType.LAW
+    assert parse("대통령령") is DocType.DECREE
+    assert parse("총리령") is DocType.ENFORCEMENT_RULE
+
+
+def test_admrul_stays_a_notice_when_the_envelope_says_nothing() -> None:
+    """행정규칙 carries no 법종구분 — the class default is the answer, not a fallback bug."""
+    from regops_shared.constants import DocType
+
+    artifacts = AdmRuleConnector(fetcher=StubFetcher()).parse(
+        fixture_bytes("admrul_cosmetic_safety.xml"), spec=ADMRUL_SPEC
+    )
+    assert artifacts[0].ref.doc_type is DocType.NOTICE

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic 법령 본문조회 response reproducing the collision found live on 2026-08-05.
+
+  Five annex units, only TWO distinct 별표번호. The authority reuses the number across:
+    * 별표구분   — 별표 1 and 서식 1 are different annexes that share a number
+    * 별표가지번호 — 42, 42의2, 42의3 are the 가지번호 branches Korean drafting uses
+
+  Keyed on 별표번호 alone this collapses to 2 documents and files 3 unrelated annexes as spurious
+  *versions* of them. That is what happened to 105 units corpus-wide before the fix.
+-->
+<법령>
+  <기본정보>
+    <법령ID>014846</법령ID>
+    <법령명_한글>디지털의료제품법 시행규칙</법령명_한글>
+    <공포일자>20260123</공포일자>
+    <공포번호>02088</공포번호>
+    <시행일자>20260124</시행일자>
+  </기본정보>
+  <조문>
+    <조문단위>
+      <조문번호>1</조문번호>
+      <조문내용>제1조(목적) PLACEHOLDER 본문.</조문내용>
+    </조문단위>
+  </조문>
+  <별표>
+    <별표단위 별표키="000100E">
+      <별표번호>0001</별표번호>
+      <별표가지번호>00</별표가지번호>
+      <별표구분>별표</별표구분>
+      <별표제목>PLACEHOLDER 별표 1</별표제목>
+      <별표내용>별표 1 내용 PLACEHOLDER-A</별표내용>
+    </별표단위>
+    <별표단위 별표키="000100F">
+      <별표번호>0001</별표번호>
+      <별표가지번호>00</별표가지번호>
+      <별표구분>서식</별표구분>
+      <별표제목>PLACEHOLDER 서식 1</별표제목>
+      <별표내용>서식 1 내용 PLACEHOLDER-B</별표내용>
+    </별표단위>
+    <별표단위 별표키="004200F">
+      <별표번호>0042</별표번호>
+      <별표가지번호>00</별표가지번호>
+      <별표구분>서식</별표구분>
+      <별표제목>PLACEHOLDER 서식 42</별표제목>
+      <별표내용>서식 42 내용 PLACEHOLDER-C</별표내용>
+    </별표단위>
+    <별표단위 별표키="004202F">
+      <별표번호>0042</별표번호>
+      <별표가지번호>02</별표가지번호>
+      <별표구분>서식</별표구분>
+      <별표제목>PLACEHOLDER 서식 42의2</별표제목>
+      <별표내용>서식 42의2 내용 PLACEHOLDER-D</별표내용>
+    </별표단위>
+    <별표단위 별표키="004203F">
+      <별표번호>0042</별표번호>
+      <별표가지번호>03</별표가지번호>
+      <별표구분>서식</별표구분>
+      <별표제목>PLACEHOLDER 서식 42의3</별표제목>
+      <별표내용>서식 42의3 내용 PLACEHOLDER-E</별표내용>
+    </별표단위>
+  </별표>
+</법령>

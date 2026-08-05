@@ -91,6 +91,38 @@ def normalize_annex_no(raw: str) -> str:
     return stripped.lstrip("0") or "0" if stripped.isdigit() else stripped
 
 
+#: 법종구분 → ``DocType``. The 법령 본문조회 envelope states the instrument kind outright, so
+#: filing 화장품법 시행규칙 as a 법률 is a fidelity loss with no excuse — and it is what leaves
+#: ``DocType.DECREE`` and ``ENFORCEMENT_RULE`` defined but unreachable.
+LAW_KIND_TO_DOC_TYPE: Mapping[str, DocType] = {
+    "법률": DocType.LAW,
+    "대통령령": DocType.DECREE,
+    "총리령": DocType.ENFORCEMENT_RULE,
+    "부령": DocType.ENFORCEMENT_RULE,
+}
+
+
+def annex_identity(unit: Element) -> tuple[str, str]:
+    """``<별표단위>`` → ``(kind, label)``, e.g. ``("서식", "42의2")``.
+
+    **별표번호 alone does not identify an annex.** Discovered 2026-08-05: 디지털의료제품법 시행규칙
+    returns 76 annex units under only 56 distinct 별표번호, because the authority reuses the number
+    across ``별표구분`` (별표 vs 서식) and across ``별표가지번호`` — the 가지번호 branch that Korean
+    drafting uses for 제42호의2, 제42호의3 and so on. Keying identity on the number alone silently
+    merged 105 units corpus-wide into other annexes' documents, and each merge landed as a spurious
+    *version* on the annex that got there first.
+
+    ``(별표구분, 별표번호, 별표가지번호)`` is exactly what the authority's own ``별표키`` attribute
+    encodes, so this triple is unique by construction. The readable composite is preferred over the
+    opaque key because it is how these are cited — 서식 제42호의2, not ``004202F``.
+    """
+    kind = _first_text(unit, "별표구분") or "별표"
+    number = normalize_annex_no(_first_text(unit, "별표번호") or "")
+    branch = normalize_annex_no(_first_text(unit, "별표가지번호") or "0")
+    label = number if branch in {"0", ""} else f"{number}의{branch}"
+    return kind, label
+
+
 def _first_text(root: Element, *tags: str) -> str | None:
     """First non-empty text for any of ``tags``, found anywhere in the tree.
 
@@ -133,7 +165,7 @@ class _LawGoKrConnector:
     """Shared fetch/parse for both targets. Subclasses supply the tag vocabulary."""
 
     key: ClassVar[str] = ""
-    version: ClassVar[str] = "1.0.0"
+    version: ClassVar[str] = "1.1.0"
 
     doc_type: ClassVar[DocType] = DocType.LAW
     key_prefix: ClassVar[str] = "mfds:law"
@@ -203,7 +235,9 @@ class _LawGoKrConnector:
 
         artifacts = [
             FetchedArtifact(
-                ref=ArtifactRef(canonical_key=canonical_key, title=title, doc_type=self.doc_type),
+                ref=ArtifactRef(
+                    canonical_key=canonical_key, title=title, doc_type=self._doc_type(root)
+                ),
                 raw=body,
                 canonical=body_canonical,
                 content_type="application/xml",
@@ -222,6 +256,15 @@ class _LawGoKrConnector:
             )
         )
         return tuple(artifacts)
+
+    def _doc_type(self, root: Element) -> DocType:
+        """Instrument kind from the response, falling back to the connector's default.
+
+        ``법종구분`` distinguishes 법률 / 대통령령 / 총리령 in the 법령 envelope; 행정규칙 carries
+        no equivalent and is always a 고시, which is what the class default encodes.
+        """
+        kind = _first_text(root, "법종구분")
+        return LAW_KIND_TO_DOC_TYPE.get(kind or "", self.doc_type)
 
     def _envelope_meta(self, root: Element) -> Mapping[str, str]:
         """Dates the API hands over that phase 1.1 will write as ``effective_date``.
@@ -262,11 +305,19 @@ class _LawGoKrConnector:
         This runs for **both** targets. The spike observed ``<별표단위>`` on 행정규칙; the first
         live fetch (2026-08-03) found it on 법령 too — 의료기기법 시행규칙 returned 93 of them
         alongside its body. Annex handling is therefore not a 고시 special case.
+
+        Identity comes from :func:`annex_identity`, never from 별표번호 alone, and a repeat within
+        one response **fails closed**. Silently reusing an existing document is the worst available
+        outcome: the second annex's text lands as a *version* of the first, so the amendment history
+        of a real annex ends up holding an unrelated one.
         """
+        seen: dict[str, str] = {}
         for ordinal, unit in enumerate(root.iter("별표단위")):
-            annex_no = normalize_annex_no(_first_text(unit, "별표번호") or str(ordinal + 1))
-            annex_title = _first_text(unit, "별표제목", "별표명") or f"별표 {annex_no}"
+            kind, label = annex_identity(unit)
+            annex_no = label or str(ordinal + 1)
+            annex_title = _first_text(unit, "별표제목", "별표명") or f"{kind} {annex_no}"
             content = _first_text(unit, "별표내용")
+            canonical_key = f"{parent_key}#{kind}{annex_no}"
 
             links = tuple(self._annex_links(unit))
             if not content:
@@ -278,9 +329,18 @@ class _LawGoKrConnector:
                 )
                 continue
 
+            if canonical_key in seen:
+                raise AuthorityError(
+                    f"{parent_key}: two annexes resolve to {canonical_key!r} "
+                    f"({seen[canonical_key]!r} and {annex_title!r}). The authority's numbering has "
+                    "a dimension this connector does not model — refusing rather than merging them",
+                    signal=DriftSignal.RECORD_COUNT_DELTA,
+                )
+            seen[canonical_key] = annex_title
+
             yield FetchedArtifact(
                 ref=ArtifactRef(
-                    canonical_key=f"{parent_key}#별표{annex_no}",
+                    canonical_key=canonical_key,
                     title=annex_title,
                     doc_type=DocType.ANNEX,
                     annex_no=annex_no,
@@ -313,7 +373,7 @@ class LawConnector(_LawGoKrConnector):
     """법령 본문조회 — 화장품법, 의료기기법 and their 시행령 · 시행규칙."""
 
     key: ClassVar[str] = "law_go_kr_law"
-    version: ClassVar[str] = "1.0.0"
+    version: ClassVar[str] = "1.1.0"
 
     doc_type: ClassVar[DocType] = DocType.LAW
     key_prefix: ClassVar[str] = "mfds:law"
@@ -328,7 +388,7 @@ class AdmRuleConnector(_LawGoKrConnector):
     """행정규칙 본문조회 — 고시, including ``<별표단위>`` / ``<별표내용>``."""
 
     key: ClassVar[str] = "law_go_kr_admrul"
-    version: ClassVar[str] = "1.0.0"
+    version: ClassVar[str] = "1.1.0"
 
     doc_type: ClassVar[DocType] = DocType.NOTICE
     key_prefix: ClassVar[str] = "mfds:admrul"
@@ -343,6 +403,7 @@ __all__ = [
     "AUTH_FAILURE_MARKERS",
     "AdmRuleConnector",
     "LawConnector",
+    "annex_identity",
     "build_url",
     "check_authority_error",
     "normalize_annex_no",

@@ -6,6 +6,8 @@
   sketch; extends [ADR-0002](ADR-0002-canonical-regulation-model.md) decision 1
 - **Forced by:** [phase1.0](../plan/phase1.0_ingestion.md) acceptance criterion — "amending 별표 2
   alone creates a version for the annex and not the body"
+- **Key format amended 2026-08-05** — the decision stands; the `canonical_key` recipe below was
+  under-specified and collided. See *Amendment: annex identity is a triple*.
 
 ---
 
@@ -67,6 +69,36 @@ are worth it against re-parsing the archive later.
 **Not decided here.** Whether annex table *rows* become `Clause` rows or a separate row store is
 [ADR-0006](ADR-0006-retrieval-and-citation-enforced-generation.md) open question 3, still open and
 due W4. This ADR settles the container, not the granularity inside it.
+
+## Amendment: annex identity is a triple, not a number *(2026-08-05)*
+
+The decision above is unchanged. Its **`canonical_key` recipe was wrong**, and the way it was wrong
+is worth recording because the failure was silent.
+
+`f"{parent_key}#별표{annex_no}"` assumes 별표번호 identifies an annex within its parent. It does not.
+The authority reuses the number along two further axes:
+
+- **`별표구분`** — 별표 and 서식 (and 별지) are different kinds sharing one number space, so 별표 1
+  and 서식 1 both arrive as `별표번호 = 0001`.
+- **`별표가지번호`** — the 가지번호 branch Korean drafting uses for 제42호의2, 제42호의3. Five
+  units of 디지털의료제품법 시행규칙 arrive as `별표번호 = 0042` with 가지번호 00, 02, 03, 04, 05.
+
+Measured on the live corpus before the fix: **105 of 261 annex units had no document of their own**,
+and 66 annex documents held 105 versions that were not revisions at all but *other annexes' text*.
+`_upsert_document` returns the existing row on a `canonical_key` match, so the second annex's content
+was written as a new **version** of the first — the amendment history of a real annex holding an
+unrelated one. Phase 1.1's diff stage would have emitted every one of those as a change event.
+
+**Amended recipe:** `canonical_key = f"{parent_key}#{별표구분}{번호}[의{가지번호}]"`, with `annex_no`
+holding the cited label (`42의2`). `(별표구분, 별표번호, 별표가지번호)` is precisely what the
+authority's own `별표키` attribute encodes, so the triple is unique by construction. The readable
+composite is preferred to the opaque `별표키` because it is how these are cited — 서식 제42호의2, not
+`004202F`. Keys already issued for 별표-kind annexes are unchanged, since `별표구분` defaults to 별표.
+
+**And the connector now fails closed.** If two units still resolve to one key, it raises a drift
+alert instead of merging. Silently reusing an existing document is the worst available outcome: it
+does not just lose an annex, it corrupts a different one's history — and nothing downstream can tell
+that apart from a genuine amendment.
 
 ## Alternatives rejected
 
