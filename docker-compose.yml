@@ -188,6 +188,28 @@ services:
       - ./services/assistant:/app
     profiles: [app]
 
+  # --- frontend ------------------------------------------------------------
+  #
+  # Reaches the services by compose service name; the browser only ever sees this origin, so the
+  # JWT cookie stays first-party and no service is exposed to it directly.
+  frontend:
+    build: {context: ., dockerfile: frontend/Dockerfile}
+    ports: ["23000:3000"]
+    environment:
+      PLATFORM_CORE_URL: http://platform-core:8000
+      REGULATION_URL: http://regulation:8000
+      MONITORING_URL: http://monitoring:8000
+      ASSISTANT_URL: http://assistant:8000
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/next.config.mjs:/app/next.config.mjs
+      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
+    depends_on:
+      platform-core: {condition: service_healthy}
+    profiles: [app]
+    restart: unless-stopped
+
   # --- optional: Ollama inside Docker -------------------------------------
   ollama:
     image: ollama/ollama:latest

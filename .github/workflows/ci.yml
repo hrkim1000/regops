@@ -44,3 +44,20 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install -e ./shared[dev]
       - run: python -m pytest shared/tests -q
+      # Service unit suites are mock-only (no DB, no network), so they belong in CI. The
+      # integration suites need the compose stack and stay a local/stage gate.
+      - run: python -m pytest services/regulation/tests/unit -q
+
+  frontend:
+    name: Frontend typecheck & lint
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: frontend}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: npm install
+      # The phase 0 deferral ("no frontend yet"), now that there is one. phase1.5's acceptance
+      # asserts a clean typecheck, so the gate has to exist rather than just the command.
+      - run: npm run typecheck
+      - run: npm run lint
