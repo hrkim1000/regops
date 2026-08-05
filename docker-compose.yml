@@ -93,8 +93,13 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: "False"
+      # Pre-registers the three connections so nobody has to rediscover that the host is `db`
+      # rather than `localhost` — pgAdmin is inside this network and cannot see the host mapping.
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
     ports: ["25051:80"]
-    volumes: ["regops_pgadmindata:/var/lib/pgadmin"]
+    volumes:
+      - "regops_pgadmindata:/var/lib/pgadmin"
+      - "./infra/pgadmin/servers.json:/pgadmin4/servers.json:ro"
     depends_on: [db]
 
   flower:

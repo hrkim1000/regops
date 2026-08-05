@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "Pre-registered connections, imported by pgAdmin on first start.",
+    "Host is 'db', not 'localhost': pgAdmin runs inside the compose network, so it resolves the",
+    "service name. 'localhost:25432' is the host-side mapping and is unreachable from in there —",
+    "that mistake is the usual reason a manual registration fails.",
+    "No password is stored here. pgAdmin prompts on first connect; the value is in",
+    "docker-compose.yml (POSTGRES_PASSWORD) or from 'python scripts/local_access.py'."
+  ],
+  "Servers": {
+    "1": {
+      "Name": "RegOps dev (regops)",
+      "Group": "RegOps",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "regops",
+      "Username": "regops",
+      "SSLMode": "prefer",
+      "Comment": "Owner role — migrations run as this. Full read/write, including audit_log."
+    },
+    "2": {
+      "Name": "RegOps test (regops_test)",
+      "Group": "RegOps",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "regops_test",
+      "Username": "regops",
+      "SSLMode": "prefer",
+      "Comment": "Integration-suite database. Truncated and rewritten by tests — do not keep work here."
+    },
+    "3": {
+      "Name": "RegOps dev (regops_app, least privilege)",
+      "Group": "RegOps",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "regops",
+      "Username": "regops_app",
+      "SSLMode": "prefer",
+      "Comment": "What the services actually connect as. UPDATE/DELETE on audit_log is denied here (ADR-0011); connect as this to see the append-only guarantee hold rather than assume it."
+    }
+  }
+}

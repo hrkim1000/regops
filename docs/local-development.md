@@ -76,6 +76,63 @@ STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm regulation \
 | App login password | re-run `scripts/seed_admin.py` with new `REGOPS_ADMIN_*` values, or change it through `platform-core` |
 | `LAW_GO_KR_OC` | edit `.env.dev` and restart `regulation`. The account is authorised by **egress IP**, so a network change breaks it too — that failure returns HTTP 200 with an error body and is filed as an `auth_failure` drift alert |
 
+## pgAdmin — connecting to the database
+
+> **The host is `db`, not `localhost`.** pgAdmin runs *inside* the compose network, so it resolves
+> the service name. `localhost:25432` is the **host-side** port mapping and is unreachable from
+> within the container — entering it is the usual reason a manual registration fails with
+> "connection refused".
+
+Three connections are pre-registered from `infra/pgadmin/servers.json`, so normally there is
+nothing to set up: open <http://localhost:25051>, expand the **RegOps** group, click a server, and
+enter the password when prompted.
+
+| Registered server | Database | Role | Use it for |
+|---|---|---|---|
+| RegOps dev (regops) | `regops` | `regops` (owner) | everyday inspection; full read/write |
+| RegOps test (regops_test) | `regops_test` | `regops` (owner) | the integration database — truncated and rewritten by tests, so keep no work here |
+| RegOps dev (regops_app, least privilege) | `regops` | `regops_app` | what the services actually connect as |
+
+The third exists to be *tried*, not just documented. Connected as `regops_app`, an
+`UPDATE audit_log …` is refused — that is [ADR-0011](design/ADR-0011-audit-trail-immutability.md)'s
+append-only guarantee holding at the database rather than by convention. As `regops` the same
+statement succeeds, because a table owner bypasses its own grants; that is exactly why services do
+not connect as the owner.
+
+### If the servers are not listed
+
+The import runs when pgAdmin initialises its config volume. A volume created before this file
+existed will not have them:
+
+```bash
+docker compose stop pgadmin && docker compose rm -f pgadmin
+docker volume rm regops_regops_pgadmindata     # discards saved pgAdmin state only
+docker compose up -d pgadmin
+```
+
+### Registering by hand
+
+Right-click **Servers → Register → Server**:
+
+| Tab | Field | Value |
+|---|---|---|
+| General | Name | anything |
+| Connection | Host name/address | **`db`** |
+| Connection | Port | **`5432`** — the in-network port, not 25432 |
+| Connection | Maintenance database | `regops` (or `regops_test`) |
+| Connection | Username | `regops`, or `regops_app` for the least-privilege view |
+| Connection | Password | see *Where each credential comes from* above |
+
+### Worth knowing once connected
+
+- **`regops` and `regops_test` are separate databases on one server.** The test suite truncates
+  `regops_test`; if a query returns nothing unexpectedly, check which one is selected.
+- **Annexes are rows in `documents`**, not a sub-table — a 고시 with four 별표 is five rows
+  ([ADR-0012](design/ADR-0012-annex-version-identity.md)). Filter `parent_document_id is null` for
+  instruments only.
+- **`document_versions.raw_object_key` is a MinIO key, not a path on disk.** The bytes live in the
+  `regops-archive` bucket; the database only points at them.
+
 ## Security notes
 
 - **Everything except `LAW_GO_KR_OC` is a local-dev default.** They are committed in
