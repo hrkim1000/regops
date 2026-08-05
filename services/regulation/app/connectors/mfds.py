@@ -102,8 +102,10 @@ class _MfdsFeedConnector:
     """Shared fetch shape for both MFDS surfaces."""
 
     key: ClassVar[str] = ""
-    version: ClassVar[str] = "1.0.0"
+    version: ClassVar[str] = "1.1.0"
     key_prefix: ClassVar[str] = "mfds:feed"
+    #: The connector param that identifies the board upstream. See :meth:`identity`.
+    identity_param: ClassVar[str] = "brdId"
 
     def __init__(self, fetcher: PoliteFetcher | None = None) -> None:
         self._fetcher = fetcher
@@ -144,6 +146,17 @@ class _MfdsFeedConnector:
     def parse(self, body: bytes, *, spec: SourceSpec) -> tuple[FetchedArtifact, ...]:
         raise NotImplementedError
 
+    def identity(self, spec: SourceSpec) -> str:
+        """The document identity for this feed.
+
+        Keyed on what the *authority* calls the board, not on our source slug. Both gated cells
+        subscribe to the same MFDS boards — 제개정고시등 announces 식품, 의약품, 의료기기 and
+        화장품 alike — so a slug-derived key would create one Document per cell for one feed, which
+        is the duplicate ADR-0002 decision 1 exists to prevent. Sharing the key means the feed is
+        ingested once and *claimed* by every subscribing cell.
+        """
+        return str(spec.params.get(self.identity_param) or spec.slug)
+
     def _artifact(
         self,
         *,
@@ -161,7 +174,7 @@ class _MfdsFeedConnector:
         return (
             FetchedArtifact(
                 ref=ArtifactRef(
-                    canonical_key=f"{self.key_prefix}:{spec.params.get('id', spec.slug)}",
+                    canonical_key=f"{self.key_prefix}:{self.identity(spec)}",
                     title=spec.title,
                     doc_type=DocType.FEED,
                 ),
@@ -177,8 +190,9 @@ class MfdsRssConnector(_MfdsFeedConnector):
     """MFDS RSS — notices, legislative notices, amendments."""
 
     key: ClassVar[str] = "mfds_rss"
-    version: ClassVar[str] = "1.0.0"
+    version: ClassVar[str] = "1.1.0"
     key_prefix: ClassVar[str] = "mfds:rss"
+    identity_param: ClassVar[str] = "brdId"
 
     def parse(self, body: bytes, *, spec: SourceSpec) -> tuple[FetchedArtifact, ...]:
         root = parse_xml(body)
@@ -214,8 +228,9 @@ class MfdsListingConnector(_MfdsFeedConnector):
     """
 
     key: ClassVar[str] = "mfds_listing"
-    version: ClassVar[str] = "1.0.0"
+    version: ClassVar[str] = "1.1.0"
     key_prefix: ClassVar[str] = "mfds:listing"
+    identity_param: ClassVar[str] = "boardId"
 
     def parse(self, body: bytes, *, spec: SourceSpec) -> tuple[FetchedArtifact, ...]:
         rows = extract_table_rows(body.decode("utf-8", errors="replace"))

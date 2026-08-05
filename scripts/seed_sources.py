@@ -32,7 +32,10 @@ from regops_shared.db import sync_session  # noqa: E402
 def main() -> int:
     with sync_session() as session:
         result = seed_sources(session)
-    print(f"sources seeded: {result['created']} created, {result['updated']} updated")
+    print(
+        f"sources seeded: {result['created']} created, "
+        f"{result['updated']} updated, {result['retired']} retired"
+    )
     return 0
 
 

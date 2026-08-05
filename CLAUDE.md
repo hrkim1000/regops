@@ -53,7 +53,7 @@ pillars on one shared knowledge layer:
 3. Compliance gap analysis & control mapping
 4. SaaS productization for external customers
 
-**Current state: phase 0 and the core of phase 1.0 are built.** The compose stack, `regops_shared`,
+**Current state: phase 0 and phase 1.0 are done; phase 1.5's foundation is built early.** The compose stack, `regops_shared`,
 `platform-core` (auth · RBAC · audit chain) and the `regulation` L1 ingestion pipeline exist and run;
 `monitoring` and `assistant` are still health-check-only scaffolds; the `frontend` has its 1.5
 foundation plus a read-only regulation browser.

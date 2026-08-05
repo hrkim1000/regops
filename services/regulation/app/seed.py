@@ -40,6 +40,11 @@ log = structlog.get_logger(__name__)
 #: the document's identity still comes from the 법령ID the response returns, so querying by name
 #: does not weaken ``canonical_key``.
 LAW_SERVICE = "https://www.law.go.kr/DRF/lawService.do?OC={OC}&target=law&LM={name}&type=XML"
+
+#: MFDS publishes each board as RSS. Boards mapped live 2026-08-05 by fetching all 35 feeds and
+#: reading the channel title each declares — guessing from the directory page's link text does not
+#: work, because every link shares one generic title attribute.
+MFDS_RSS = "https://www.mfds.go.kr/www/rss/brd.do?brdId={brdId}"
 ADMRUL_SERVICE = "https://www.law.go.kr/DRF/lawService.do?OC={OC}&target=admrul&LM={name}&type=XML"
 
 
@@ -133,27 +138,39 @@ SEED: tuple[SeedSource, ...] = (
         cell="mfds_cosmetic",
         block=SourceBlock.SAFETY,
         ordinal=1,
-        name="mfds_rss",
-        title="MFDS RSS — 공지·입법예고·개정",
+        name="rss_amendments",
+        title="MFDS RSS — 제개정고시등",
         tier=SourceTier.B,
         connector="mfds_rss",
-        url_template="https://www.mfds.go.kr/www/rss/list.do",
-        enabled=False,
-        notes="Feed exists (spike 2026-07-29) but the category parameter is unconfirmed — "
-        "spike still-open question 3. Enable after W3 recon.",
+        url_template=MFDS_RSS,
+        params={"brdId": "data0008"},
+        notes="Confirmed live 2026-08-05. Supersedes the HTML 제개정고시등 scrape: the same "
+        "board is published as RSS, with a pubDate per item and no 조회수 to strip.",
     ),
     SeedSource(
         cell="mfds_cosmetic",
         block=SourceBlock.SAFETY,
         ordinal=2,
-        name="mfds_amendment_listing",
-        title="MFDS 제개정고시등",
+        name="rss_statutes",
+        title="MFDS RSS — 법, 시행령, 시행규칙",
         tier=SourceTier.B,
-        connector="mfds_listing",
-        url_template="https://www.mfds.go.kr/brd/m_207/list.do",
-        enabled=False,
-        notes="Server-rendered listing with a 제개정일 per row; 조회수 is the volatile column. "
-        "Column layout unverified — enable after W3 recon.",
+        connector="mfds_rss",
+        url_template=MFDS_RSS,
+        params={"brdId": "data0003"},
+        notes="Announces 법령 amendments; the 법령 본문조회 connector fetches the text itself.",
+    ),
+    SeedSource(
+        cell="mfds_cosmetic",
+        block=SourceBlock.SAFETY,
+        ordinal=3,
+        name="rss_preannounce",
+        title="MFDS RSS — 입법/행정예고",
+        tier=SourceTier.B,
+        connector="mfds_rss",
+        url_template=MFDS_RSS,
+        params={"brdId": "data0009"},
+        notes="Pre-announcement: change visible before promulgation, which is earlier than "
+        "any 본문 poll can see it.",
     ),
     SeedSource(
         cell="mfds_cosmetic",
@@ -213,34 +230,52 @@ SEED: tuple[SeedSource, ...] = (
     ),
     SeedSource(
         cell="mfds_samd",
-        block=SourceBlock.STANDARDS,
-        ordinal=2,
-        name="recognition_list",
-        title="의료기기 인정 표준 목록 (recognition list)",
+        block=SourceBlock.SAFETY,
+        ordinal=1,
+        name="rss_amendments",
+        title="MFDS RSS — 제개정고시등",
         tier=SourceTier.B,
-        connector="recognition_list",
-        url_template="https://www.mfds.go.kr/brd/m_211/list.do",
-        enabled=False,
-        notes="The list is Tier B and ingestible; the standards it names are not. "
-        "Table layout unverified — enable after W3 recon.",
-        interval_override_seconds=30 * 24 * 60 * 60,
-        interval_override_reason=(
-            "Recognition lists move slowly (ADR-0003 decision 4, Standards row). The block now "
-            "derives daily because it also holds Tier A 고시, and the tier floor cannot catch this "
-            "one: the list itself is Tier B. Daily polling of a metadata list buys nothing."
-        ),
+        connector="mfds_rss",
+        url_template=MFDS_RSS,
+        params={"brdId": "data0008"},
+        notes="Same upstream board as the cosmetic cell claims — one Document, claimed by "
+        "both (ADR-0002 decision 1). This is the M:N case Phase 1 otherwise lacks.",
     ),
     SeedSource(
         cell="mfds_samd",
         block=SourceBlock.SAFETY,
-        ordinal=1,
-        name="mfds_rss",
-        title="MFDS RSS — 공지·입법예고·개정",
+        ordinal=2,
+        name="rss_statutes",
+        title="MFDS RSS — 법, 시행령, 시행규칙",
         tier=SourceTier.B,
         connector="mfds_rss",
-        url_template="https://www.mfds.go.kr/www/rss/list.do",
-        enabled=False,
-        notes="Same feed as the cosmetic cell claims; category parameter unconfirmed.",
+        url_template=MFDS_RSS,
+        params={"brdId": "data0003"},
+        notes="Shared board; see the cosmetic cell.",
+    ),
+    SeedSource(
+        cell="mfds_samd",
+        block=SourceBlock.SAFETY,
+        ordinal=3,
+        name="rss_preannounce",
+        title="MFDS RSS — 입법/행정예고",
+        tier=SourceTier.B,
+        connector="mfds_rss",
+        url_template=MFDS_RSS,
+        params={"brdId": "data0009"},
+        notes="Shared board; see the cosmetic cell.",
+    ),
+    SeedSource(
+        cell="mfds_samd",
+        block=SourceBlock.SAFETY,
+        ordinal=4,
+        name="rss_device_sanctions",
+        title="MFDS RSS — 의료기기 행정처분",
+        tier=SourceTier.B,
+        connector="mfds_rss",
+        url_template=MFDS_RSS,
+        params={"brdId": "plc0168"},
+        notes="SaMD-specific safety board.",
     ),
     SeedSource(
         cell="mfds_samd",
@@ -302,9 +337,25 @@ def seed_sources(session: Session, *, seed: tuple[SeedSource, ...] = SEED) -> di
             schedule.interval_seconds = interval_for(source)
         session.flush()
 
+    # A source dropped from the catalog must stop polling. Disable rather than delete: documents
+    # reference the source that discovered them, and deleting would either fail on the foreign key
+    # or destroy that provenance. Re-seeding is upsert-only otherwise, so without this a row
+    # removed from the map keeps fetching forever and nothing says why.
+    known = {row.slug for row in seed}
+    retired = 0
+    for source in session.scalars(select(Source).where(Source.slug.not_in(known))).all():
+        schedule = session.get(SourceSchedule, source.id)
+        if schedule is not None and schedule.enabled:
+            schedule.enabled = False
+            retired += 1
+        source.notes = (
+            "Retired: no longer in import-source-map.md. Schedule disabled by the seeder."
+        )
+    session.flush()
+
     session.commit()
-    log.info("seed.sources", created=created, updated=updated, total=len(seed))
-    return {"created": created, "updated": updated, "total": len(seed)}
+    log.info("seed.sources", created=created, updated=updated, retired=retired, total=len(seed))
+    return {"created": created, "updated": updated, "retired": retired, "total": len(seed)}
 
 
 __all__ = ["SEED", "SeedSource", "seed_sources"]

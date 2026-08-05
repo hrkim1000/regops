@@ -107,3 +107,54 @@ def test_primary_law_sources_are_enabled() -> None:
     primary = [row for row in SEED if row.block is SourceBlock.PRIMARY_LAWS]
     assert len(primary) >= 6
     assert all(row.enabled and row.connector == "law_go_kr_law" for row in primary)
+
+
+# --- the M:N case Phase 1 otherwise lacks --------------------------------------
+
+
+def test_both_cells_claim_the_same_mfds_boards() -> None:
+    """MFDS boards are regulator-wide: 제개정고시등 announces 식품, 의약품, 의료기기 and 화장품
+    alike. Both gated cells therefore subscribe to the same upstream board, which is the real M:N
+    case — and the one the synthetic fan-out fixture in phase 1.1 stands in for."""
+    boards: dict[str, set[str]] = {}
+    for row in SEED:
+        if row.connector == "mfds_rss":
+            boards.setdefault(row.params["brdId"], set()).add(row.cell)
+
+    shared = {brd for brd, cells in boards.items() if len(cells) > 1}
+    assert shared, "no board is shared, so the M:N path is untested"
+    for brd in shared:
+        assert boards[brd] == {"mfds_cosmetic", "mfds_samd"}
+
+
+def test_shared_boards_resolve_to_one_document_identity() -> None:
+    """Identity comes from the authority's board id, not our source slug. Keyed on the slug, one
+    feed would become one Document per cell — the duplicate ADR-0002 decision 1 exists to prevent
+    — and each cell would archive and version the same bytes separately."""
+    from app.connectors.base import SourceSpec
+    from app.connectors.mfds import MfdsRssConnector
+
+    connector = MfdsRssConnector()
+    specs = [
+        SourceSpec(
+            slug=row.slug,
+            title=row.title,
+            tier=row.tier,
+            ingestible=True,
+            url_template=row.url_template,
+            params=row.params,
+        )
+        for row in SEED
+        if row.connector == "mfds_rss" and row.params.get("brdId") == "data0008"
+    ]
+    assert len(specs) == 2, "data0008 should be claimed by both cells"
+    assert len({connector.identity(spec) for spec in specs}) == 1
+    assert connector.identity(specs[0]) == "data0008"
+
+
+def test_every_fetchable_source_is_enabled() -> None:
+    """After the W3 reconnaissance nothing fetchable is left switched off. The only disabled rows
+    are the reference-only ones, which have no connector at all."""
+    for row in SEED:
+        if row.connector is not None:
+            assert row.enabled, f"{row.slug} has a connector but is disabled"

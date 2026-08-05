@@ -59,6 +59,8 @@ Go/No-Go report.
 
 ### EU spike close-out (W12)
 
+- [ ] **EUR-Lex fetch for MDR (EU) 2017/745 at reduced depth** — transferred from [phase1.0](phase1.0_ingestion.md). Non-gated and scheduled W3→W12, so it never fit inside 1.0's W1–W4 window; the findings memo lands here regardless
+
 - [ ] Findings memo: multilingual normalization and Tier C effort estimate for Phase 2
 - [ ] Does not count toward exit criteria
 

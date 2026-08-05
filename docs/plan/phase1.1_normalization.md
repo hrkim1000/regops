@@ -109,6 +109,7 @@ ones.
 - [ ] Low-confidence renumber matches queue for RA review
 - [ ] Diffs computed **within one language** — KO for MFDS
 - [ ] `ChangeEvent` emitted from `ClauseDiff`, fanned out to every claiming cell
+- [ ] **Confirm 조문별 변경이력 granularity matches `ClauseDiff`** — transferred from [phase1.0](phase1.0_ingestion.md), which could not act on the answer. The authority computes clause-level change history itself; where it does, reconcile our computed diff against it as free ground truth for the detection-coverage gate ([ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 12)
 - [ ] **Decide: diff inline, or as its own stage?** [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) open question 4, due W3–4 alongside the clause schema because it is a stage boundary in this pipeline. Inline is simpler; splitting lets an improved profile re-diff historical versions without re-fetching. The ADR leans split
 
 ### Citation support
@@ -132,26 +133,18 @@ ones.
 - [ ] A parse yielding zero clauses raises drift, creates no version, and emits no change event
 - [ ] **A 시행예정 version is ingested with a future `effective_date` and does not displace 현행** — a query for the current text still returns the in-force version
 - [ ] **One MST carrying three 시행일자 produces exactly one version**, with the earliest date at version level and the remainder on clauses
-- [ ] Fan-out reaches every claiming cell and no others — verified against a **synthetic multi-cell fixture**, because the two gated cells share no *regulation* in common: `mfds_cosmetic` (화장품법 family) and `mfds_samd` (의료기기법 family) have zero documents in common, and the FD&C Act — the natural M:N case — is FDA, first ingested in [phase2.0](phase2.0_tier_c_scale.md). Cell isolation is a CLAUDE.md non-negotiable test, so Phase 1 builds the fixture rather than deferring the test. *(The MFDS RSS feed is a real shared **source** — see Risks — but it is a change signal, not a regulation, and it is seeded disabled.)*
+- [ ] Fan-out reaches every claiming cell and no others — verified against a **synthetic multi-cell fixture**, because the two gated cells share no *regulation* in common: `mfds_cosmetic` (화장품법 family) and `mfds_samd` (의료기기법 family) have zero documents in common, and the FD&C Act — the natural M:N case — is FDA, first ingested in [phase2.0](phase2.0_tier_c_scale.md). Cell isolation is a CLAUDE.md non-negotiable test, so Phase 1 builds the fixture rather than deferring the test. *(The MFDS RSS boards are now a real shared case — one Document claimed by both cells — so the synthetic fixture is a deterministic complement to it, not a substitute for something that does not exist.)*
 - [ ] A single-cell document does **not** fan out to the other gated cell — the negative half of the same test
 - [ ] Amending a cited clause flags the citation superseded and leaves its text resolvable
 
 ## Risks & open questions
 
-- 🔴 **The MFDS RSS feed is registered twice and would ingest twice.** The seed carries
-  `mfds_cosmetic.safety.mfds_rss` and `mfds_samd.safety.mfds_rss` with the **same URL and no
-  distinguishing params**. `canonical_key` falls back to the source slug, so as seeded these produce
-  **two `Document`s for one feed** — duplicate ingestion of a single artefact, which is what
-  [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) decision 1 exists to prevent. Both
-  rows are seeded **disabled**, so nothing is wrong yet; it detonates when W3 recon enables them.
-
-  **Do not fix it before the recon.** The RSS category parameter is unconfirmed (spike still-open
-  question 3). If the feed is per-category, the two cells genuinely need *different* URLs and there
-  is no duplication at all — the current rows are placeholders holding the base URL. Only if it is a
-  single undifferentiated feed does this become a real M:N case, and then the model cannot express
-  it: `sources.cell_id` is scalar, so one source cannot be claimed by two cells. That branch needs
-  either a source-level cell list or `_claim_for_cell` claiming additional cells. **Resolve as part
-  of W3 recon, and record which branch was taken.**
+- ~~**The MFDS RSS feed is registered twice and would ingest twice.**~~ — **closed by the W3
+  reconnaissance (2026-08-05).** The feed is per-board (`brdId`), and MFDS boards are
+  regulator-wide, so `data0008` 제개정고시등 genuinely belongs to both gated cells. Feed identity now
+  comes from the authority's `brdId` rather than our source slug, so the two subscriptions resolve
+  to **one Document claimed by two cells** — verified live on three boards. The duplicate this risk
+  predicted cannot occur, and Phase 1 now has a real M:N case rather than only a synthetic one.
 
 - **Annex row granularity** ([ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) open question 2) — ~12,000 rows for 화장품 안전기준 alone, against 116 annexes already ingested. **Owned here and due W4** (see *Annex row granularity* above); previously this file deferred it to 1.3 while 1.3 deferred it back here, leaving a critical-path decision with no owner.
 - **Diff synchronously or async?** [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) open question 4 — now carried as a task above rather than only as a risk, because it is due in the same W3–4 window as the clause schema.

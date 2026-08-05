@@ -18,7 +18,7 @@ starts at the first connector and assumes a stack already exists. It does not.
 | Phase | File | Roadmap | Weeks | Status |
 |---|---|---|---|---|
 | 0 | [phase0_foundation.md](phase0_foundation.md) | pre-M1 | W0–W2 | 🟢 done (4 items deferred to 1.5 / CI) |
-| 1.0 | [phase1.0_ingestion.md](phase1.0_ingestion.md) | Phase 1 · M0–4 | W1–W4 | 🟡 core done; 3 MFDS surfaces + discovery sweep await W3 recon |
+| 1.0 | [phase1.0_ingestion.md](phase1.0_ingestion.md) | Phase 1 · M0–4 | W1–W4 | 🟢 done (2026-08-05) — 8/8 acceptance, W3 recon complete |
 | 1.1 | [phase1.1_normalization.md](phase1.1_normalization.md) | Phase 1 | W3–W6 | ⬜ planned |
 | 1.2 | [phase1.2_ir_extraction.md](phase1.2_ir_extraction.md) | Phase 1 | W3–W8 | ⬜ planned |
 | 1.3 | [phase1.3_retrieval_qa.md](phase1.3_retrieval_qa.md) | Phase 1 | W5–W10 | ⬜ planned |

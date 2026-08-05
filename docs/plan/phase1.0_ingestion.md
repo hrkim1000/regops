@@ -1,6 +1,6 @@
 # Phase 1.0 — Ingestion
 
-- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W1–W4 · **Status:** 🟡 in progress (core done 2026-08-03; W3 recon items open)
+- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W1–W4 · **Status:** 🟢 **done (2026-08-05)** — 8/8 acceptance criteria, W3 reconnaissance complete. Three items transferred, named in *Deviations*
 - **Governed by:** [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md), [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) decisions 1 · 6, [import-agent.md](../import-agent.md)
 - **Decided here:** [ADR-0012](../design/ADR-0012-annex-version-identity.md) (annex version identity), [ADR-0013](../design/ADR-0013-unresolvable-effective-dates.md) (unresolvable effective dates)
 - **Depends on:** [phase0](phase0_foundation.md)
@@ -40,7 +40,7 @@ at "bytes are archived and a version row exists."
 - [x] `standard_references(number, edition, issuing_body, recognition_number, effective_date, withdrawal_date, status, official_url)` — **no `DocumentVersion`, no body text, and no column body text could occupy** ([ADR-0002](../design/ADR-0002-canonical-regulation-model.md) decision 2). No `text` column and no varchar over 512; `tests/unit/test_tier_d.py` fails if one is added
 - [x] Recognition-list connector — Tier D freshness is tracked through the recognition/harmonized **list**, which is an ingestible Tier B page ([ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 7). The standard itself is never fetched
 - [x] Seed from the `Standards` block of `mfds_samd` (IEC 62304 관련 가이드, GMP) — the source map already marks it metadata-only
-- [ ] **Recognition-list endpoint unverified** — the connector is built and unit-tested against a fixture, but the MFDS 인정 표준 목록 URL and column layout are a guess. Schedule seeded **disabled**; confirm during W3 recon and enable
+- [x] **Recognition list — there is no MFDS one.** W3 recon: the guessed URL (`m_211`) is 고시전문, and neither 의료기기 기준규격 nor the GMP 고시 names a single IEC/ISO identifier. Korea has no FDA-style Recognized Consensus Standards database; the connector was built against an FDA-shaped assumption and stays for Phase 2. The Tier D row keeps what it always had — metadata, no fetch path
 
 ### Connectors
 
@@ -49,8 +49,8 @@ at "bytes are archived and a version row exists."
 - [x] 행정규칙 본문조회 for 고시, including `<별표단위>` / `<별표내용>`
 - [x] Polite fetch: contactable `User-Agent`, `ETag` / `If-Modified-Since`, exponential backoff with jitter, `Retry-After`, per-host minimum interval
 - [x] The three HTTP-200 failure signatures detected explicitly — unregistered egress IP, ungranted scope, and `success` with `totalCnt 0`
-- [ ] MFDS RSS — notices, legislative notices, amendments. Connector built and unit-tested; the feed's **category parameter is unconfirmed** (spike still-open question 3), so the schedule is seeded disabled
-- [ ] MFDS 제개정고시등 listing — connector and 조회수 canonicalizer built and tested; **column layout unverified**, schedule seeded disabled
+- [x] **MFDS RSS — confirmed and enabled.** `https://www.mfds.go.kr/www/rss/brd.do?brdId={brdId}`; 35 boards mapped by fetching each and reading the channel title it declares. Four seeded: `data0008` 제개정고시등, `data0003` 법·시행령·시행규칙, `data0009` 입법/행정예고, `plc0168` 의료기기 행정처분. Closes spike still-open question 3
+- [x] **제개정고시등 — superseded by RSS, not scraped.** The same board is published as `data0008` with a `pubDate` per item and no `조회수` to strip, so the HTML scrape buys nothing. The listing connector and its `조회수` canonicalization stay built and tested — phase 2.0's Tier C work needs exactly that shape
 - [x] **Attachment pipeline** — `attachments` records 별표서식파일링크 / 별표서식PDF파일링크 per version as archival copy and fallback. **HWP/PDF extraction is not needed for ingestion**: `<별표내용>` arrives inline, confirmed live on 116 annexes across both cells ([ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 10 as revised). Binary archival is opt-in per source and off by default
 - [x] Annexes hashed and versioned **independently of the parent body** — as child `Document`s ([ADR-0012](../design/ADR-0012-annex-version-identity.md)), not as rows on a version
 
@@ -79,13 +79,13 @@ at "bytes are archived and a version row exists."
 
 - [x] Confirm 본문조회 returns annex text via `<별표단위>` — **re-verified with the live key 2026-08-03.** 116 annexes across 13 documents, including 화장품 안전기준's 별표 1 (사용할 수 없는 원료) and 별표 2 (사용상의 제한이 필요한 원료)
 - [x] **소관부처 code for 식품의약품안전처 = `1471000`** — verified live: 511 행정규칙 returned, all with `소관부처명 = 식품의약품안전처`. Lives in `regops_shared.constants.MFDS_ORG_CODE`, **not** in `.env`: it is a public identifier, and a gitignored file is where a reviewable constant goes to become invisible
-- [ ] Confirm 조문별 변경이력 granularity matches `ClauseDiff`
+- [ ] Confirm 조문별 변경이력 granularity matches `ClauseDiff` — **transferred to [phase1.1](phase1.1_normalization.md)**, which owns `ClauseDiff` and is the only place the answer can be acted on
 - [x] **Source discovery sweep** — `regulation.discover_sources`, weekly on the beat, writing `source_discovery_runs`. Relevance-filtered per cell and title-normalized so 중점/spacing differences do not read as gaps. Ran live; result in Risks below
 
 ### EU SaMD spike (non-gated, W3 → W12)
 
-- [ ] EUR-Lex fetch for MDR (EU) 2017/745 at reduced depth
-- [ ] Record multilingual and Tier C effort for the Phase 2 estimate — findings memo lands in phase 1.6
+- [ ] EUR-Lex fetch for MDR (EU) 2017/745 at reduced depth — **non-gated, W3→W12**, so it never fit inside 1.0's W1–W4 window. Tracked in [phase1.6](phase1.6_evaluation.md), where its findings memo lands
+- [ ] Record multilingual and Tier C effort for the Phase 2 estimate — same item, same owner
 
 ## Acceptance criteria
 
@@ -102,12 +102,14 @@ at "bytes are archived and a version row exists."
 
 - ~~**API key on the critical path**~~ — **closed.** Key in hand; first live fetch 2026-08-03 returned 200 on all 13 enabled sources. The account is authorised by **egress IP**, so this reopens on any change of network — that failure returns HTTP 200 with an error body, which the connector detects and files as an `auth_failure` drift alert rather than a healthy observation.
 - ~~**HWP extraction is the most likely schedule surprise**~~ — **closed.** `<별표내용>` arrives inline on both 법령 and 행정규칙 responses; no HWP or PDF parsing is on the Phase 1 path. The file links are recorded as a fallback for the case where `별표내용` comes back empty, which has not yet been observed.
-- 🟡 **Three MFDS surfaces are seeded disabled** — RSS, the 제개정고시등 listing, and the recognition list. Their connectors are built and tested against fixtures; what is missing is a confirmed endpoint. They are the *supplementary* change signals, so the gated cells are covered without them, but detection coverage is not yet measured against them. Enable during W3 recon.
+- ~~**Three MFDS surfaces are seeded disabled**~~ — **closed by the W3 reconnaissance (2026-08-05).** RSS is confirmed and enabled on four boards; the 제개정고시등 listing is superseded by one of them; the recognition list does not exist for MFDS. Every fetchable source is now enabled — the only disabled rows are the three reference-only portals, which have no connector at all.
 - 🔴 **We only see 현행, so an amendment is invisible from 공포 until 시행.** Measured live 2026-08-03 across the 9 gated 법령: **8 amendments are already 공포'd and unseen**, the oldest promulgated 2025-12-30 — seven months earlier. Detection latency for those is 시행 − 공포, between **2 months and 2.4 years**, which makes the ≤24h gate structurally unmeetable rather than merely unmet. Fetching is 1.0's job and nothing downstream can recover latency that ingestion never had.
 
   **Deferred to [phase1.1](phase1.1_normalization.md) by decision (2026-08-03)**, where diff and `effective_date` land anyway and the work is done once. The tasks and the measured numbers are recorded there, including the two findings that shape the design: a version is one **MST**, not one 시행일자 (화장품법 has 6 pending rows but 4 distinct MST), and an act with several 시행일자 is staged application belonging at clause level via `조문시행일자`. **Until it ships, detection latency for the 법령 sources is not measurable** — say so in the M4 report rather than quoting a number the pipeline cannot produce.
 
 - 🔴 **The catalog covers 6 of 72 in-scope MFDS 고시.** First live discovery sweep, 2026-08-03: 511 행정규칙 upstream, **72** naming 화장품 / 의료기기 / 디지털의료제품, **6 matched, 66 unmatched.** This is not a defect in the sweep — it is the number [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 11 was written to expose, and it is the first honest read on the ≥95% detection-coverage gate. Notable absences include 기능성화장품 기준 및 시험방법 and the entire 디지털의료제품법 family (7 고시, most amended within the last year). 우수화장품 제조 및 품질관리기준 (CGMP) also appears in the unmatched list but is **out of scope by decision** — the cosmetic `GMP` block was removed from the catalog on 2026-08-03, so the sweep listing it is the relevance filter being over-inclusive, which is its designed bias.
+
+  Re-measured after the W3 reconnaissance: **still 6 of 72.** The new RSS boards are change *signals*, not 행정규칙, so they improve detection *latency* rather than coverage — closing this gap is RA triage of the catalog, and nothing technical will move the number.
 
   The 66 are an **over-inclusive triage list, not a work queue**: some are genuinely out of scope even inside the filter (범부처 연구개발사업 운영관리규정, 소비자의료기기감시원 운영 규정). **Next action is RA triage** — decide which belong in `import-source-map.md`, then re-seed. That is a catalog decision, not a code change, which is exactly where it belongs.
 - 🔴 **A day the poller did not run leaves no trace, and detection coverage cannot tell that from a
@@ -250,7 +252,43 @@ The same viewer showed 화장품법 시행규칙 labelled 법률. `법종구분`
 smell of an enum value nothing produces. Now mapped: 3 laws, 3 decrees, 3 enforcement rules, 6
 notices.
 
-**13. `.env.test` could not have worked, and the reason generalises.**
+**13. The W3 reconnaissance, and what it changed.**
+Three surfaces were seeded disabled because their endpoints were guesses. Firing guessed URLs at a
+government host to discover their shape is the wrong way to learn, so they waited for a deliberate
+reconnaissance rather than a live experiment.
+
+- **RSS is `/www/rss/brd.do?brdId={brdId}`.** The directory page's link text cannot be used to map
+  boards — every anchor carries the *same* generic title attribute — so all 35 feeds were fetched
+  and each one's declared channel title read instead. That is the map.
+- **제개정고시등 is one of those boards** (`data0008`), so the HTML scrape is unnecessary: RSS gives
+  a `pubDate` per item and has no `조회수` to strip. The listing connector and its canonicalization
+  stay, because phase 2.0's Tier C work needs exactly that shape.
+- **There is no MFDS recognition list.** The guessed URL is 고시전문, and neither 의료기기 기준규격
+  nor the GMP 고시 contains a single IEC/ISO identifier. Korea does not publish an FDA-style
+  Recognized Consensus Standards database; that connector was built against an FDA-shaped
+  assumption and waits for Phase 2.
+- **4 of 35 feeds emit malformed XML** (`ntc0056`, `ntc0063`, `plc0138`, `plc0139`). None are ones
+  we subscribe to, but it is why the connector must fail closed on a parse error rather than treat
+  an unparseable body as an empty one.
+
+**14. The M:N case is real, and it works.**
+[phase1.1](phase1.1_normalization.md) recorded a risk that the two gated cells share no document, so
+fan-out could only be tested against a synthetic fixture — and that the seed would *duplicate* the
+RSS feed rather than share it. The reconnaissance settled both. MFDS boards are regulator-wide, so
+`data0008` genuinely belongs to both cells, and keying feed identity on the authority's `brdId`
+rather than our source slug makes it **one Document claimed by two cells**. Verified live: three
+boards, two cells each, one version each — the cosmetic fetch creates it, the SaMD fetch finds the
+same `content_hash`, records `unchanged`, and claims it. ADR-0002 decision 1 exercised against real
+data instead of a fixture.
+
+**15. The seeder never retired anything.**
+Re-seeding is upsert-only, so a source dropped from the catalog kept its schedule and kept polling —
+two stale RSS rows survived the catalog rewrite and were only noticed because their slugs appeared
+in a query. The seeder now **disables** rows absent from the catalog and records why on the source.
+Disable rather than delete: `documents.source_id` records which source discovered a document, and
+deleting would either fail on the foreign key or destroy that provenance.
+
+**16. `.env.test` could not have worked, and the reason generalises.**
 The `guard_env` hook blocks the agent from writing any `.env.*`, so the file was created by hand —
 and wiring it up exposed a defect in the phase-0 compose file that had been latent all along:
 **`environment:` wins over `env_file:` in Compose.** `x-service-base` pinned `DATABASE_URL`,
@@ -267,7 +305,7 @@ The same split-brain then surfaced on MinIO: the *server* password came from hos
 while the *client* password came from the stage file, so the first archive write failed with
 `SignatureDoesNotMatch`. Both now read the same interpolated variable, and the compose file says why.
 
-**14. Service images install `[dev]` extras.**
+**17. Service images install `[dev]` extras.**
 The documented way to run a service suite is inside the stack, but the images installed `/shared`
 without dev extras — so `docker compose run --rm regulation python -m pytest` failed on a clean
 image and only worked after someone pip-installed pytest by hand into a running container. That is
