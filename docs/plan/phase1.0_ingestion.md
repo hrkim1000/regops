@@ -110,6 +110,18 @@ at "bytes are archived and a version row exists."
 - 🔴 **The catalog covers 6 of 72 in-scope MFDS 고시.** First live discovery sweep, 2026-08-03: 511 행정규칙 upstream, **72** naming 화장품 / 의료기기 / 디지털의료제품, **6 matched, 66 unmatched.** This is not a defect in the sweep — it is the number [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 11 was written to expose, and it is the first honest read on the ≥95% detection-coverage gate. Notable absences include 기능성화장품 기준 및 시험방법 and the entire 디지털의료제품법 family (7 고시, most amended within the last year). 우수화장품 제조 및 품질관리기준 (CGMP) also appears in the unmatched list but is **out of scope by decision** — the cosmetic `GMP` block was removed from the catalog on 2026-08-03, so the sweep listing it is the relevance filter being over-inclusive, which is its designed bias.
 
   The 66 are an **over-inclusive triage list, not a work queue**: some are genuinely out of scope even inside the filter (범부처 연구개발사업 운영관리규정, 소비자의료기기감시원 운영 규정). **Next action is RA triage** — decide which belong in `import-source-map.md`, then re-seed. That is a catalog decision, not a code change, which is exactly where it belongs.
+- 🟡 **The archive only ever grows, and nothing defines what happens to an unreferenced object.**
+  Observed 2026-08-05: 2 of 17 objects in the dev bucket are referenced by no `document_versions`
+  row, left by a truncate-and-re-ingest during this build. That is the WORM contract working, not a
+  defect — deleting a row must not delete the evidence. But it also means a Tier D document archived
+  by mistake **cannot be removed**, and the four structural Tier D guards make that unlikely rather
+  than impossible. Harmless at 2 objects and a few MB; it needs a decision before the archive holds
+  anything a rightsholder or customer can compel action on. Recorded as
+  [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) open question 5; not Phase 1 work.
+  Reconcile with:
+  `select count(*) from document_versions` versus the bucket listing — the two are not expected to
+  match, and the gap is the thing to watch rather than to zero out.
+
 - **ADR-0002 open question 3** — `canonical_key` derivation. Answered for MFDS by construction: identity comes from the 법령ID / 행정규칙ID the response returns, so querying by 법령명 does not weaken it. EU ELI, FDA CFR citation and NMPA remain deferred.
 
 ## Deviations & decisions

@@ -184,6 +184,19 @@ ir_standard_citations(ir_id, standard_reference_id)
    [ADR-0013](ADR-0013-unresolvable-effective-dates.md) keeps `effective_date` NULL and retains the
    raw 부칙 phrase.
 
+5. **Archive retention — what happens to an object no row references?** Decision 6 makes the archive
+   write-once, and it holds: deleting a `document_versions` row does not delete the blob. Observed
+   2026-08-05, 2 of 17 objects in the dev bucket are unreferenced, left by a truncate-and-re-ingest
+   during the phase 1.0 build. That is the archive behaving as specified, and the audit property is
+   the point — evidence must not vanish because someone edited the database.
+
+   The consequence is that **the archive only ever grows**, and there is no defined path for the one
+   case where removal is legally required: a Tier D document archived by mistake cannot be removed,
+   and "we are structurally unlikely to do that" is not the same as a procedure. Needed before the
+   archive holds anything a customer or a rightsholder can compel action on — so before Phase 3, and
+   arguably before Phase 2's six-cell scale-up. Whatever the answer, it must be an *audited,
+   authorised* operation, not an ops-console delete.
+
 Decision 1's M:N claim now also covers annexes:
 [ADR-0012](ADR-0012-annex-version-identity.md) makes a 별표 a child `Document` with its own
 versions, so it is ingested once, claimed by every claiming cell, and versions independently of its
