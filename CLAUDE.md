@@ -283,17 +283,40 @@ Two remotes: `origin` (github.com/hrkim1000/regops — the real repo) and `start
   hoist them to the repo root. Publish a filtered snapshot at the same paths instead:
 
 ```bash
+set -e
 git fetch startup hrkim
-GIT_INDEX_FILE=.git/publish-index git read-tree --empty &&
-GIT_INDEX_FILE=.git/publish-index git add README.md docs ':!docs/data' ':!docs/memo' &&
-tree=$(GIT_INDEX_FILE=.git/publish-index git write-tree) &&
-commit=$(git commit-tree $tree -p FETCH_HEAD -m "docs: sync RegOps documentation") &&
-git push startup $commit:hrkim && rm -f .git/publish-index
+BASE=$(git rev-parse FETCH_HEAD)          # pin it NOW — see the warning below
+
+export GIT_INDEX_FILE=.git/publish-index
+git read-tree --empty
+git add README.md docs ':!docs/data' ':!docs/memo' || true   # exits 1 on the ignored-path hint
+TREE=$(git write-tree)
+unset GIT_INDEX_FILE
+
+COMMIT=$(git commit-tree "$TREE" -p "$BASE" -m "docs: sync RegOps documentation")
+
+# Verify before pushing: right parent, and a genuine fast-forward. The `&&` is deliberate —
+# the safety check must gate the push even if someone drops the `set -e`.
+git rev-parse --short "$COMMIT" "${COMMIT}^"
+git merge-base --is-ancestor "$BASE" "$COMMIT" && git push startup "$COMMIT":hrkim
+rm -f .git/publish-index
 ```
 
 This publishes the **working tree**, not committed state — commit to `origin` first so the two
-never diverge. Parenting on `FETCH_HEAD` keeps the push a fast-forward; never `--force` a repo
+never diverge. Parenting on the startup tip keeps the push a fast-forward; never `--force` a repo
 owned by another account.
+
+> **`FETCH_HEAD` is a session-global symbol and any other `git fetch` overwrites it.** Capture it
+> into `BASE` immediately, and never read it again later in the procedure. This bit twice on
+> 2026-08-05: a `git fetch origin` earlier in the session left `FETCH_HEAD` pointing at *this*
+> repo's `main`, so `-p FETCH_HEAD` built the sync commit on the wrong lineage (caught only because
+> the push was rejected), and a `git ls-tree FETCH_HEAD` audit read the local repo while reporting
+> on the remote one — producing a confident, entirely false claim that code had been published to a
+> third-party repository. Pin the SHA, and verify the parent before pushing rather than after.
+>
+> The `|| true` is also load-bearing: `docs/data` is gitignored, so `git add` prints an
+> ignored-path hint and **exits 1** even though the exclusion pathspec did its job. In the old
+> `&&` chain that silently skipped `git write-tree`, leaving an empty `$tree`.
 
 ## Terminology Conventions
 
