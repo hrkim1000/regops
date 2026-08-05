@@ -58,13 +58,16 @@ A decision left unmade is taken by whatever gets built first. These have deadlin
 
 | Decision | Due | Closes because |
 |---|---|---|
-| Four services, or fold `monitoring` into `regulation`? ([phase0](phase0_foundation.md) risks, ADR-0009) | **lapsed — confirm by W7** | 1.4 starts at W7; after that the reversal is no longer three tables and one seam |
-| Do `regulation` and `assistant` stay split? (ADR-0005 open question 1) | **lapsed — confirm by W5** | 1.3 builds `assistant` from W5; separating later means moving the embedding tables |
+| Four services, or fold `monitoring` into `regulation`? ([brief](../design/decision-2026-08-05-lapsed-service-boundaries.md)) | **lapsed — confirm by W7** | 1.4 starts at W7; after that the reversal is no longer three tables and one seam |
+| Do `regulation` and `assistant` stay split? ([brief](../design/decision-2026-08-05-lapsed-service-boundaries.md)) | **lapsed — confirm by W5** | 1.3 builds `assistant` from W5; separating later means moving the embedding tables |
 | Annex storage — does `annex_rows` exist, and who owns it? (ADR-0006 open question 3) | **W4** | 1.3's retrieval index is built on it at W5–6. [ADR-0012](../design/ADR-0012-annex-version-identity.md) settled the *container* (an annex is a child Document); the row granularity inside it is still open |
 | ~~Unresolvable effective dates~~ | **taken** | [ADR-0013](../design/ADR-0013-unresolvable-effective-dates.md) — null plus the retained raw 부칙 phrase |
 | Diff inline, or split as its own stage? (ADR-0003 open question 4) | **W3–4** | It is a stage boundary in the 1.1 pipeline |
 
-The first two were scoped as W1 decisions and Phase 0 closed without taking them.
+The first two were scoped as W1 decisions; phase 0 and phase 1.0 both closed without taking them.
+A [decision brief](../design/decision-2026-08-05-lapsed-service-boundaries.md) sets out the cost
+curve for each so they can be taken rather than deferred a third time — the W5 one now falls inside
+[phase1.1](phase1.1_normalization.md)'s own window.
 
 ## Working with these files
 

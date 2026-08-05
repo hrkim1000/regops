@@ -71,10 +71,24 @@ per-connector canonicalizers this phase takes over.
       inside it**. [phase1.3](phase1.3_retrieval_qa.md) assumes a structured row store exists and
       accepts on exact-match ingredient lookup; nothing currently creates one. 1.3 inherits the
       answer and cannot build the index without it
-- [ ] Feeds the same decision: 별표 1 of 화장품 안전기준 규정 is 340,074 chars / 7,367 lines and
-      별표 2 is 218,995 / 4,235, so one `Clause` per row is **~12,000 rows for that 고시 alone** —
-      and phase 1.0 already ingested **116 annexes** across the two cells
+- [ ] **Measured, not estimated (2026-08-05).** Counting the content lines of every ingested annex:
+
+      | | |
+      |---|---|
+      | annex documents | **278** |
+      | content lines, whole corpus | **31,971** — the upper bound if one `Clause` per line |
+      | table-shaped / prose | **204 / 74** |
+      | largest single annex | 별표 1 사용할 수 없는 원료 — **3,680 lines, 100% box-drawing** |
+      | 화장품 안전기준 등에 관한 규정 | 4 annexes, **6,519 lines** (89% box) |
+      | 의료기기법 시행규칙 | 93 annexes, **8,105 lines** (62% box) |
+
+      Earlier drafts of this file estimated "~12,000 rows for that 고시 alone" and "tens of
+      thousands per 고시". Both were too high per document and the corpus total was never counted.
+      **31,971 rows is an ordinary table**, which argues for `clauses` carrying annex rows directly
+      rather than a separate store — decide on this number, not on the estimate it replaces
       ([ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) open question 2)
+- [ ] **Table mode is the majority case, not the exception** — 204 of 278. A parser that treats
+      prose as the norm and tables as a special case has the ratio backwards
 - [ ] Outcome goes in an **ADR**, not this file — it changes the storage model and 1.3 reads it
 
 ### 시행예정 (pending-effect) versions — **carried over from [phase1.0](phase1.0_ingestion.md), and it gates detection latency**
@@ -125,6 +139,37 @@ ones.
 > appear on the SaMD side, and 별표 3 of the cosmetic 고시 is pure prose. Re-run against real
 > ingestion rather than treating the spike as settled.
 
+### What "escalate" means, concretely
+
+Written down before the falsifiers run, because the failure mode is not refusing to escalate — it
+is **not noticing that you already decided not to**. Adding one column is a five-minute change that
+feels like progress; it is also the exact action ADR-0002 decision 3 forbids, and nothing in a diff
+review makes it look different from ordinary schema work.
+
+**A falsifier has fired if any of these is true.** These are the triggers, not judgement calls:
+
+1. A column is proposed on `clauses` that only one domain populates.
+2. A parser stage is proposed that runs for one domain and not the other.
+3. A second stage is proposed between Section Extraction and IR extraction.
+4. An annex table row cannot be addressed by `clause_path` without inventing a second scheme.
+
+**When one fires, in this order:**
+
+1. **Stop the change.** Do not commit the column, the stage, or the workaround — not even behind a
+   flag or a TODO. A merged workaround is a decision taken silently.
+2. **Write the evidence down**: the document and clause that cannot be represented, what was tried,
+   and why the shared model fails on it. One paragraph is enough; it becomes the ADR's Context.
+3. **Say it out loud to the human who owns the plan**, naming the ADR at risk (0002 decision 3 or
+   0004 decision 3) and the consequence: *Phase 2's six-cell build rests on this, so a Phase 2
+   re-plan is on the table.* Not "we hit a snag."
+4. **The decision is an ADR**, not a plan-file note — it changes the canonical model.
+5. **1.2 and 1.3 do not start against the affected model** until that ADR exists. They inherit the
+   clause schema; building on a model known to be wrong converts one bad week into three.
+
+**What does *not* count as escalation:** a comment, a TODO, a `# domain-specific for now`, a
+column that is nullable "so it does not really branch", or raising it and proceeding while waiting
+for an answer. The point of a falsifier is that it stops something.
+
 ## Acceptance criteria
 
 - [ ] 화장품법 and 의료기기법 both parse to clauses through one pipeline, no domain branch
@@ -146,7 +191,7 @@ ones.
   to **one Document claimed by two cells** — verified live on three boards. The duplicate this risk
   predicted cannot occur, and Phase 1 now has a real M:N case rather than only a synthetic one.
 
-- **Annex row granularity** ([ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) open question 2) — ~12,000 rows for 화장품 안전기준 alone, against 116 annexes already ingested. **Owned here and due W4** (see *Annex row granularity* above); previously this file deferred it to 1.3 while 1.3 deferred it back here, leaving a critical-path decision with no owner.
+- **Annex row granularity** ([ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) open question 2) — **measured 2026-08-05: 31,971 content lines across 278 annexes, 204 of them table-shaped.** Smaller than this file previously estimated, and small enough that a separate row store may not be warranted. **Owned here and due W4** (see *Annex row granularity* above); previously this file deferred it to 1.3 while 1.3 deferred it back here, leaving a critical-path decision with no owner.
 - **Diff synchronously or async?** [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) open question 4 — now carried as a task above rather than only as a risk, because it is due in the same W3–4 window as the clause schema.
 - **Multilingual is modelled, not built.** First real exercise is the EU spike. Do not let Korean-only assumptions leak into the schema.
 - **Detection latency stays unmeasurable for the 법령 sources until 시행예정 ships.** Report it as unmeasurable rather than quoting a number the pipeline cannot produce.
