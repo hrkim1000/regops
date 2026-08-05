@@ -48,6 +48,7 @@ Go/No-Go report.
 - [ ] Citation accuracy and hallucination rate measured here — **not inferred from unit coverage**
 - [ ] **"Needs verification" rate reported per domain beside them** ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 7). It is not a gate, and it is what keeps two of the gates honest: a system that refuses every question scores perfectly on citation accuracy and hallucination rate. Report answer rate and refusal rate with every scored run
 - [ ] Model and prompt versions pinned and recorded with every run
+- [ ] **Score detection coverage against *scheduled* polls, not observed ones.** A day the poller did not run leaves no row in `fetch_observations` at all, so coverage computed over observations divides by the polls that happened rather than the polls that were due — and downtime silently *improves* the number. Observed for real on 2026-08-04 ([phase1.0](phase1.0_ingestion.md) risks): 28 observations on 08-03, 16 on 08-05, none on 08-04 while the stack was down. Derive expected polls from `source_schedules.interval_seconds` over the measurement window and report the shortfall as an explicit **uptime caveat** beside the gate. A gate that improves when the system is off is not measuring the system
 
 ### Pilot (W11–16)
 
@@ -71,7 +72,7 @@ Go/No-Go report.
 
 | Gate | Threshold | Method |
 |---|---|---|
-| Detection coverage | ≥ 95% | Share of actual amendments captured, verified by after-the-fact manual comparison |
+| Detection coverage | ≥ 95% | Share of actual amendments captured, verified by after-the-fact manual comparison. **Score against *scheduled* polls, not observed ones** — see below |
 | Detection latency | ≤ 24h | Authority publication → owner alert |
 | Citation accuracy | ≥ 90% | Share of cited clauses that actually support the answer, blind RA assessment |
 | Hallucination rate | ≤ 2% | Outputs citing non-existent clauses or contradicting source text |

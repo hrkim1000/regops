@@ -110,6 +110,26 @@ at "bytes are archived and a version row exists."
 - 🔴 **The catalog covers 6 of 72 in-scope MFDS 고시.** First live discovery sweep, 2026-08-03: 511 행정규칙 upstream, **72** naming 화장품 / 의료기기 / 디지털의료제품, **6 matched, 66 unmatched.** This is not a defect in the sweep — it is the number [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 11 was written to expose, and it is the first honest read on the ≥95% detection-coverage gate. Notable absences include 기능성화장품 기준 및 시험방법 and the entire 디지털의료제품법 family (7 고시, most amended within the last year). 우수화장품 제조 및 품질관리기준 (CGMP) also appears in the unmatched list but is **out of scope by decision** — the cosmetic `GMP` block was removed from the catalog on 2026-08-03, so the sweep listing it is the relevance filter being over-inclusive, which is its designed bias.
 
   The 66 are an **over-inclusive triage list, not a work queue**: some are genuinely out of scope even inside the filter (범부처 연구개발사업 운영관리규정, 소비자의료기기감시원 운영 규정). **Next action is RA triage** — decide which belong in `import-source-map.md`, then re-seed. That is a catalog decision, not a code change, which is exactly where it belongs.
+- 🔴 **A day the poller did not run leaves no trace, and detection coverage cannot tell that from a
+  quiet day.** Observed 2026-08-05: `fetch_observations` has 28 rows on 08-03 and 16 on 08-05, and
+  **nothing at all on 08-04** — the stack was down. `advance()` moves `next_due_at` forward from
+  *now* rather than from the missed due time, which is deliberate (a source that was down for a day
+  must not fire a day of catch-up polls at a host that has just proven fragile) and is not the
+  problem.
+
+  The problem is that [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 3
+  writes an observation on every *attempt*, so it separates "we missed it" from "we never looked" —
+  but there is a third state it does not capture: **we never looked and nothing records that we
+  should have.** Coverage computed over observations therefore divides by the polls that happened,
+  not the polls that were due, and downtime silently improves the number. That is the wrong
+  direction for a gate that is meant to be falsifiable.
+
+  Partially detectable live — `next_due_at` versus now shows a source overdue by N intervals at any
+  instant — but **not reconstructable after the fact**, because the beat advances the schedule on
+  recovery and the skipped intervals leave nothing behind. Measurement belongs in
+  [phase1.6](phase1.6_evaluation.md), not here; the fix is to score coverage against *scheduled*
+  polls rather than observed ones.
+
 - 🟡 **The archive only ever grows, and nothing defines what happens to an unreferenced object.**
   Observed 2026-08-05: 2 of 17 objects in the dev bucket are referenced by no `document_versions`
   row, left by a truncate-and-re-ingest during this build. That is the WORM contract working, not a
