@@ -53,8 +53,13 @@ product type) and served by exact and prefix match on the identifier columns. Wh
 the annex's *title and header* — enough for "화장품에 쓸 수 없는 원료 목록이 있나?" to retrieve the
 annex, after which the lookup is relational.
 
-Each row remains a `Clause` with `path_segments = [별표N, row]` so it is independently citable
-(ADR-0004). Citability and embedding are separate concerns; only the latter is skipped.
+Each row remains a `Clause` so it is independently citable (ADR-0004). Citability and embedding are
+separate concerns; only the latter is skipped.
+
+> **Path refined by [ADR-0014](ADR-0014-annex-row-granularity.md) decision 3** to
+> `[별표N, 표M, 행K]`. The two-segment sketch assumed one table per annex; the corpus has 62 tables
+> across 24 별표, so a row needs its table named to stay addressable when another is inserted ahead
+> of it — and the 표 node is where the per-table column map lives.
 
 ### 3. Hybrid retrieval, split by what the query keys on
 
@@ -139,8 +144,9 @@ model and make an amendment rewrite history in both.
 
 ```sql
 clause_embeddings(clause_id, scope, vector, model, dim, created_at)   -- scope = 조-level passage
-annex_rows(id, clause_id, 별표번호, row_index, substance, cas_no,
-           limit_value, condition_text, product_type)                -- decision 2
+-- annex_rows: SUPERSEDED by ADR-0014. Annex rows are `clauses` with
+-- path_segments = [별표N, 표M, 행K] and per-table columns in clauses.row_columns (jsonb).
+-- The fixed column set below fits 별표 2 of one 고시 and nothing else.
 queries(id, tenant_id, cell_id, text, asked_by, asked_at)
 answers(id, query_id, text, confidence, status, llm_provider, llm_model,
         document_version_scope, effective_date_scope)                -- status: answered | needs_verification
@@ -154,9 +160,15 @@ verification_results(answer_id, claim_index, verdict, reason, verifier_model)
    latency than it buys at this corpus size? Decide with the golden set, not in advance.
 2. **Merge weighting** between lexical and vector results. Regulatory corpora are identifier-dense
    (decision 3), so the usual defaults probably over-weight vector. Needs tuning per domain.
-3. **Annex row-store vs. clause store duplication** — `annex_rows` and `clauses` hold the same
-   content in two shapes. Acceptable denormalisation for lookup speed, or a single store with a
-   structured overlay? Leaning the former; revisit if the row count makes sync a burden.
+3. ~~**Annex row-store vs. clause store duplication**~~ — **closed by
+   [ADR-0014](ADR-0014-annex-row-granularity.md): there is no `annex_rows` table.** An annex table
+   row is a `Clause` addressed by `clause_path` like any other, with per-table columns in a `jsonb`
+   field, so `ir_citations` needs no branch and there is no second store to keep in sync. The
+   `annex_rows` line in *Schema additions* below is superseded.
+
+   Decisions 1 and 2 above are **untouched**: rows are still not embedded and are still served by
+   exact match. That is a *retrieval* decision; where rows are *stored* is a separate one, and the
+   two were being conflated. The original reasoning follows.
 
    > **The row count was measured on 2026-08-05, and it removes the premise.** This question leans
    > toward a separate store *conditionally* — "revisit if the row count makes sync a burden" — and

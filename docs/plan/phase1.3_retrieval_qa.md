@@ -30,8 +30,8 @@ Retrieval in Phase 1 is hybrid search over clauses only.
 - [ ] `clause_embeddings` in the `assistant` service. Coupling the embedding lifecycle to the clause lifecycle would make a model swap a `regulation` migration
 - [ ] pgvector, `nomic-embed-text` 768-dim, HNSW cosine — pinned regardless of generation provider
 - [ ] **Embed at 조 level with 항/호/목 rolled in; cite at the finest clause actually used**
-- [ ] **Annex table rows are not embedded** — served from a structured row store by exact match. Embedding every ingredient row is wasteful; embedding the whole annex is useless for retrieval
-- [ ] Build against the annex-storage decision **taken in [phase1.1](phase1.1_normalization.md) by W4** ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) open question 3 — whether `annex_rows` exists alongside `clauses`, and who owns it). If W4 passes without that ADR, escalate: the index cannot be built on an undecided storage model
+- [ ] **Annex table rows are not embedded** — served by exact match. Embedding every ingredient row is wasteful; embedding the whole annex is useless for retrieval. Embed the annex's *title and header* so "화장품에 쓸 수 없는 원료 목록이 있나?" still retrieves it, after which the lookup is relational
+- [ ] **The annex-storage decision is taken** — [ADR-0014](../design/ADR-0014-annex-row-granularity.md), 2026-08-06. There is **no `annex_rows` table**: a row is a `Clause` with `path_segments = [별표N, 표M, 행K]` and its columns in `clauses.row_columns` (`jsonb`, keyed by the table's own header labels). Exact-match lookup is a `row_columns ->> '원료명'` predicate against `clauses`, already proven on the real corpus — `갈라민트리에치오다이드` → `별표1/표1/행1`. 1,944 rows are in the store today, so no separate index is needed for scale
 - [ ] Re-embedding path on model change, isolated to this service
 
 ### Retrieval (pipeline — deterministic)

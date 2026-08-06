@@ -219,11 +219,11 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
 | Service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🟡 `assistant` split taken; `monitoring` held to W7 |
-| Architecture decisions | [ADR-0001 – ADR-0013](docs/design/) | 🟢 proposed, complete for Phase 1 |
+| Architecture decisions | [ADR-0001 – ADR-0016](docs/design/) | 🟢 proposed, complete for Phase 1 |
 | Phase plan — 13 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
 | Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
 | Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | 🟢 done (2026-08-05) — 20 sources live, 8/8 acceptance |
-| Normalization — clause schema, diff | [phase1.1](docs/plan/phase1.1_normalization.md) | ⬜ planned (W3–6) |
+| Normalization — clause schema, diff | [phase1.1](docs/plan/phase1.1_normalization.md) | 🟢 done (2026-08-06) — 25,729 clauses over 526 documents, 9/9 acceptance, both falsifiers not triggered |
 | IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | ⬜ planned (W3–8) |
 | Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | ⬜ planned (W5–10) |
 | Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | ⬜ planned (W7–10) |

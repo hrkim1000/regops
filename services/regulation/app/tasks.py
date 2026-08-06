@@ -14,12 +14,14 @@ import structlog
 from sqlalchemy import select
 
 from regops_shared.db import sync_session
-from regops_shared.models import Source, SourceSchedule
+from regops_shared.models import DocumentVersion, Source, SourceSchedule
 from regops_shared.models.base import utcnow
 
 from .celery_app import celery_app
+from .diff import diff_version
 from .discovery import fetch_admrul_index, reconcile
 from .ingest import ingest_source
+from .parse import DIFF_TASK, parse_version
 from .scheduling import advance
 
 log = structlog.get_logger(__name__)
@@ -112,18 +114,67 @@ def discover_sources() -> dict[str, int | bool]:
 
 
 @celery_app.task(name="regulation.parse_document_version")
-def parse_document_version(document_version_id: str) -> dict[str, str]:
-    """Phase 1.1 owns this. Registered here so 1.0's hand-off has a real endpoint to reach.
+def parse_document_version(document_version_id: str) -> dict[str, object]:
+    """Archived bytes → clauses, then hand off to the diff stage by name (ADR-0015).
 
-    Phase 1.0 stops at "bytes are archived and a version row exists"; parsing, clause segmentation,
-    ``effective_date`` extraction and diffing are the next slice. This logs the hand-off so the
-    queue depth is observable before there is anything to consume it.
+    Reads from the WORM archive, never the network, so re-running this over the corpus after a
+    profile improvement costs nothing at the authority.
     """
-    log.info("parse.pending", document_version_id=document_version_id, phase="1.1")
-    return {"document_version_id": document_version_id, "status": "pending_phase_1_1"}
+    version_id = uuid.UUID(document_version_id)
+    with sync_session() as session:
+        version = session.get(DocumentVersion, version_id)
+        if version is None:
+            log.warning("parse.unknown_version", document_version_id=document_version_id)
+            return {"document_version_id": document_version_id, "status": "unknown_version"}
+        result = parse_version(session, version)
+
+    if not result.ok:
+        # The version was removed and a drift alert raised. Nothing to diff, and emitting a change
+        # event here is exactly what ADR-0003 decision 6 forbids.
+        return {
+            "document_version_id": document_version_id,
+            "status": "drift",
+            "signal": result.drift.value if result.drift else None,
+        }
+
+    celery_app.send_task(DIFF_TASK, args=[document_version_id], queue=QUEUE)
+    if result.successor_to_rediff is not None:
+        # A re-parse invalidated the successor's diff against this version too. Re-enqueue it so
+        # the change history heals rather than losing a link (ADR-0015).
+        celery_app.send_task(DIFF_TASK, args=[str(result.successor_to_rediff)], queue=QUEUE)
+
+    return {
+        "document_version_id": document_version_id,
+        "status": "parsed",
+        "profile": result.profile,
+        "clauses": result.clauses_written,
+        "rediff_successor": str(result.successor_to_rediff) if result.successor_to_rediff else None,
+    }
+
+
+@celery_app.task(name="regulation.diff_document_version")
+def diff_document_version(document_version_id: str) -> dict[str, object]:
+    """Diff against the previous version, emit change events, flag superseded citations."""
+    version_id = uuid.UUID(document_version_id)
+    with sync_session() as session:
+        version = session.get(DocumentVersion, version_id)
+        if version is None:
+            log.warning("diff.unknown_version", document_version_id=document_version_id)
+            return {"document_version_id": document_version_id, "status": "unknown_version"}
+        result = diff_version(session, version)
+
+    return {
+        "document_version_id": document_version_id,
+        "status": "baseline" if result.baseline else "diffed",
+        "counts": result.counts,
+        "change_events": result.change_events,
+        "needs_review": result.needs_review,
+        "citations_superseded": result.citations_superseded,
+    }
 
 
 __all__ = [
+    "diff_document_version",
     "discover_sources",
     "dispatch_due_sources",
     "fetch_source",

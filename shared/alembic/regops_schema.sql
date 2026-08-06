@@ -6,19 +6,23 @@
 -- instead of replaying the migration history.
 --
 -- NOTE: dumped with --no-privileges, so the audit_log GRANT/REVOKE from migration 0001 and the
--- regulation-table grants from 0002 are NOT represented here. Append-only enforcement lives in
--- the migration and in infra/postgres/init/01-app-role.sh (ADR-0011).
+-- regulation-table grants from 0002/0003 are NOT represented here. Append-only enforcement lives
+-- in the migration and in infra/postgres/init/01-app-role.sh (ADR-0011).
 --
--- Two absences in this file are load-bearing and deliberate:
+-- Four absences in this file are load-bearing and deliberate:
 --   * fetch_observations has no request-URL column   -- ADR-0003 decision 13
 --   * standard_references has no text column and no varchar over 512  -- ADR-0002 decision 2
+--   * clauses has no domain-specific column          -- ADR-0002 decision 3; a SaMD-only or
+--     Cosmetic-only column here is the phase 1.1 falsifier firing, not a schema detail
+--   * there is no annex_rows table                   -- ADR-0014; an annex table row is a Clause,
+--     so the citation contract needs no branch and there is no second store to keep in sync
 --
 
 --
 -- PostgreSQL database dump
 --
 
-\restrict QutmRTmUYhIaL7NILgYimKabjq0QBpSW9Ef3xCH4mRuZURLnsm9Z40vYVnhnebJ
+\restrict chtDf8ehvaDgHMJOk58ceJPh1rPhoeex9DzVT4V0eCeQt0ZKssiN8nnZhYbQaYg
 
 -- Dumped from database version 16.13
 -- Dumped by pg_dump version 16.13
@@ -58,6 +62,32 @@ CREATE TYPE public.authority AS ENUM (
 
 
 --
+-- Name: change_kind; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.change_kind AS ENUM (
+    'added',
+    'removed',
+    'modified',
+    'renumbered',
+    'moved'
+);
+
+
+--
+-- Name: clause_kind; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.clause_kind AS ENUM (
+    'prose',
+    'heading',
+    'table',
+    'table_row',
+    'form'
+);
+
+
+--
 -- Name: doc_type; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -91,7 +121,9 @@ CREATE TYPE public.drift_signal AS ENUM (
     'record_count_delta',
     'missing_root',
     'auth_failure',
-    'empty_annex_body'
+    'empty_annex_body',
+    'zero_clauses',
+    'clause_count_delta'
 );
 
 
@@ -105,6 +137,18 @@ CREATE TYPE public.fetch_outcome AS ENUM (
     'not_modified',
     'skipped',
     'error'
+);
+
+
+--
+-- Name: ir_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.ir_status AS ENUM (
+    'draft',
+    'locked',
+    'stale',
+    'superseded'
 );
 
 
@@ -245,6 +289,71 @@ CREATE TABLE public.cells (
 
 
 --
+-- Name: change_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.change_events (
+    id uuid NOT NULL,
+    clause_diff_id uuid NOT NULL,
+    cell_id uuid NOT NULL,
+    document_id uuid NOT NULL,
+    detected_at timestamp with time zone NOT NULL,
+    severity character varying(16),
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: clause_diffs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.clause_diffs (
+    id uuid NOT NULL,
+    from_version_id uuid,
+    to_version_id uuid NOT NULL,
+    clause_path character varying(512) NOT NULL,
+    from_clause_path character varying(512),
+    change_kind public.change_kind NOT NULL,
+    from_clause_id uuid,
+    to_clause_id uuid,
+    similarity double precision,
+    match_basis character varying(16),
+    needs_review boolean DEFAULT false NOT NULL,
+    reviewed_at timestamp with time zone,
+    reviewed_by uuid,
+    review_note text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: clauses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.clauses (
+    id uuid NOT NULL,
+    document_version_id uuid NOT NULL,
+    clause_path character varying(512) NOT NULL,
+    path_segments text[] NOT NULL,
+    level integer DEFAULT 1 NOT NULL,
+    ordinal integer DEFAULT 0 NOT NULL,
+    kind public.clause_kind DEFAULT 'prose'::public.clause_kind NOT NULL,
+    heading text,
+    text text DEFAULT ''::text NOT NULL,
+    row_columns jsonb,
+    effective_date date,
+    effective_date_phrase text,
+    parent_clause_id uuid,
+    source_ref character varying(64),
+    moved_from_ref character varying(64),
+    moved_to_ref character varying(64),
+    authority_changed boolean,
+    content_hash character varying(64) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: document_cells; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -315,6 +424,49 @@ CREATE TABLE public.fetch_observations (
     duration_ms integer,
     notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: ir_citations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ir_citations (
+    id uuid NOT NULL,
+    ir_id uuid NOT NULL,
+    document_id uuid NOT NULL,
+    document_version_id uuid NOT NULL,
+    clause_path character varying(512) NOT NULL,
+    effective_date date,
+    superseded_at timestamp with time zone,
+    superseded_by_diff_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: irs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.irs (
+    id uuid NOT NULL,
+    domain_profile public.domain NOT NULL,
+    bearer text,
+    modal character varying(64),
+    statement text NOT NULL,
+    condition_text text,
+    taxonomy_code character varying(64),
+    status public.ir_status DEFAULT 'draft'::public.ir_status NOT NULL,
+    supersedes_ir_id uuid,
+    stale_since timestamp with time zone,
+    locked_by uuid,
+    locked_at timestamp with time zone,
+    llm_provider character varying(32),
+    llm_model character varying(64),
+    prompt_version character varying(32),
+    rule_version character varying(32),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -491,6 +643,30 @@ ALTER TABLE ONLY public.cells
 
 
 --
+-- Name: change_events change_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.change_events
+    ADD CONSTRAINT change_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: clause_diffs clause_diffs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_diffs
+    ADD CONSTRAINT clause_diffs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: clauses clauses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clauses
+    ADD CONSTRAINT clauses_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: document_cells document_cells_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -520,6 +696,22 @@ ALTER TABLE ONLY public.documents
 
 ALTER TABLE ONLY public.fetch_observations
     ADD CONSTRAINT fetch_observations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ir_citations ir_citations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_citations
+    ADD CONSTRAINT ir_citations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: irs irs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.irs
+    ADD CONSTRAINT irs_pkey PRIMARY KEY (id);
 
 
 --
@@ -603,6 +795,30 @@ ALTER TABLE ONLY public.cells
 
 
 --
+-- Name: change_events uq_change_events_diff_cell; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.change_events
+    ADD CONSTRAINT uq_change_events_diff_cell UNIQUE (clause_diff_id, cell_id);
+
+
+--
+-- Name: clause_diffs uq_clause_diffs_target; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_diffs
+    ADD CONSTRAINT uq_clause_diffs_target UNIQUE (to_version_id, clause_path, change_kind);
+
+
+--
+-- Name: clauses uq_clauses_version_path; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clauses
+    ADD CONSTRAINT uq_clauses_version_path UNIQUE (document_version_id, clause_path);
+
+
+--
 -- Name: document_versions uq_document_versions_content; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -616,6 +832,14 @@ ALTER TABLE ONLY public.document_versions
 
 ALTER TABLE ONLY public.documents
     ADD CONSTRAINT uq_documents_canonical_key UNIQUE (canonical_key);
+
+
+--
+-- Name: ir_citations uq_ir_citations_target; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_citations
+    ADD CONSTRAINT uq_ir_citations_target UNIQUE (ir_id, document_version_id, clause_path);
 
 
 --
@@ -673,6 +897,69 @@ CREATE INDEX ix_audit_log_entity ON public.audit_log USING btree (entity_type, e
 
 
 --
+-- Name: ix_change_events_cell_id_detected_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_change_events_cell_id_detected_at ON public.change_events USING btree (cell_id, detected_at);
+
+
+--
+-- Name: ix_change_events_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_change_events_document_id ON public.change_events USING btree (document_id);
+
+
+--
+-- Name: ix_clause_diffs_from_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_diffs_from_version_id ON public.clause_diffs USING btree (from_version_id);
+
+
+--
+-- Name: ix_clause_diffs_needs_review; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_diffs_needs_review ON public.clause_diffs USING btree (needs_review) WHERE needs_review;
+
+
+--
+-- Name: ix_clause_diffs_to_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_diffs_to_version_id ON public.clause_diffs USING btree (to_version_id);
+
+
+--
+-- Name: ix_clauses_clause_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clauses_clause_path ON public.clauses USING btree (clause_path);
+
+
+--
+-- Name: ix_clauses_content_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clauses_content_hash ON public.clauses USING btree (content_hash);
+
+
+--
+-- Name: ix_clauses_document_version_id_ordinal; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clauses_document_version_id_ordinal ON public.clauses USING btree (document_version_id, ordinal);
+
+
+--
+-- Name: ix_clauses_path_segments; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clauses_path_segments ON public.clauses USING gin (path_segments);
+
+
+--
 -- Name: ix_document_versions_document_id_retrieved_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -698,6 +985,27 @@ CREATE INDEX ix_documents_parent_document_id ON public.documents USING btree (pa
 --
 
 CREATE INDEX ix_fetch_observations_source_id_fetched_at ON public.fetch_observations USING btree (source_id, fetched_at);
+
+
+--
+-- Name: ix_ir_citations_ir_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_ir_citations_ir_id ON public.ir_citations USING btree (ir_id);
+
+
+--
+-- Name: ix_ir_citations_version_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_ir_citations_version_path ON public.ir_citations USING btree (document_version_id, clause_path);
+
+
+--
+-- Name: ix_irs_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_irs_status ON public.irs USING btree (status);
 
 
 --
@@ -741,6 +1049,78 @@ CREATE INDEX ix_users_email ON public.users USING btree (email);
 
 ALTER TABLE ONLY public.attachments
     ADD CONSTRAINT attachments_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: change_events change_events_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.change_events
+    ADD CONSTRAINT change_events_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id);
+
+
+--
+-- Name: change_events change_events_clause_diff_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.change_events
+    ADD CONSTRAINT change_events_clause_diff_id_fkey FOREIGN KEY (clause_diff_id) REFERENCES public.clause_diffs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: change_events change_events_document_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.change_events
+    ADD CONSTRAINT change_events_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+
+
+--
+-- Name: clause_diffs clause_diffs_from_clause_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_diffs
+    ADD CONSTRAINT clause_diffs_from_clause_id_fkey FOREIGN KEY (from_clause_id) REFERENCES public.clauses(id) ON DELETE SET NULL;
+
+
+--
+-- Name: clause_diffs clause_diffs_from_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_diffs
+    ADD CONSTRAINT clause_diffs_from_version_id_fkey FOREIGN KEY (from_version_id) REFERENCES public.document_versions(id);
+
+
+--
+-- Name: clause_diffs clause_diffs_to_clause_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_diffs
+    ADD CONSTRAINT clause_diffs_to_clause_id_fkey FOREIGN KEY (to_clause_id) REFERENCES public.clauses(id) ON DELETE SET NULL;
+
+
+--
+-- Name: clause_diffs clause_diffs_to_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_diffs
+    ADD CONSTRAINT clause_diffs_to_version_id_fkey FOREIGN KEY (to_version_id) REFERENCES public.document_versions(id);
+
+
+--
+-- Name: clauses clauses_document_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clauses
+    ADD CONSTRAINT clauses_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: clauses clauses_parent_clause_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clauses
+    ADD CONSTRAINT clauses_parent_clause_id_fkey FOREIGN KEY (parent_clause_id) REFERENCES public.clauses(id) ON DELETE CASCADE;
 
 
 --
@@ -800,6 +1180,46 @@ ALTER TABLE ONLY public.fetch_observations
 
 
 --
+-- Name: ir_citations ir_citations_document_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_citations
+    ADD CONSTRAINT ir_citations_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+
+
+--
+-- Name: ir_citations ir_citations_document_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_citations
+    ADD CONSTRAINT ir_citations_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id);
+
+
+--
+-- Name: ir_citations ir_citations_ir_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_citations
+    ADD CONSTRAINT ir_citations_ir_id_fkey FOREIGN KEY (ir_id) REFERENCES public.irs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ir_citations ir_citations_superseded_by_diff_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_citations
+    ADD CONSTRAINT ir_citations_superseded_by_diff_id_fkey FOREIGN KEY (superseded_by_diff_id) REFERENCES public.clause_diffs(id) ON DELETE SET NULL;
+
+
+--
+-- Name: irs irs_supersedes_ir_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.irs
+    ADD CONSTRAINT irs_supersedes_ir_id_fkey FOREIGN KEY (supersedes_ir_id) REFERENCES public.irs(id);
+
+
+--
 -- Name: source_schedules source_schedules_source_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -843,5 +1263,5 @@ ALTER TABLE ONLY public.structure_drift_alerts
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QutmRTmUYhIaL7NILgYimKabjq0QBpSW9Ef3xCH4mRuZURLnsm9Z40vYVnhnebJ
+\unrestrict chtDf8ehvaDgHMJOk58ceJPh1rPhoeex9DzVT4V0eCeQt0ZKssiN8nnZhYbQaYg
 

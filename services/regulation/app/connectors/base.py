@@ -176,6 +176,11 @@ class FetchResult:
     #: Feed-level publication timestamp, where the source exposes one at that level.
     published_at: datetime | None = None
     notes: str | None = None
+    #: Annexes the response listed but returned no text for — ``("별표1", "서식3")``. They produce
+    #: **no artefact**, so nothing downstream would otherwise know they exist: the parse stage can
+    #: only raise ``EMPTY_ANNEX_BODY`` against a Document, and no Document is created. The ingest
+    #: stage turns this into an operator alert (ADR-0003 decision 10's fallback case).
+    empty_annexes: tuple[str, ...] = ()
 
 
 @runtime_checkable

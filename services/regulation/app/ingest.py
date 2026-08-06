@@ -55,6 +55,7 @@ from .connectors import (
     get_connector,
 )
 from .connectors.law_go_kr import parse_authority_date
+from .parsing import is_parseable
 
 log = structlog.get_logger(__name__)
 
@@ -183,13 +184,23 @@ def ingest_source(
 
     summary = IngestResult(source.slug, FetchOutcome.UNCHANGED, observation.id)
 
+    # Versions worth handing to the parse stage. A feed yields no clauses, so enqueueing one would
+    # spend a task to reach a no-op — and, before `is_parseable` existed, to delete the version.
+    to_parse: list[uuid.UUID] = []
+
     for artifact in fetched.artifacts:
         version = _apply_artifact(session, source, artifact, observation)
         if version is None:
             summary.unchanged_artifacts += 1
         else:
             summary.new_version_ids.append(version.id)
+            if is_parseable(artifact.ref.doc_type):
+                to_parse.append(version.id)
         session.commit()  # incremental — a retry resumes here, not at the fetch
+
+    if fetched.empty_annexes:
+        _flag_empty_annexes(session, source, fetched.empty_annexes)
+        session.commit()
 
     if fetched.standards:
         summary.standards_seen = _apply_standards(session, source, fetched.standards)
@@ -199,7 +210,7 @@ def ingest_source(
         observation.outcome = FetchOutcome.CHANGED
         summary.outcome = FetchOutcome.CHANGED
         session.commit()
-        for version_id in summary.new_version_ids:
+        for version_id in to_parse:
             _enqueue_parse(version_id)
 
     bound.info(
@@ -412,6 +423,43 @@ def _apply_standards(session: Session, source: Source, records: tuple[StandardRe
             existing.last_seen_at = now
     session.flush()
     return len(records)
+
+
+def _flag_empty_annexes(session: Session, source: Source, annexes: tuple[str, ...]) -> None:
+    """Raise one operator alert for annexes the authority listed but returned no text for.
+
+    **The parse stage cannot do this.** An empty ``별표내용`` yields no artefact, so no Document is
+    created, so there is nothing for the parse stage to fail on — the annex is simply not there.
+    9 exist across the gated corpus and 5 sit in 의약품등의 타르색소 지정과 기준 및 시험방법, whose
+    별표 *are* the colorant list. phase 1.1 names a silently absent annex as the worst outcome for
+    the cell whose obligations live in them, so it is raised here instead.
+
+    One open alert per source, refreshed rather than duplicated: the condition repeats on every poll
+    until the authority publishes the text or someone implements the file-link fallback (phase 2.0),
+    and a new row per day is how an alert channel gets muted.
+    """
+    listed = ", ".join(annexes)
+    existing = session.scalar(
+        select(StructureDriftAlert).where(
+            StructureDriftAlert.source_id == source.id,
+            StructureDriftAlert.signal == DriftSignal.EMPTY_ANNEX_BODY,
+            StructureDriftAlert.resolved_at.is_(None),
+        )
+    )
+    if existing is not None:
+        existing.actual = listed[:2000]
+        existing.detected_at = utcnow()
+    else:
+        session.add(
+            StructureDriftAlert(
+                source_id=source.id,
+                detected_at=utcnow(),
+                signal=DriftSignal.EMPTY_ANNEX_BODY,
+                expected=f"{len(annexes)} annex(es) with inline 별표내용",
+                actual=listed[:2000],
+            )
+        )
+    log.warning("ingest.empty_annexes", source=source.slug, count=len(annexes), annexes=listed)
 
 
 def _coerce_status(value: str) -> StandardStatus:

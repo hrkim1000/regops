@@ -24,7 +24,7 @@ from .base import (
     assert_ingestible,
 )
 from .http import PoliteFetcher, redact_url, resolve_url
-from .law_go_kr import AdmRuleConnector, LawConnector
+from .law_go_kr import AdmRuleConnector, LawConnector, PendingLawConnector
 from .mfds import MfdsListingConnector, MfdsRssConnector
 from .recognition_list import RecognitionListConnector
 
@@ -33,6 +33,7 @@ _CONNECTORS: Final[dict[str, type]] = {
     for cls in (
         LawConnector,
         AdmRuleConnector,
+        PendingLawConnector,
         MfdsRssConnector,
         MfdsListingConnector,
         RecognitionListConnector,
@@ -68,6 +69,7 @@ __all__ = [
     "MfdsRssConnector",
     "MissingCredentialError",
     "NonIngestibleSourceError",
+    "PendingLawConnector",
     "PoliteFetcher",
     "RecognitionListConnector",
     "SourceSpec",

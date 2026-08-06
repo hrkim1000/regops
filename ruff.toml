@@ -5,6 +5,12 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
 ignore = ["B008"]  # FastAPI Depends() in defaults is the framework idiom
 
+# Characters the ambiguous-unicode rules flag as look-alikes but that are the *actual* characters
+# Korean regulation text uses. The parser matches them literally — a 별표 outline really is numbered
+# Ⅰ. Ⅱ. Ⅲ., a fixed-width table really does use fullwidth brackets, and rewriting any of them to the
+# ASCII look-alike would stop the parser matching the source.
+allowed-confusables = ["–", "—", "Ⅰ", "×", "（", "）", "［", "］", "｛", "｝", "·", "ㆍ"]
+
 [lint.per-file-ignores]
 "shared/alembic/versions/*" = ["E501"]
 "**/tests/*" = ["S101"]

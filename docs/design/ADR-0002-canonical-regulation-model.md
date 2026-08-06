@@ -131,6 +131,19 @@ directly attacking the detection-coverage and false-positive story.
 is resolved by content similarity plus explicit mapping rows, reviewed by RA when confidence is low.
 This is a Phase 1 requirement, not a refinement: MFDS 고시 renumber routinely.
 
+> **What `moved` means, fixed in phase 1.1 after it misfired.** The five kinds are only useful if
+> each carries information. `moved` was first implemented as "same path, different position in
+> document order" — but `ordinal` is a single document-wide reading sequence, so inserting one
+> article shifts every clause below it. One 화장품법 amendment with **37 real edits produced 1,209
+> `moved` events**, which is precisely the false-alert failure this decision exists to prevent.
+>
+> In a numbered hierarchy **the path *is* the position**: 제8조 always follows 제7조, so a shifted
+> index says nothing a reader could act on. `moved` is therefore reserved for the case that does
+> carry information — **same clause number, different parent**, as when 제8조 is relocated from
+> 제2장 to 제3장 — and a clause whose own number changed is a `renumbered`. Same path plus same
+> content is simply unchanged and emits nothing. Corpus-wide the fix took the diff count from
+> 2,373 to **109**, all of them real.
+>
 > **The authority supplies this directly** — live API test, 2026-07-29
 > ([memo](spike-2026-07-29-mfds-source-recon.md)). 법령 본문조회 returns **`조문변경여부`,
 > `조문이동이전`, `조문이동이후`** per clause (74 of each on 화장품법), plus `항제개정유형` and

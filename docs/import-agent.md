@@ -61,17 +61,30 @@ fusing the two would multiply the work instead of adding to it.
 
 Where the line falls:
 
-| Connector | Parser Profile (phase 1.1) |
+| Connector | Parser Profile |
 |---|---|
 | talk to the host, honour cache validators, back off | clause segmentation into 조/항/호/목 |
-| identify which artefacts a response carries (body, each 별표) | `effective_date` from 부칙 |
+| identify which artefacts a response carries (body, each 별표) | `effective_date` and its 부칙 phrase |
 | read dates the API envelope hands over | anything requiring the regulation to be *read* |
 | produce the canonicalized bytes change detection hashes | |
 
 `effective_date` is therefore absent from a connector's output even where the envelope states
-시행일자 outright: it is a parse output
-([ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 5) and rides in artefact
-metadata until phase 1.1 writes it.
+시행일자 outright: the **parse stage** writes it, so there is one writer and a bad date is fixed by
+re-parsing the archive rather than re-fetching. The *value* comes from the envelope where the
+authority states one ([ADR-0016](design/ADR-0016-pending-effect-versions.md) decision 3, amending
+[ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 5); 부칙 supplies
+`effective_date_phrase` and is the fallback where no date is stated.
+
+**Three parser profiles, selected by source shape and never by domain** (phase 1.1):
+
+| Profile | Source | Why it is separate |
+|---|---|---|
+| `law_structured` | 법령 본문조회 | 조문/항/호/목 arrive as XML elements — the hierarchy is *given* |
+| `admrul_text` | 행정규칙 본문조회 | **no clause structure at all** — flat `조문내용` blobs, so the tree is segmented out of text |
+| `annex` | 별표 / 서식 / 별지 | a child Document read in table, prose or form mode; branches on `별표구분` |
+
+Both gated cells use all three. The split is 법령 vs 고시 vs 별표 — a source shape, not SaMD vs
+Cosmetic — which is what keeps the domain branch where the next section says it is.
 
 ### Politeness is part of the contract
 
@@ -135,7 +148,7 @@ Calling `lawSearch.do` with an `ID` returns a *list*, not 본문. Getting this w
 |---|---|---|---|
 | `law` | ✅ | ✅ | 법령 본문. 9 documents across the two gated cells |
 | `admrul` | ✅ | ✅ | 행정규칙 (고시) 본문, including `<별표단위>` |
-| `eflaw` | ✅ | ⬜ **phase 1.1** | 시행일법령 — 시행예정 versions. See *Known gaps* |
+| `eflaw` | ✅ | ✅ *(목록 only)* | 시행일법령 — enumerates 시행예정 versions. **There is no 본문조회 under this target**: `lawService.do?target=eflaw` answers HTTP 500 with an XHTML page, so bodies are fetched through `target=law&MST=…` (ADR-0016) |
 | `licbyl` | ✅ | ✅ *(metadata only)* | 별표·서식 목록 — file links, kept as fallback |
 | `expc` / `prec` | ❌ | ❌ | 법령해석 / 판례. Not granted, **not needed** — not regulation text and absent from the source map |
 
@@ -248,6 +261,11 @@ Section Extraction       ─┘
 Domain divergence lives in `IR.domain_profile` (`samd` | `cosmetic`) and the extraction rules keyed
 by it ([ADR-0002](design/ADR-0002-canonical-regulation-model.md) decision 3,
 [ADR-0004](design/ADR-0004-ir-extraction-and-domain-branching.md) decision 3).
+
+> **Tested against real ingestion on 2026-08-06, and it holds.** The built pipeline ran over the
+> whole archived corpus — 293 documents, 10,036 clauses — and both gated cells came out using the
+> same three parser profiles, with no domain-specific column on `clauses`, no domain-forked parser
+> and no pre-IR stage. See [phase1.1](plan/phase1.1_normalization.md) § Falsifiers.
 
 This is the architecture bet Phase 2's six-cell build rests on, which is why the two gated cells hold
 the *regulator* constant and vary the *domain*: MFDS SaMD and MFDS Cosmetic differ in exactly the
@@ -387,15 +405,48 @@ prevent.
 
 ## Known gaps
 
-- **시행예정 (`eflaw`) is not yet ingested — phase 1.1.** Polling 현행 only means an amendment is
-  invisible from 공포 until 시행. *(live)* 8 amendments across the 9 gated 법령 are already 공포'd and
-  unseen, the oldest promulgated seven months prior; latency for those is 시행 − 공포, between
-  2 months and 2.4 years. **Until this ships, detection latency for the 법령 sources is not
-  measurable** and must be reported as such rather than given a number.
-  A version is one **MST** (법령일련번호), not one 시행일자 — several 시행일자 on one MST are staged
-  application belonging at clause level.
-- **Catalog coverage is 6 of 72 in-scope MFDS 고시** *(live)*. The sweep measures it; closing it is
-  an RA triage decision against `import-source-map.md`, not a code change.
+- ~~**시행예정 (`eflaw`) is not yet ingested**~~ — **shipped in phase 1.1**
+  ([ADR-0016](design/ADR-0016-pending-effect-versions.md)). Polling 현행 only means an amendment is
+  invisible from 공포 until 시행, which for the gated 법령 is 2 months to 2.4 years. A version is one
+  **MST** (법령일련번호), not one 시행일자: MST 282015 returns three list rows and exactly one 본문.
+  Detection latency for the 법령 sources becomes measurable once the nine new sources have run on
+  cadence; until then report it as **unmeasured**, not zero.
+
+  The claim that *"several 시행일자 on one MST are staged application belonging at clause level"* was
+  **wrong** and is corrected in ADR-0016. `조문시행일자` is constant within a document across all nine
+  gated 법령; the staged dates live in 부칙 prose, are conditional on the addressee's annual revenue,
+  and are retained verbatim in `effective_date_phrase` rather than resolved to clause dates.
+- ~~**Catalog coverage is 6 of 72 in-scope MFDS 고시**~~ — **closed 2026-08-06: 59 of 59.** The
+  backlog the sweep was built to expose has been triaged and seeded. 53 고시 were added to the
+  catalog, 15 ruled out by decision, and the worklist now reports zero candidates. It stays
+  generated — [mfds-admrul-coverage.md](mfds-admrul-coverage.md), from `scripts/admrul_triage.py` —
+  because MFDS keeps promulgating and the number is only true until it does.
+
+  That report carries a third bucket the scheduled sweep does not: **고시 that are upstream but fall
+  outside the keyword filter**. ADR-0003 decision 11 requires the filter to be over-inclusive, and
+  this bucket is how well it holds. It found two real misses on its first run, now in the filter:
+  `의약품등의 타르색소 지정과 기준 및 시험방법` (a cosmetic colorant standard that 화장품의 색소 종류
+  및 기준 cross-references) and `인체적용제품의 위해성평가에 관한 규정` (인체적용제품 covers 화장품
+  **and** 의료기기 by statute, so it claims both cells). Neither names 화장품 or 의료기기 — **a
+  regulation can govern a domain without naming it**, which is the limit of title matching and the
+  reason the bucket is a standing report rather than a one-off audit. 16 rows remain in it, all
+  correctly excluded: 의약외품, 건강기능식품, 마약류, 식품.
+
+  **11 고시 are out of scope by decision** and are subtracted from the in-scope count (74 → 63):
+  체외진단의료기기 (8), the 범부처 R&D-programme rules (2), and 소비자의료기기감시원 운영 규정 (1).
+  Rationale is in [import-source-map.md](import-source-map.md) § SaMD; enforcement is
+  `DISCOVERY_EXCLUSIONS`, which must be a **negative** list — 체외진단의료기기 contains 의료기기, so
+  no edit to the positive keywords could have removed it. Excluded rows keep their own bucket in the
+  coverage report: *seen and rejected* and *never seen* are different states, and only the first can
+  be revisited.
+
+- **The sweep is scoped to `org=1471000`, so it cannot see an instrument another ministry issues.**
+  A structural blind spot, not a filter one: widening the keywords does not help. Three examples
+  surfaced by hand against the 511 — `(보건복지부) 의료기기 허가·신의료기술평가 등 통합운영에 관한
+  규정` (the sweep sees only the 식약처 counterpart of this jointly-issued instrument),
+  `의료기기 국내제작 곤란품목 추천업무 처리규정`, and `의약외품 가격표시제 실시요령`. Covering a
+  jointly-issued or externally-issued 고시 means adding a curated entry to `import-source-map.md`;
+  the discovery sweep will never propose it.
 - **Three MFDS surfaces are seeded disabled** — RSS, the 제개정고시등 listing, the recognition list.
   Connectors are built and tested against recorded fixtures; the endpoints are unconfirmed, and
   firing guessed URLs at a government host to find out is the wrong way to learn.

@@ -100,6 +100,34 @@ alert instead of merging. Silently reusing an existing document is the worst ava
 does not just lose an annex, it corrupts a different one's history — and nothing downstream can tell
 that apart from a genuine amendment.
 
+## Amendment: the annex's own effective date is published, and is now used *(2026-08-06)*
+
+The Context above rests on the authority publishing **`별표시행일자문자열`** — "an annex-specific
+enforcement date … precisely because annexes move on their own schedule". Phase 1.1 initially gave
+every annex its **parent's** `시행일자`, which is the value this ADR argues is not necessarily right.
+
+The field is real, and it is not where you would look for it: it sits in **`기본정보`**, at document
+level, not inside the `별표단위` it describes. Its shape is a date followed by the annexes that take
+effect on it:
+
+```text
+20260701:별표7의2,별표7의3,별표7의4,별표9,별표10,서식12의2,서식38의4   (의료기기법 시행규칙)
+20260124:서식29,서식31,서식36,서식39,서식42의2,…                        (디지털의료제품법 시행규칙)
+```
+
+The labels are exactly the `{별표구분}{번호}[의{가지번호}]` composite that `canonical_key` carries
+after `#`, so they join with no second naming scheme.
+
+**An annex listed there takes that date; one that is not listed inherits its body's.** The fallback
+is correct rather than lazy — an annex the amendment did not touch takes effect with the instrument
+carrying it.
+
+**This changes no value today, and that is the point.** Measured over the corpus: 21 of 278 annexes
+are named in such a list, and in every case the stated date equals the parent's, so nothing moved.
+But an inherited date that happens to be right is not the same as a stated one — it sits in the
+fourth element of the Citation tuple, where being wrong is undetectable by inspection. The day the
+authority stages an annex separately, the stated value is already correct instead of silently stale.
+
 ## Alternatives rejected
 
 - **Keep `attachments` as the ingestion route and add a version counter to it.** Reimplements

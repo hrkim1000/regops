@@ -103,10 +103,25 @@ def test_every_interval_override_carries_a_reason() -> None:
 
 def test_primary_law_sources_are_enabled() -> None:
     """The 국가법령정보 본문조회 endpoints are the ones the spike confirmed, and they are the
-    ingestion path for both gated cells."""
+    ingestion path for both gated cells.
+
+    Two connectors now, not one: every 법령 has a ``law_go_kr_eflaw`` companion tracking its
+    시행예정 amendments (ADR-0016). Both are enabled, because detection latency for the 법령 sources
+    is unmeasurable without the second.
+    """
     primary = [row for row in SEED if row.block is SourceBlock.PRIMARY_LAWS]
     assert len(primary) >= 6
-    assert all(row.enabled and row.connector == "law_go_kr_law" for row in primary)
+    assert all(row.enabled for row in primary)
+    assert all(row.connector in {"law_go_kr_law", "law_go_kr_eflaw"} for row in primary)
+
+
+def test_every_law_has_a_pending_effect_companion() -> None:
+    """Polling 현행 only makes an amendment invisible between 공포 and 시행 — 2 months to 2.4 years
+    for the gated 법령, so the ≤24h gate is structurally unmeetable without an eflaw source per law
+    (ADR-0016)."""
+    current = {row.params["name"] for row in SEED if row.connector == "law_go_kr_law"}
+    pending = {row.params["name"] for row in SEED if row.connector == "law_go_kr_eflaw"}
+    assert current == pending, f"법령 without a 시행예정 companion: {sorted(current - pending)}"
 
 
 # --- the M:N case Phase 1 otherwise lacks --------------------------------------

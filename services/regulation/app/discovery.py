@@ -33,7 +33,12 @@ from defusedxml.ElementTree import fromstring as parse_xml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from regops_shared.constants import DISCOVERY_KEYWORDS, MFDS_ORG_CODE, Authority
+from regops_shared.constants import (
+    DISCOVERY_EXCLUSIONS,
+    DISCOVERY_KEYWORDS,
+    MFDS_ORG_CODE,
+    Authority,
+)
 from regops_shared.models import Cell, Document, DocumentCell, Source, SourceDiscoveryRun
 from regops_shared.models.base import utcnow
 from regops_shared.settings import get_settings
@@ -89,14 +94,39 @@ def normalize_title(value: str) -> str:
     return folded
 
 
-def cells_for(title: str) -> frozenset[str]:
-    """Which cells a title plausibly belongs to. Empty means out of RegOps scope."""
+def excluded_by(title: str) -> str | None:
+    """The exclusion term that puts this title out of scope, or ``None``.
+
+    Separate from :func:`cells_for` so the triage report can say *which* decision removed a row.
+    "Seen and rejected" and "never seen" are different states, and only the first is revisitable.
+    """
+    normalized = unicodedata.normalize("NFC", title)
+    return next((term for term in DISCOVERY_EXCLUSIONS if term in normalized), None)
+
+
+def keyword_cells(title: str) -> frozenset[str]:
+    """Cells matched by the positive keywords alone, **ignoring exclusions**.
+
+    Only reporting needs this. It is what distinguishes "we saw this and ruled it out" from "this
+    was never in scope to begin with" — 국가연구개발성과 범부처 이어달리기 프로젝트 contains
+    범부처 but names no product domain, so calling it *excluded* credits a decision nobody made.
+    """
     normalized = unicodedata.normalize("NFC", title)
     return frozenset(
         cell
         for cell, keywords in DISCOVERY_KEYWORDS.items()
         if any(keyword in normalized for keyword in keywords)
     )
+
+
+def cells_for(title: str) -> frozenset[str]:
+    """Which cells a title plausibly belongs to. Empty means out of RegOps scope.
+
+    **Exclusion beats inclusion.** The keywords are substrings, so 체외진단의료기기 matches 의료기기
+    however the positive list is written — a negative list is the only thing that can remove it
+    (``DISCOVERY_EXCLUSIONS``).
+    """
+    return frozenset() if excluded_by(title) else keyword_cells(title)
 
 
 def _text(element, tag: str) -> str | None:

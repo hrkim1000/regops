@@ -33,7 +33,12 @@ from xml.etree.ElementTree import Element
 import structlog
 from defusedxml.ElementTree import fromstring as parse_xml
 
-from regops_shared.constants import AttachmentKind, DocType, DriftSignal
+from regops_shared.constants import (
+    CREDENTIAL_PLACEHOLDER,
+    AttachmentKind,
+    DocType,
+    DriftSignal,
+)
 from regops_shared.settings import get_settings
 
 from ..canonicalize import canonical_xml, normalize_text
@@ -208,7 +213,31 @@ class _LawGoKrConnector:
             etag=response.etag,
             last_modified=response.last_modified,
             published_at=artifacts[0].published_at if artifacts else None,
+            empty_annexes=self.empty_annexes(response.body),
         )
+
+    def empty_annexes(self, body: bytes) -> tuple[str, ...]:
+        """Annexes the authority listed but returned no text for.
+
+        Reported separately because :meth:`parse` **skips** them — an annex with no ``별표내용``
+        yields no artefact, so no Document is ever created and the parse stage can never raise
+        ``EMPTY_ANNEX_BODY`` against it. Without this the annex is *silently* absent, which
+        phase 1.1 names as the worst outcome for the cell whose obligations live in 별표.
+
+        Observed on 9 annexes across the gated corpus, 5 of them in 의약품등의 타르색소 지정과
+        기준 및 시험방법 — where the colorant list itself lives. ``attachments`` holds the
+        authority's own HWP/PDF links for a human to follow; fetching them is phase 2.0.
+        """
+        try:
+            root = parse_xml(body)
+        except Exception:
+            return ()
+        empty: list[str] = []
+        for unit in root.iter("별표단위"):
+            if not _first_text(unit, "별표내용"):
+                kind, label = annex_identity(unit)
+                empty.append(f"{kind}{label}")
+        return tuple(empty)
 
     # --- parsing (of the API envelope only; clause parsing is phase 1.1) -----------------
     def parse(self, body: bytes, *, spec: SourceSpec) -> tuple[FetchedArtifact, ...]:
@@ -399,10 +428,122 @@ class AdmRuleConnector(_LawGoKrConnector):
     effective_tags: ClassVar[tuple[str, ...]] = ("시행일자",)
 
 
+class PendingLawConnector(LawConnector):
+    """시행예정 법령 — the amendments already 공포'd but not yet in force.
+
+    **Why this exists.** Polling 현행 only means an amendment is invisible between 공포 and 시행,
+    which for the gated 법령 is 2 months to 2.4 years. The ≤24h detection-latency gate is not merely
+    unmet without this, it is structurally unmeetable.
+
+    Two properties of the API shape this, both confirmed live on 2026-08-06 (ADR-0016):
+
+    1. **``eflaw`` is a list-only target.** ``lawService.do?target=eflaw&MST=…`` answers **HTTP 500
+       with an XHTML error page**; the 본문 comes from ``target=law&MST=…``. So this connector reads
+       the eflaw *list* and then fetches each pending MST through the ordinary 법령 endpoint.
+    2. **A version is one MST, never one 시행일자.** The list enumerates ``(MST, 시행일자)`` pairs —
+       MST 282015 appears three times — but one MST yields exactly one 본문. Keying versions on
+       시행일자 would triplicate identical text and emit two phantom amendments through the diff
+       stage. ``efYd`` does not help: it is silently ignored, returning the same bytes.
+
+    The pending versions attach to the **same Document** as 현행 (both are 법령ID 002015). Nothing
+    marks them pending: a version is in force when ``effective_date <= today``, so the date already
+    answers the question and keeps answering it correctly as time passes.
+    """
+
+    key: ClassVar[str] = "law_go_kr_eflaw"
+    version: ClassVar[str] = "1.1.0"
+
+    #: 현행연혁코드 values. 연혁 is **excluded**: backfilling superseded versions would supply diff
+    #: baselines we did not archive ourselves, which the citation contract does not accept
+    #: (ADR-0003 decision 12). Phase 2 at the earliest.
+    PENDING_CODE: ClassVar[str] = "시행예정"
+
+    def fetch(self, spec: SourceSpec) -> FetchResult:
+        assert_ingestible(spec)
+        name = str(spec.params.get("name") or "").strip()
+        if not name:
+            raise AuthorityError(
+                f"{spec.slug}: eflaw source needs a 'name' param naming the 법령 it tracks",
+                signal=DriftSignal.MISSING_ROOT,
+            )
+
+        fetcher = self._fetcher or PoliteFetcher()
+        try:
+            listing = self._get(fetcher, build_url(spec), slug=spec.slug)
+            pending = self._pending_mst(listing, name=name)
+            artifacts: list[FetchedArtifact] = []
+            for mst in pending:
+                body = self._get(fetcher, self._body_url(mst), slug=f"{spec.slug}#{mst}")
+                artifacts.extend(self.parse(body, spec=spec))
+        finally:
+            if self._fetcher is None:
+                fetcher.close()
+
+        return FetchResult(
+            http_status=200,
+            artifacts=tuple(artifacts),
+            published_at=artifacts[0].published_at if artifacts else None,
+            notes=f"{len(pending)} pending MST for {name}",
+        )
+
+    def _get(self, fetcher: PoliteFetcher, url: str, *, slug: str) -> bytes:
+        """Fetch and reject anything that is not an XML envelope.
+
+        A non-XML body is drift, not content. Archiving the eflaw 500 page would create a version
+        whose "regulation text" is an error message — worse than failing, because it would then be
+        diffed and emitted as change.
+        """
+        response = fetcher.get(url)
+        if response.status != 200:
+            raise AuthorityError(f"{slug}: HTTP {response.status}", signal=DriftSignal.MISSING_ROOT)
+        check_authority_error(response.body, slug=slug)
+        if not response.body.lstrip().startswith(b"<?xml"):
+            raise AuthorityError(
+                f"{slug}: response is not an XML envelope — target=eflaw has no 본문조회 endpoint "
+                "and answers HTTP 500 with an XHTML error page (ADR-0016)",
+                signal=DriftSignal.MISSING_ROOT,
+            )
+        return response.body
+
+    def _pending_mst(self, body: bytes, *, name: str) -> tuple[str, ...]:
+        """Distinct 법령일련번호 for this 법령 whose 현행연혁코드 is 시행예정, oldest first.
+
+        Filtering on an **exact** 법령명한글 matters: the endpoint takes a name *query*, so a search
+        for 화장품법 also returns 화장품법 시행령, 화장품법 시행규칙 and unrelated statutes — 100
+        rows for that one query, live.
+
+        Deduplication by MST is the decision in ADR-0016: MST 282015 appears three times with
+        시행일자 2026-12-31 / 2028-01-01 / 2029-01-01, and all three are the same 본문.
+        """
+        root = parse_xml(body)
+        seen: dict[str, str] = {}
+        for row in root.iter("law"):
+            if normalize_text(row.findtext("법령명한글") or "") != name:
+                continue
+            if normalize_text(row.findtext("현행연혁코드") or "") != self.PENDING_CODE:
+                continue
+            mst = normalize_text(row.findtext("법령일련번호") or "")
+            effective = normalize_text(row.findtext("시행일자") or "")
+            if mst and (mst not in seen or effective < seen[mst]):
+                seen[mst] = effective
+        return tuple(sorted(seen, key=lambda mst: (seen[mst], mst)))
+
+    @staticmethod
+    def _body_url(mst: str) -> str:
+        """``target=law&MST=…`` — the only address that returns a pending version's 본문."""
+        credential = get_settings().law_go_kr_oc
+        return resolve_url(
+            "https://www.law.go.kr/DRF/lawService.do"
+            f"?OC={CREDENTIAL_PLACEHOLDER}&target=law&MST={mst}&type=XML",
+            credential=credential,
+        )
+
+
 __all__ = [
     "AUTH_FAILURE_MARKERS",
     "AdmRuleConnector",
     "LawConnector",
+    "PendingLawConnector",
     "annex_identity",
     "build_url",
     "check_authority_error",

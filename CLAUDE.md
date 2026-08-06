@@ -53,11 +53,12 @@ pillars on one shared knowledge layer:
 3. Compliance gap analysis & control mapping
 4. SaaS productization for external customers
 
-**Current state: phase 0 and phase 1.0 are done; phase 1.5's foundation is built early.** The compose stack, `regops_shared`,
-`platform-core` (auth · RBAC · audit chain) and the `regulation` L1 ingestion pipeline exist and run;
-`monitoring` and `assistant` are still health-check-only scaffolds; the `frontend` has its 1.5
-foundation plus a read-only regulation browser.
-Architecture is settled through [ADR-0001 – ADR-0013](docs/design/); anything below still marked
+**Current state: phase 0, 1.0 and 1.1 are done; phase 1.5's foundation is built early.** The compose
+stack, `regops_shared`, `platform-core` (auth · RBAC · audit chain) and the `regulation` L1–L2
+pipeline exist and run — ingest → parse → diff → change events, with a clause store of ~10k clauses
+over the gated corpus. `monitoring` and `assistant` are still health-check-only scaffolds; the
+`frontend` has its 1.5 foundation plus a read-only regulation browser.
+Architecture is settled through [ADR-0001 – ADR-0016](docs/design/); anything below still marked
 *target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 
 Phase 1 (PoC, 4 months) gates two of the eight cells — MFDS SaMD + MFDS Cosmetic — with a
@@ -176,11 +177,13 @@ assistant     : clause_embeddings · queries · answers · answer_citations
                 verification_results
 ```
 
-`annex_rows` ([ADR-0006](docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md)) is
-deliberately absent: whether it exists at all, and which service owns it, is ADR-0006 open question 3.
-Resolve it in an ADR before creating the table — not by picking a service at migration time.
-[ADR-0012](docs/design/ADR-0012-annex-version-identity.md) settled only the *container* — a 별표 is a
-child `Document` with its own versions — not the row granularity inside it.
+**`annex_rows` does not exist and must not be created**
+([ADR-0014](docs/design/ADR-0014-annex-row-granularity.md), closing ADR-0006 open question 3). An
+annex table row is a `Clause` with `path_segments = [별표N, 표M, 행K]` and its columns in
+`clauses.row_columns` (`jsonb`, because every table has a different column set). One store, so
+`ir_citations` needs no branch for annexes and nothing has to be kept in sync. Rows are still **not
+embedded** and still served by exact match — that is ADR-0006 decisions 1–2, a *retrieval* decision,
+unaffected by where rows are stored.
 
 `attachments` is the authority's own file links per version (별표서식파일링크 and the like), kept as
 an archival copy and as the fallback for an empty `별표내용`. It is **not** where annex content

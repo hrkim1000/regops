@@ -96,6 +96,18 @@ with `path_segments`, it is a genuine finding, not a workaround to code around q
 > Section Extraction needs a table-mode strategy alongside the 조/항/호/목 hierarchy mode, and both
 > domains use both. No domain-specific column on `Clause`, no pre-IR stage, no domain-forked parser.
 > That is a shared pipeline with two content strategies, which is what decision 3 claims.
+>
+> **Re-run against real ingestion on 2026-08-06 — still NOT triggered.** The spike tested one API
+> response; this ran the built pipeline over the whole archived corpus (293 documents, 10,036
+> clauses). Both cells use the same three profiles, selected by document shape — `law_structured`
+> for 법령, `admrul_text` for 고시, `annex` for 별표/서식/별지 — with no domain-conditional code, no
+> domain-specific column on `Clause`, and no second pre-IR stage. A limit-table row round-trips as
+> `별표2/표1/행1` and answers an exact-match 원료명 lookup. Detail in
+> [phase1.1](../plan/phase1.1_normalization.md) § Falsifiers.
+>
+> One thing the spike did **not** predict: 고시 bodies carry no clause structure at all, so a third
+> profile was needed to segment them out of flat text. That is a 법령-vs-고시 split — a source shape
+> both gated cells have — not a domain fork, so decision 3 survives it.
 
 ### 4. The LLM proposes; a human locks; only locked IRs flow
 
@@ -162,11 +174,14 @@ ir_citations(ir_id, document_version_id, clause_path, effective_date, superseded
    question: a fixed-width box-drawing table parser keyed on `│` column offsets, emitting one
    `Clause` per row with `path_segments = [별표N, row]`. Mechanical and deterministic — no LLM in the
    parsing path.
-2. **Annex scale vs. clause granularity** — 별표 1 of 화장품 안전기준 규정 alone is **340,074 chars /
-   7,367 lines**, and 별표 2 is 218,995. One `Clause` per table row means tens of thousands of rows
-   for a single 고시. Feeds directly into ADR-0002 open question 1 (embedding granularity): embedding
-   every ingredient row is likely wasteful, while embedding the whole annex is useless for
-   retrieval. Needs a decision before the W5-6 retrieval index.
+2. ~~**Annex scale vs. clause granularity**~~ — **closed by
+   [ADR-0014](ADR-0014-annex-row-granularity.md).** The "tens of thousands of rows" estimate counted
+   *physical lines*; a logical row wraps across several of them. Measured over the whole gated
+   corpus: **1,999 data rows**, 1,937 of them in 별표-kind annexes. One `Clause` per row is one
+   ordinary table with an index, so rows live in `clauses` and no separate store is created.
+   Embedding is unaffected — decisions 1–2 of
+   [ADR-0006](ADR-0006-retrieval-and-citation-enforced-generation.md) still exclude rows from the
+   index and serve them by exact match.
 3. **Conditional obligations by product class** — duties that apply only to a device class or
    product category. One parameterised IR, or one IR per class? Parameterised is smaller; per-class
    maps to controls more directly.

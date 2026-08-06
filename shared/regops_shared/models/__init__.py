@@ -7,6 +7,13 @@ imports another service's model onto its own metadata.
 from regops_shared.models.audit import AuditLog
 from regops_shared.models.base import Base, TimestampMixin, UUIDPrimaryKey, utcnow
 from regops_shared.models.cell import Cell, authority_enum, domain_enum
+from regops_shared.models.clause import (
+    ChangeEvent,
+    Clause,
+    ClauseDiff,
+    change_kind_enum,
+    clause_kind_enum,
+)
 from regops_shared.models.document import (
     Attachment,
     Document,
@@ -15,6 +22,7 @@ from regops_shared.models.document import (
     attachment_kind_enum,
     doc_type_enum,
 )
+from regops_shared.models.ir import IR, IRCitation, ir_status_enum
 from regops_shared.models.source import (
     FetchObservation,
     Source,
@@ -30,14 +38,19 @@ from regops_shared.models.standard import StandardReference, standard_status_enu
 from regops_shared.models.user import Session, User, role_enum
 
 __all__ = [
+    "IR",
     "Attachment",
     "AuditLog",
     "Base",
     "Cell",
+    "ChangeEvent",
+    "Clause",
+    "ClauseDiff",
     "Document",
     "DocumentCell",
     "DocumentVersion",
     "FetchObservation",
+    "IRCitation",
     "Session",
     "Source",
     "SourceDiscoveryRun",
@@ -49,10 +62,13 @@ __all__ = [
     "User",
     "attachment_kind_enum",
     "authority_enum",
+    "change_kind_enum",
+    "clause_kind_enum",
     "doc_type_enum",
     "domain_enum",
     "drift_signal_enum",
     "fetch_outcome_enum",
+    "ir_status_enum",
     "role_enum",
     "source_block_enum",
     "source_tier_enum",

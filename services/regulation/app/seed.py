@@ -47,6 +47,13 @@ LAW_SERVICE = "https://www.law.go.kr/DRF/lawService.do?OC={OC}&target=law&LM={na
 MFDS_RSS = "https://www.mfds.go.kr/www/rss/brd.do?brdId={brdId}"
 ADMRUL_SERVICE = "https://www.law.go.kr/DRF/lawService.do?OC={OC}&target=admrul&LM={name}&type=XML"
 
+#: 시행일법령 목록 — amendments already 공포'd but not yet in force. This is a **list** endpoint:
+#: ``lawService.do?target=eflaw`` has no 본문조회 and answers HTTP 500, so the connector reads this
+#: list and fetches each pending MST through the ordinary 법령 endpoint (ADR-0016).
+EFLAW_SEARCH = (
+    "https://www.law.go.kr/DRF/lawSearch.do?OC={OC}&target=eflaw&type=XML&display=100&query={name}"
+)
+
 
 @dataclass(frozen=True, slots=True)
 class SeedSource:
@@ -91,6 +98,33 @@ def _law(cell: str, ordinal: int, name: str, title: str) -> SeedSource:
     )
 
 
+def _eflaw(cell: str, ordinal: int, name: str, title: str) -> SeedSource:
+    """A 시행예정 companion to a 법령 source, tracking the same instrument before it is in force.
+
+    Separate source rather than an extra mode on the 법령 connector: it polls a different endpoint,
+    and its own ``fetch_observations`` are what make "we checked for pending amendments at T" an
+    auditable fact — which is the whole basis of the detection-coverage measurement.
+
+    The versions it yields attach to the **same** Document as 현행, because both resolve to the same
+    법령ID (ADR-0016 decision 1).
+    """
+    return SeedSource(
+        cell=cell,
+        block=SourceBlock.PRIMARY_LAWS,
+        ordinal=ordinal,
+        name=f"{name}_pending",
+        title=f"{title} (시행예정)",
+        tier=SourceTier.A,
+        connector="law_go_kr_eflaw",
+        url_template=EFLAW_SEARCH,
+        params={"name": title},
+        notes=(
+            "시행예정 법령 — detection latency for the 법령 sources is unmeasurable without this, "
+            "because an amendment is invisible between 공포 and 시행 (ADR-0016)."
+        ),
+    )
+
+
 def _admrul(cell: str, block: SourceBlock, ordinal: int, name: str, title: str) -> SeedSource:
     return SeedSource(
         cell=cell,
@@ -110,6 +144,9 @@ SEED: tuple[SeedSource, ...] = (
     _law("mfds_cosmetic", 1, "cosmetics_act", "화장품법"),
     _law("mfds_cosmetic", 2, "cosmetics_act_decree", "화장품법 시행령"),
     _law("mfds_cosmetic", 3, "cosmetics_act_rule", "화장품법 시행규칙"),
+    _eflaw("mfds_cosmetic", 11, "cosmetics_act", "화장품법"),
+    _eflaw("mfds_cosmetic", 12, "cosmetics_act_decree", "화장품법 시행령"),
+    _eflaw("mfds_cosmetic", 13, "cosmetics_act_rule", "화장품법 시행규칙"),
     # 별표 1 (사용할 수 없는 원료) and 별표 2 (사용상의 제한이 필요한 원료) live here. They arrive
     # inline as <별표단위>/<별표내용> and become child Documents that version on their own
     # (ADR-0012) — which is what stops an ingredient-list amendment being missed.
@@ -193,6 +230,12 @@ SEED: tuple[SeedSource, ...] = (
     _law("mfds_samd", 4, "digital_medical_products_act", "디지털의료제품법"),
     _law("mfds_samd", 5, "digital_medical_products_act_decree", "디지털의료제품법 시행령"),
     _law("mfds_samd", 6, "digital_medical_products_act_rule", "디지털의료제품법 시행규칙"),
+    _eflaw("mfds_samd", 11, "medical_device_act", "의료기기법"),
+    _eflaw("mfds_samd", 12, "medical_device_act_decree", "의료기기법 시행령"),
+    _eflaw("mfds_samd", 13, "medical_device_act_rule", "의료기기법 시행규칙"),
+    _eflaw("mfds_samd", 14, "digital_medical_products_act", "디지털의료제품법"),
+    _eflaw("mfds_samd", 15, "digital_medical_products_act_decree", "디지털의료제품법 시행령"),
+    _eflaw("mfds_samd", 16, "digital_medical_products_act_rule", "디지털의료제품법 시행규칙"),
     _admrul(
         "mfds_samd",
         SourceBlock.REGULATIONS,
@@ -288,6 +331,112 @@ SEED: tuple[SeedSource, ...] = (
         enabled=False,
         notes="Navigation surface, not content. Reference only — no connector attached.",
     ),
+)
+
+#: 행정규칙 added from the discovery sweep on 2026-08-06 — the triage backlog, decided in.
+#:
+#: Keyed on the authority's own **행정규칙ID**, not a hand-invented English name. 53 slugs
+#: invented by us would drift from the Korean title they stand for and would join to nothing;
+#: the ID is stable, is what `mfds-admrul-coverage.md` prints, and cannot be transcribed
+#: wrong. The curated sources above predate the sweep and keep their names.
+#:
+#: A 고시 claimed by both cells is seeded **twice**, one row per cell — the shape the RSS
+#: boards already use. Both resolve to one 행정규칙ID and so to one Document claimed by two
+#: cells (ADR-0002 decision 1).
+SWEPT_ADMRUL: tuple[tuple[str, str, str], ...] = (
+    ("mfds_cosmetic", "36121", "기능성화장품 기준 및 시험방법"),
+    ("mfds_cosmetic", "74525", "맞춤형화장품판매업자의 준수사항에 관한 규정"),
+    ("mfds_cosmetic", "36497", "수입화장품 품질검사 면제에 관한 규정"),
+    (
+        "mfds_cosmetic",
+        "73120",
+        "영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정",
+    ),
+    ("mfds_cosmetic", "33248", "우수화장품 제조 및 품질관리기준"),
+    ("mfds_cosmetic", "33326", "의약품등의 타르색소 지정과 기준 및 시험방법"),
+    ("mfds_cosmetic", "41823", "화장품 가격표시제 실시요령"),
+    ("mfds_cosmetic", "34091", "화장품 바코드 표시 및 관리요령"),
+    ("mfds_cosmetic", "37973", "화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정"),
+    ("mfds_cosmetic", "38375", "화장품 안전성 정보관리 규정"),
+    (
+        "mfds_cosmetic",
+        "72508",
+        "화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정",
+    ),
+    ("mfds_cosmetic", "38705", "화장품의 색소 종류 및 기준"),
+    ("mfds_cosmetic", "41380", "화장품의 생산ㆍ수입실적 및 원료목록 보고에 관한 규정"),
+    ("mfds_cosmetic", "36123", "인체적용제품의 위해성평가에 관한 규정"),
+    ("mfds_samd", "36123", "인체적용제품의 위해성평가에 관한 규정"),
+    (
+        "mfds_samd",
+        "53694",
+        "(식품의약품안전처) 의료기기 허가·신의료기술평가 등 통합운영에 관한 규정",
+    ),
+    ("mfds_samd", "92690", "디지털의료기기 임상시험등 계획 승인 및 실시·관리에 관한 규정"),
+    ("mfds_samd", "92728", "디지털의료기기 전자적 침해행위 보안 지침"),
+    ("mfds_samd", "92664", "디지털의료기기 제조 및 품질관리 기준"),
+    ("mfds_samd", "92541", "디지털의료제품 분류 및 등급 지정 등에 관한 규정"),
+    ("mfds_samd", "92599", "디지털의료제품 허가·인증·신고·심사 및 평가 등에 관한 규정"),
+    ("mfds_samd", "92310", "디지털의료제품법에 따른 기관 지정 등에 관한 규정"),
+    ("mfds_samd", "77343", "생산·수입 중단 보고대상 의료기기 및 보고 방법"),
+    ("mfds_samd", "37100", "의료기기 기술문서심사기관 지정 및 운영 등에 관한 규정"),
+    ("mfds_samd", "36140", "의료기기 부작용 등 안전성 정보 관리에 관한 규정"),
+    ("mfds_samd", "33364", "의료기기 생산 및 수출·수입·수리실적 보고에 관한 규정"),
+    ("mfds_samd", "63745", "의료기기 수입요건확인 면제 등에 관한 규정"),
+    ("mfds_samd", "36522", "의료기기 시판 후 조사에 관한 규정"),
+    ("mfds_samd", "49294", "의료기기 위탁 인증·신고의 대상 및 범위 등에 관한 지침"),
+    ("mfds_samd", "79578", "의료기기 이물 보고대상 및 절차 등에 관한 규정"),
+    ("mfds_samd", "37970", "의료기기 임상시험 기본문서 관리에 관한 규정"),
+    ("mfds_samd", "33367", "의료기기 임상시험계획 승인에 관한 규정"),
+    ("mfds_samd", "2052526", "의료기기 임상시험기관 지정에 관한 규정"),
+    ("mfds_samd", "33373", "의료기기 재평가에 관한 규정"),
+    ("mfds_samd", "97658", "의료기기 제조 및 품질관리 관련 기관 지정 등에 관한 규정"),
+    ("mfds_samd", "77644", "의료기기 제조허가등 갱신에 관한 규정"),
+    ("mfds_samd", "67874", "의료기기 통합정보 관리 등에 관한 규정"),
+    ("mfds_samd", "41266", "의료기기 표시·기재 등에 관한 규정"),
+    ("mfds_samd", "66058", "의료기기 표준코드의 표시 및 관리요령"),
+    ("mfds_samd", "32269", "의료기기 품목 및 품목별 등급에 관한 규정"),
+    ("mfds_samd", "78039", "의료기기 회수·폐기 등에 관한 규정"),
+    ("mfds_samd", "72348", "의료기기소프트웨어제조기업 인증제도 운영에 관한 규정"),
+    ("mfds_samd", "32061", "의료기기의 생물학적 안전에 관한 공통기준규격"),
+    ("mfds_samd", "41382", "의료기기의 안정성시험 기준"),
+    ("mfds_samd", "33365", "의료기기의 전기·기계적 안전에 관한 공통기준규격"),
+    ("mfds_samd", "32062", "의료기기의 전자파안전에 관한 공통기준규격"),
+    ("mfds_samd", "67388", "인터넷 홈페이지 형태 첨부문서 제공 가능 의료기기의 지정에 관한 규정"),
+    ("mfds_samd", "93660", "장기추적조사대상 의료기기 지정 및 실사용 정보 제출에 관한 규정"),
+    ("mfds_samd", "46294", "추적관리대상 의료기기 기록과 자료 제출에 관한 규정"),
+    ("mfds_samd", "33378", "추적관리대상 의료기기 지정에 관한 규정"),
+    ("mfds_samd", "72347", "혁신의료기기 기술 및 관리기준 표준화에 관한 규정"),
+    ("mfds_samd", "72346", "혁신의료기기 지정 절차 및 방법 등에 관한 규정"),
+    ("mfds_samd", "76476", "혁신의료기기 허가 등에 관한 특례 규정"),
+    ("mfds_samd", "70675", "희소·긴급도입 필요 의료기기 공급 등에 관한 규정"),
+)
+
+
+def _swept(cell: str, admrul_id: str, title: str, ordinal: int) -> SeedSource:
+    """One row of :data:`SWEPT_ADMRUL` as a seed source.
+
+    Block is ``REGULATIONS`` for every swept 고시 — they impose duties, and for Tier A that block
+    polls daily exactly as STANDARDS, REGISTRATION and SAFETY do. Refining a row into a narrower
+    block changes ordering, not behaviour, so it is not worth guessing 53 times.
+    """
+    return SeedSource(
+        cell=cell,
+        block=SourceBlock.REGULATIONS,
+        ordinal=ordinal,
+        name=f"admrul_{admrul_id}",
+        title=title,
+        tier=SourceTier.A,
+        connector="law_go_kr_admrul",
+        url_template=ADMRUL_SERVICE,
+        params={"name": title},
+        notes=f"행정규칙ID {admrul_id}. Added from the discovery sweep, 2026-08-06.",
+    )
+
+
+SEED = SEED + tuple(
+    _swept(cell, admrul_id, title, 100 + index)
+    for index, (cell, admrul_id, title) in enumerate(SWEPT_ADMRUL)
 )
 
 
