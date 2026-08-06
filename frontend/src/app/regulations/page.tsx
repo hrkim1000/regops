@@ -3,17 +3,30 @@ import Link from 'next/link';
 import { EmptyState } from '@/components/EmptyState';
 import { readScope } from '@/lib/scope';
 import { serverGet, serverGetPage } from '@/lib/server-api';
-import { DOC_TYPE_LABEL } from '@/types/constants';
-import type { Cell, DocumentSummary } from '@/types/regulation';
+import {
+  ANNEX_CATEGORIES,
+  DOC_CATEGORY_LABEL,
+  DOC_TYPE_LABEL,
+  VERSION_STATUS_STYLE,
+} from '@/types/constants';
+import type { Cell, DocCategory, DocumentSummary } from '@/types/regulation';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Documents in the active cell.
+ * Documents in the active cell, grouped the way the authority groups its own holdings.
  *
- * Annexes are excluded (`parent_only`): under ADR-0012 a 고시 with four 별표 is five `documents`
- * rows, so a flat list would read as five instruments. They are reachable from the parent's detail
- * page, which is where their relationship is legible.
+ * 국가법령정보 files everything as 현행법령 · 현행 행정규칙 · 법령 별표·서식 · 행정규칙 별표·서식,
+ * so "법령 3건, 고시 17건" reads the way the source does — where a flat count of "20 본문" says
+ * nothing about what kind of instrument they are.
+ *
+ * Annexes are excluded from the *list* (`parent_only`): under ADR-0012 a 고시 with four 별표 is five
+ * `documents` rows, so listing them flat would read as five instruments. They are still **counted**
+ * in the header, because a cell's real weight is in its 별표, and reachable from the parent's detail
+ * page, which is where the relationship is legible.
+ *
+ * The server sorts by (category, title), so this only has to emit a header when the category
+ * changes. Sorting here instead would group whatever 50 rows the page happens to hold.
  */
 export default async function RegulationsPage({
   searchParams,
@@ -42,7 +55,7 @@ export default async function RegulationsPage({
         parent_only: true,
         q,
         page,
-        page_size: 50,
+        page_size: 200,
       })
     : null;
 
@@ -50,17 +63,40 @@ export default async function RegulationsPage({
     return <EmptyState title={`알 수 없는 셀: ${scope}`} hint="ScopeBar에서 다시 선택하세요." />;
   }
   if (!result?.data) {
-    return <EmptyState title="문서를 불러오지 못했습니다" hint="regulation 서비스 상태를 확인하세요." />;
+    return (
+      <EmptyState title="문서를 불러오지 못했습니다" hint="regulation 서비스 상태를 확인하세요." />
+    );
   }
 
   const documents = result.data;
 
+  // Preserve the server's ordering — never re-sort. Grouping is a fold over an already-ordered
+  // list, so the run of rows under each header is exactly what the database returned.
+  const groups: { category: DocCategory; rows: DocumentSummary[] }[] = [];
+  for (const document of documents) {
+    const last = groups.at(-1);
+    if (last?.category === document.category) last.rows.push(document);
+    else groups.push({ category: document.category, rows: [document] });
+  }
+
+  const counted = (Object.entries(cell.categories) as [DocCategory, number][]).filter(
+    ([, n]) => n > 0,
+  );
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div className="space-y-1.5">
         <h1 className="font-mono text-sm text-slate-300">{cell.slug}</h1>
-        <p className="text-xs text-slate-500">
-          본문 {cell.document_count}건 · 별표 {cell.annex_count}건
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          {counted.map(([category, n]) => (
+            <span key={category} className="text-slate-400">
+              {DOC_CATEGORY_LABEL[category] ?? category}{' '}
+              <span className="font-mono text-slate-200">{n}</span>건
+            </span>
+          ))}
+        </div>
+        <p className="text-[11px] text-slate-600">
+          별표·서식은 각 본문의 상세 페이지에서 볼 수 있습니다.
         </p>
       </div>
 
@@ -85,30 +121,51 @@ export default async function RegulationsPage({
           hint={q ? undefined : '커넥터가 아직 연결되지 않은 셀일 수 있습니다.'}
         />
       ) : (
-        <ul className="divide-y divide-surface-border overflow-hidden rounded-lg border border-surface-border">
-          {documents.map((document) => (
-            <li key={document.id}>
-              <Link
-                href={`/regulations/${document.id}`}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-surface-raised/40 px-4 py-3 hover:bg-surface-raised"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm text-slate-100">
-                  {document.title}
-                </span>
-                <span className="rounded border border-surface-border px-1.5 py-0.5 text-[10px] text-slate-400">
-                  {DOC_TYPE_LABEL[document.doc_type] ?? document.doc_type}
-                </span>
-                <span className="font-mono text-[11px] text-slate-500">
-                  별표 {document.annex_count} · 버전 {document.version_count}
-                </span>
-              </Link>
-            </li>
+        <div className="space-y-6">
+          {groups.map(({ category, rows }) => (
+            <section key={category} className="space-y-2">
+              <h2 className="flex items-baseline gap-2 text-xs font-medium text-slate-300">
+                {DOC_CATEGORY_LABEL[category] ?? category}
+                <span className="font-mono text-[11px] text-slate-500">{rows.length}건</span>
+              </h2>
+              <ul className="divide-y divide-surface-border overflow-hidden rounded-lg border border-surface-border">
+                {rows.map((document) => (
+                  <li key={document.id}>
+                    <Link
+                      href={`/regulations/${document.id}`}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-surface-raised/40 px-4 py-3 hover:bg-surface-raised"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm text-slate-100">
+                        {document.title}
+                      </span>
+                      <span className="rounded border border-surface-border px-1.5 py-0.5 text-[10px] text-slate-400">
+                        {DOC_TYPE_LABEL[document.doc_type] ?? document.doc_type}
+                      </span>
+                      {/* 공포는 됐지만 아직 시행 전인 개정. Without this a 법령 carrying four
+                          pending amendments looks exactly like one carrying none. */}
+                      {document.pending_version_count > 0 && (
+                        <span
+                          className={`rounded border px-1.5 py-0.5 text-[10px] ${VERSION_STATUS_STYLE.pending}`}
+                          title="공포되었으나 아직 시행 전인 버전이 있습니다"
+                        >
+                          시행예정 {document.pending_version_count}
+                        </span>
+                      )}
+                      <span className="font-mono text-[11px] text-slate-500">
+                        별표 {document.annex_count} · 버전 {document.version_count}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
 
       <p className="text-xs text-slate-600">
-        {result.meta?.total ?? documents.length}건 중 {documents.length}건 표시
+        본문 {result.meta?.total ?? documents.length}건 · 별표·서식{' '}
+        {ANNEX_CATEGORIES.reduce((sum, key) => sum + (cell.categories[key] ?? 0), 0)}건
       </p>
     </div>
   );

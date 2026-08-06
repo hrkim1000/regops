@@ -5,7 +5,11 @@ import { EmptyState } from '@/components/EmptyState';
 import { Field } from '@/components/Field';
 import { formatBytes, formatDate, formatDateTime, shortHash } from '@/lib/format';
 import { serverGet } from '@/lib/server-api';
-import { DOC_TYPE_LABEL } from '@/types/constants';
+import {
+  DOC_TYPE_LABEL,
+  VERSION_STATUS_LABEL,
+  VERSION_STATUS_STYLE,
+} from '@/types/constants';
 import type { DocumentDetail } from '@/types/regulation';
 
 export const dynamic = 'force-dynamic';
@@ -81,6 +85,19 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
                 key={version.id}
                 className="rounded-lg border border-surface-border bg-surface-raised/40 p-4"
               >
+                {version.status && (
+                  <div className="mb-3">
+                    {/* Derived from effective_date against today, never stored — a flag would
+                        disagree with the date the morning a pending version comes into force. */}
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                        VERSION_STATUS_STYLE[version.status] ?? ''
+                      }`}
+                    >
+                      {VERSION_STATUS_LABEL[version.status] ?? version.status}
+                    </span>
+                  </div>
+                )}
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 lg:grid-cols-6">
                   <Field label="version" value={version.version_label ?? '—'} mono />
                   <Field label="언어" value={version.language} mono />

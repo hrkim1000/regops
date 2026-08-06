@@ -17,13 +17,23 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import date
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, select
+from sqlalchemy.orm import aliased
 
 from regops_shared.api import Meta, ok
 from regops_shared.auth import Principal, get_current_principal
+from regops_shared.constants import (
+    DOC_CATEGORY_ORDER,
+    DocCategory,
+    VersionStatus,
+    doc_category,
+    in_force_date,
+    version_status,
+)
 from regops_shared.db import AsyncSession, get_db
 from regops_shared.storage import read_archived
 
@@ -40,6 +50,32 @@ router = APIRouter(prefix="/api/v1", tags=["regulation"])
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[Principal, Depends(get_current_principal)]
 
+#: Alias for the parent row, so a listing can read the parent's ``doc_type`` in the same query. An
+#: annex cannot be categorised without it — 별표 of a 법령 and 별표 of a 고시 both carry
+#: ``doc_type = 'annex'``.
+_Parent = aliased(Document, name="parent_doc")
+
+#: SQL mirror of :func:`doc_category`, so ordering happens in the database rather than over a page
+#: that has already been sliced. The Python function stays the single definition of the *rule*; this
+#: expression exists only because ``ORDER BY`` cannot call it.
+_CATEGORY_SQL = case(
+    (Document.doc_type.in_(("law", "decree", "enforcement_rule")), DocCategory.STATUTE.value),
+    (Document.doc_type == "notice", DocCategory.ADMIN_RULE.value),
+    (
+        and_(Document.doc_type == "annex", _Parent.doc_type == "notice"),
+        DocCategory.ADMIN_RULE_ANNEX.value,
+    ),
+    (Document.doc_type == "annex", DocCategory.STATUTE_ANNEX.value),
+    (Document.doc_type == "feed", DocCategory.FEED.value),
+    else_=DocCategory.OTHER.value,
+)
+
+_CATEGORY_RANK = case(
+    {category.value: rank for rank, category in enumerate(DOC_CATEGORY_ORDER)},
+    value=_CATEGORY_SQL,
+    else_=len(DOC_CATEGORY_ORDER),
+)
+
 
 @router.get("/cells")
 async def list_cells(db: DbSession, _: CurrentUser) -> dict[str, Any]:
@@ -50,20 +86,23 @@ async def list_cells(db: DbSession, _: CurrentUser) -> dict[str, Any]:
     """
     cells = list(await db.scalars(select(Cell).order_by(Cell.slug)))
 
-    counts = {
-        (row.cell_id, row.is_annex): row.n
-        for row in (
-            await db.execute(
-                select(
-                    DocumentCell.cell_id,
-                    (Document.parent_document_id.is_not(None)).label("is_annex"),
-                    func.count().label("n"),
-                )
-                .join(Document, Document.id == DocumentCell.document_id)
-                .group_by(DocumentCell.cell_id, "is_annex")
+    # Counted per category rather than body-vs-annex, because that is how the authority groups its
+    # own holdings and therefore how an RA reads them: "9 법령, 59 고시" not "68 본문".
+    rows = (
+        await db.execute(
+            select(
+                DocumentCell.cell_id,
+                _CATEGORY_SQL.label("category"),
+                func.count().label("n"),
             )
-        ).all()
-    }
+            .join(Document, Document.id == DocumentCell.document_id)
+            .outerjoin(_Parent, _Parent.id == Document.parent_document_id)
+            .group_by(DocumentCell.cell_id, _CATEGORY_SQL)
+        )
+    ).all()
+    counts: dict[uuid.UUID, dict[str, int]] = {}
+    for row in rows:
+        counts.setdefault(row.cell_id, {})[row.category] = row.n
 
     return ok(
         [
@@ -72,8 +111,22 @@ async def list_cells(db: DbSession, _: CurrentUser) -> dict[str, Any]:
                 "slug": cell.slug,
                 "authority": cell.authority.value,
                 "domain": cell.domain.value,
-                "document_count": counts.get((cell.id, False), 0),
-                "annex_count": counts.get((cell.id, True), 0),
+                # Retained: existing callers read these, and "how many instruments" is still a
+                # question worth one number.
+                "document_count": sum(
+                    n
+                    for category, n in counts.get(cell.id, {}).items()
+                    if category in {DocCategory.STATUTE, DocCategory.ADMIN_RULE}
+                ),
+                "annex_count": sum(
+                    n
+                    for category, n in counts.get(cell.id, {}).items()
+                    if category in {DocCategory.STATUTE_ANNEX, DocCategory.ADMIN_RULE_ANNEX}
+                ),
+                "categories": {
+                    category.value: counts.get(cell.id, {}).get(category.value, 0)
+                    for category in DOC_CATEGORY_ORDER
+                },
             }
             for cell in cells
         ]
@@ -90,7 +143,9 @@ async def list_documents(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
 ) -> dict[str, Any]:
-    stmt = select(Document)
+    stmt = select(Document, _CATEGORY_SQL.label("category")).outerjoin(
+        _Parent, _Parent.id == Document.parent_document_id
+    )
     if cell_id is not None:
         stmt = stmt.join(DocumentCell, DocumentCell.document_id == Document.id).where(
             DocumentCell.cell_id == cell_id
@@ -101,11 +156,20 @@ async def list_documents(
         stmt = stmt.where(Document.title.ilike(f"%{q}%"))
 
     total = await db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    rows = list(
-        await db.scalars(
-            stmt.order_by(Document.title).offset((page - 1) * page_size).limit(page_size)
+
+    # Category first, then title. Ordering in SQL rather than over an already-sliced page is what
+    # keeps the grouping correct across pagination — a client-side sort would only ever group the
+    # 50 rows it happens to hold. Postgres orders Hangul by code point, which *is* 가나다순 for the
+    # Hangul Syllables block, so no collation is configured for it.
+    result = (
+        await db.execute(
+            stmt.order_by(_CATEGORY_RANK, Document.title)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
         )
-    )
+    ).all()
+    rows = [row[0] for row in result]
+    categories = {row[0].id: row.category for row in result}
 
     ids = [row.id for row in rows]
     annex_counts = {
@@ -128,10 +192,32 @@ async def list_documents(
             )
         ).all()
     }
+    # 시행예정 — 공포되었으나 아직 시행 전. Surfaced on the list because otherwise a 법령 with four
+    # pending amendments is indistinguishable from one with none: both read as a single row whose
+    # only hint is a version count (ADR-0016).
+    pending_counts = {
+        row.document_id: row.n
+        for row in (
+            await db.execute(
+                select(DocumentVersion.document_id, func.count().label("n"))
+                .where(
+                    DocumentVersion.document_id.in_(ids),
+                    DocumentVersion.effective_date > func.current_date(),
+                )
+                .group_by(DocumentVersion.document_id)
+            )
+        ).all()
+    }
 
     return ok(
         [
-            _document_out(row, annex_counts.get(row.id, 0), version_counts.get(row.id, 0))
+            _document_out(
+                row,
+                annex_counts.get(row.id, 0),
+                version_counts.get(row.id, 0),
+                category=categories.get(row.id),
+                pending_version_count=pending_counts.get(row.id, 0),
+            )
             for row in rows
         ],
         meta=Meta(page=page, page_size=page_size, total=total),
@@ -169,10 +255,16 @@ async def get_document(document_id: uuid.UUID, db: DbSession, _: CurrentUser) ->
             .order_by(DocumentVersion.retrieved_at.desc())
         )
     )
+    statuses = _statuses(versions)
 
     return ok(
         {
-            **_document_out(document, len(annexes), len(versions)),
+            **_document_out(
+                document,
+                len(annexes),
+                len(versions),
+                parent_doc_type=parent.doc_type.value if parent else None,
+            ),
             "cells": [c.slug for c in cells],
             "parent": (
                 {"id": str(parent.id), "title": parent.title, "canonical_key": parent.canonical_key}
@@ -188,7 +280,7 @@ async def get_document(document_id: uuid.UUID, db: DbSession, _: CurrentUser) ->
                 }
                 for a in annexes
             ],
-            "versions": [_version_out(v) for v in versions],
+            "versions": [_version_out(v, status=statuses[v.id].value) for v in versions],
         }
     )
 
@@ -206,9 +298,15 @@ async def get_version(version_id: uuid.UUID, db: DbSession, _: CurrentUser) -> d
             .order_by(Attachment.ordinal)
         )
     )
+    # Siblings, because "is this the one in force?" cannot be answered from this row alone.
+    siblings = list(
+        await db.scalars(
+            select(DocumentVersion).where(DocumentVersion.document_id == version.document_id)
+        )
+    )
     return ok(
         {
-            **_version_out(version),
+            **_version_out(version, status=_statuses(siblings)[version.id].value),
             "document": (
                 {
                     "id": str(document.id),
@@ -274,26 +372,58 @@ async def get_version_raw(
 # --- serializers ---------------------------------------------------------------
 
 
-def _document_out(document: Document, annex_count: int, version_count: int) -> dict[str, Any]:
+def _document_out(
+    document: Document,
+    annex_count: int,
+    version_count: int,
+    *,
+    category: str | None = None,
+    parent_doc_type: str | None = None,
+    pending_version_count: int = 0,
+) -> dict[str, Any]:
     return {
         "id": str(document.id),
         "canonical_key": document.canonical_key,
         "title": document.title,
         "doc_type": document.doc_type.value,
+        # The authority's own bucket. Derived, never stored — see `doc_category`. Passed in where
+        # the caller already computed it in SQL, so the two cannot disagree.
+        "category": category or doc_category(document.doc_type.value, parent_doc_type).value,
         "annex_no": document.annex_no,
         "parent_document_id": (
             str(document.parent_document_id) if document.parent_document_id else None
         ),
         "annex_count": annex_count,
         "version_count": version_count,
+        #: 공포되었으나 아직 시행 전인 버전 수. Derived from the dates, never stored (ADR-0016).
+        "pending_version_count": pending_version_count,
     }
 
 
-def _version_out(version: DocumentVersion) -> dict[str, Any]:
+def _statuses(versions: list[DocumentVersion]) -> dict[uuid.UUID, VersionStatus]:
+    """Classify every version of one document against the same "today" and the same in-force date.
+
+    Computed over the whole set on purpose. Which version is *in force* is a property of the set —
+    the latest whose date has arrived — so classifying rows one at a time cannot produce it.
+    """
+    today = date.today()
+    in_force = in_force_date((v.effective_date for v in versions), today=today)
+    return {
+        v.id: version_status(v.effective_date, in_force=in_force, today=today) for v in versions
+    }
+
+
+def _version_out(version: DocumentVersion, *, status: str | None = None) -> dict[str, Any]:
     """The three dates travel together on purpose — a reader must be able to see that
-    ``published_at`` is null rather than silently reading ``retrieved_at`` as publication."""
+    ``published_at`` is null rather than silently reading ``retrieved_at`` as publication.
+
+    ``status`` (시행중 / 시행예정 / 지난 버전) is computed by the caller, which is the only place
+    that can: it depends on the *sibling* versions, not on this row. Classifying a version alone
+    would call every future date "pending" and never identify which past one is actually in force.
+    """
     return {
         "id": str(version.id),
+        "status": status,
         "version_label": version.version_label,
         "language": version.language,
         "content_hash": version.content_hash,

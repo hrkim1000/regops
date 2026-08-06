@@ -9,6 +9,19 @@ export type DocType =
   | 'guidance'
   | 'feed';
 
+/**
+ * 국가법령정보's top-level taxonomy. Derived server-side from `doc_type` plus, for an annex, the
+ * *parent's* `doc_type` — 별표 of a 법령 and 별표 of a 고시 are different categories and the annex
+ * row cannot tell them apart on its own.
+ */
+export type DocCategory =
+  | 'statute'
+  | 'admin_rule'
+  | 'statute_annex'
+  | 'admin_rule_annex'
+  | 'feed'
+  | 'other';
+
 export interface Cell {
   id: string;
   slug: string;
@@ -16,6 +29,8 @@ export interface Cell {
   domain: string;
   document_count: number;
   annex_count: number;
+  /** Per-category totals for the whole cell, including annexes the list does not show. */
+  categories: Record<DocCategory, number>;
 }
 
 export interface DocumentSummary {
@@ -23,14 +38,25 @@ export interface DocumentSummary {
   canonical_key: string;
   title: string;
   doc_type: DocType;
+  category: DocCategory;
   annex_no: string | null;
   parent_document_id: string | null;
   annex_count: number;
   version_count: number;
+  /** 공포되었으나 아직 시행 전인 버전 수. Derived from the dates server-side (ADR-0016). */
+  pending_version_count: number;
 }
+
+/** Where a version sits relative to today. Derived — there is no status column. */
+export type VersionStatus = 'in_force' | 'pending' | 'superseded' | 'unknown';
 
 export interface DocumentVersion {
   id: string;
+  /**
+   * 시행중 / 시행예정 / 지난 버전. Computed server-side because it depends on the *sibling*
+   * versions: which one is in force is the latest whose date has arrived, a property of the set.
+   */
+  status: VersionStatus | null;
   version_label: string | null;
   language: string;
   content_hash: string;
