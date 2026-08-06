@@ -1,4 +1,4 @@
-import { ChevronLeft, FileText } from 'lucide-react';
+import { ChevronLeft, FileText, ListTree } from 'lucide-react';
 import Link from 'next/link';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -141,12 +141,22 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
                   />
                 </dl>
 
-                <Link
-                  href={`/regulations/${document.id}/versions/${version.id}`}
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
-                >
-                  <FileText size={13} /> 원문 보기
-                </Link>
+                <div className="mt-3 flex flex-wrap items-center gap-4">
+                  {/* Parse output and archived bytes, side by side — a parse defect is only
+                      visible when both are one click apart. */}
+                  <Link
+                    href={`/regulations/${document.id}/versions/${version.id}/clauses`}
+                    className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                  >
+                    <ListTree size={13} /> 조문 보기
+                  </Link>
+                  <Link
+                    href={`/regulations/${document.id}/versions/${version.id}`}
+                    className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                  >
+                    <FileText size={13} /> 원문 보기
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>

@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from regops_shared.api import install_exception_handlers, ok
 from regops_shared.logging import configure_logging
 
+from .api.v1.clauses import router as clauses_router
 from .api.v1.documents import router as documents_router
 from .api.v1.sources import router as sources_router
 
@@ -23,6 +24,7 @@ app = FastAPI(title="RegOps regulation", version="0.2.0")
 install_exception_handlers(app)
 app.include_router(sources_router)
 app.include_router(documents_router)
+app.include_router(clauses_router)
 
 
 @app.get("/health", tags=["ops"])

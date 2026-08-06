@@ -1,4 +1,4 @@
-import { ChevronLeft, Download } from 'lucide-react';
+import { ChevronLeft, Download, ListTree } from 'lucide-react';
 import Link from 'next/link';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -109,6 +109,12 @@ export default async function RawVersionPage({
       <section>
         <div className="mb-2 flex flex-wrap items-center gap-3">
           <h2 className="text-xs uppercase tracking-wide text-slate-500">원문</h2>
+          <Link
+            href={`/regulations/${id}/versions/${versionId}/clauses`}
+            className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+          >
+            <ListTree size={13} /> 조문 보기
+          </Link>
           <a
             href={`/api/regulation/document-versions/${versionId}/raw?download=1`}
             className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"

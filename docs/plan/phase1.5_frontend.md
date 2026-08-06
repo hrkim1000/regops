@@ -1,6 +1,6 @@
 # Phase 1.5 — Frontend
 
-- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟡 foundation + regulation browser built early (2026-08-05); dashboard · Q&A · IR review still blocked on 1.3/1.4
+- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟡 foundation + regulation browser built early (2026-08-05), clause view added once [phase1.1](phase1.1_normalization.md) landed (2026-08-06); dashboard · Q&A · IR review still blocked on 1.3/1.4
 - **Governed by:** [.claude/skills/frontend-page](../../.claude/skills/frontend-page/SKILL.md), [ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md)
 - **Depends on:** [phase1.3](phase1.3_retrieval_qa.md), [phase1.4](phase1.4_monitoring.md)
 - **Service:** `frontend`
@@ -59,7 +59,25 @@ envelope (deviation 12). Both were silent in the API and in every test.
 - [x] `effective_date` shows the retained 부칙 phrase, or "미해석 (1.1)" — never a guessed date ([ADR-0013](../design/ADR-0013-unresolvable-effective-dates.md))
 - [x] Both hashes exposed with what each means: `content_hash` (change detection) vs `raw_object_key` (what gets cited)
 - [x] Raw viewer rendering the archived artefact **unmodified**, with a visible truncation marker and a full download — a silently truncated regulation is indistinguishable from a short one
-- [ ] Clause view — blocked on [phase1.1](phase1.1_normalization.md); there are no clauses yet
+- [x] **Clause view** (2026-08-06) — the parse output beside the archived bytes, one click apart.
+      [phase1.1](phase1.1_normalization.md) unblocked it, but nothing exposed the clause store: the
+      `regulation` API served cells · documents · versions · raw and no clauses, so this needed a
+      read endpoint (`GET /document-versions/{id}/clauses`) before any page could exist
+- [x] **Document order is `ordinal`, ordered in SQL** — the path is the *address*, not the sort key.
+      Sorting by `clause_path` files 제10조 between 제1조 and 제2조
+- [x] **`clause_path` is rendered for every clause**, including each annex table row. It is what a
+      Citation pins, so a reader has to see the address they would cite and not just the text
+- [x] **An annex table is drawn from the ordered header on its 표 clause, never from a row.** A
+      row's `row_columns` is `jsonb` and Postgres sorts an object's keys, so rendering a row alone
+      gives alphabetical columns — a limit table that looks right while stating the wrong limits.
+      ADR-0014 decision 4 puts the order on the 표 for exactly this reason; the renderer depends on
+      it, and a unit test pins it
+- [x] **Zero clauses is not always a defect** — the response carries `parseable`, so an RSS board
+      reads as "이 문서 유형은 조문을 갖지 않습니다" rather than as an ingestion gap
+      ([phase1.1](phase1.1_normalization.md) deviation 11)
+- [x] Version status (시행중 / 시행예정 / 지난 버전) shown on the clause page, fetched independently
+      — clause text read without it is how not-yet-in-force provisions get mistaken for current law
+- [x] Paginated at 500 clauses with a visible range and page links; the largest version holds 2,212
 
 ### Monitoring dashboard (alpha W7–8)
 
@@ -107,4 +125,16 @@ envelope (deviation 12). Both were silent in the API and in every test.
 
 ## Deviations & decisions
 
-_None yet._
+**1. The clause view needed a backend endpoint, not just a page.** The task read as frontend work
+blocked on [phase1.1](phase1.1_normalization.md) producing clauses. 1.1 produced 25,729 of them and
+the page was still impossible: `regulation`'s read API stopped at the version and the archived
+bytes, so `GET /document-versions/{id}/clauses` was written as part of this slice. Read-only, like
+the rest of that router — everything that *writes* the clause store is still the pipeline
+(CLAUDE.md § The seam).
+
+**2. A table's column order is load-bearing and lives in exactly one place.** `row_columns` on a
+`table_row` is a `jsonb` object, and Postgres sorts its keys — 등급 comes back before 연번. The
+ordered header on the parent 표 clause (ADR-0014 decision 4) is therefore the only record of what
+order the authority published, and the renderer reads it from there. A row whose 표 fell on the
+previous page is deliberately **not** drawn as a table: guessed column order in a limit table is
+worse than no table, because it looks correct.

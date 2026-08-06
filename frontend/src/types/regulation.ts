@@ -97,3 +97,55 @@ export interface VersionDetail extends DocumentVersion {
   } | null;
   attachments: Attachment[];
 }
+
+/**
+ * What shape of content a clause holds. Domain-neutral — the split is prose vs table vs form, a
+ * *content* distinction both SaMD and Cosmetic have (ADR-0002 decision 3).
+ */
+export type ClauseKind = 'prose' | 'heading' | 'table' | 'table_row' | 'form';
+
+export interface Clause {
+  id: string;
+  /** The citation address — `제2장/제8조/제1항`, `별표2/표1/행3`. What a Citation pins. */
+  clause_path: string;
+  path_segments: string[];
+  level: number;
+  /** Reading order within the version. The ordering key — sorting by path files 제10조 before 제2조. */
+  ordinal: number;
+  kind: ClauseKind;
+  heading: string | null;
+  text: string;
+  /**
+   * On a `table`: the ordered header labels. On a `table_row`: `{label: cell}` — and **only the
+   * table carries the order**, because `jsonb` sorts an object's keys (ADR-0014 decision 4).
+   */
+  row_columns: string[] | Record<string, string> | null;
+  /** Set only where the clause states a date distinct from its version's (ADR-0003 decision 5). */
+  effective_date: string | null;
+  effective_date_phrase: string | null;
+  parent_clause_id: string | null;
+  /** The authority's own identifier — 조문키 for 법령, absent elsewhere. */
+  source_ref: string | null;
+  /** 조문변경여부 — the source's own "this article changed" claim, not our computed diff. */
+  authority_changed: boolean | null;
+}
+
+export interface ClauseListing {
+  version: {
+    id: string;
+    version_label: string | null;
+    language: string;
+    effective_date: string | null;
+    effective_date_phrase: string | null;
+    parser_version: string | null;
+  };
+  document: {
+    id: string;
+    title: string;
+    canonical_key: string;
+    doc_type: DocType;
+  } | null;
+  /** False for a feed, where an empty clause list is correct rather than an ingestion gap. */
+  parseable: boolean;
+  clauses: Clause[];
+}

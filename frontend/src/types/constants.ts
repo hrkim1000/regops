@@ -54,3 +54,13 @@ export const VERSION_STATUS_STYLE: Record<string, string> = {
 
 /** How many characters of an archived artefact to render inline before truncating. */
 export const RAW_PREVIEW_CHARS = 200_000;
+
+/**
+ * Clauses per page in the clause view. The 95th-percentile version holds 309 clauses and the
+ * largest 2,212, so this renders most instruments whole; the API caps the parameter at 1,000.
+ */
+export const CLAUSE_PAGE_SIZE = 500;
+
+/** Indent per hierarchy level, and the depth past which further nesting stops indenting. */
+export const CLAUSE_INDENT_REM = 1.25;
+export const CLAUSE_MAX_INDENT_LEVEL = 5;
