@@ -154,6 +154,21 @@ feature. The pillar boundary belongs between them.
    ([ADR-0010](ADR-0010-semantic-enrichment-and-graph-model.md)) — in `regulation`, split into the
    Cross-reference pipeline and the Ontology Mapping agent, built in Phase 2. The name itself is
    retired either way: interpretation is a legal act (ADR-0010 decision 1).
-2. **Does `monitoring` survive a Phase 1 scope cut?** If four services prove too many, merging it
-   back into `regulation` is the cheapest reversal — it owns three tables and reads one seam.
+2. ~~**Does `monitoring` survive a Phase 1 scope cut?**~~ — **resolved 2026-08-11: it stays its own
+   service.** Taken at the W7 deadline the
+   [decision brief](decision-2026-08-05-lapsed-service-boundaries.md) set, immediately before
+   [phase1.4](../plan/phase1.4_monitoring.md) starts building into the boundary — which is the last
+   moment the reversal is still three tables and one seam.
+
+   The seam is what decides it: everything that *writes* the clause store is `regulation`, and
+   `monitoring` begins where writing ends, reading `change_events` one-way by raw SQL. That is an
+   ownership boundary, not a pipeline stage — the test CLAUDE.md sets — and it was already built and
+   respected through phases 1.0–1.3 without anything crossing it.
+
+   **The accepted cost is a fourth deployment unit at 6.5 FTE**, which the Consequences section
+   above names as the real price of this design and which nothing in Phase 1 needs for scaling. It
+   is accepted deliberately rather than overlooked. If operating four units becomes the dominant
+   cost, revisit it with evidence from the pilot — but the cheap window closes here, so a later
+   merge means migrating three tenant-scoped tables and rewriting their reads under Phase 2
+   pressure.
 3. **Partner API placement** — inherited from ADR-0005 open question 4, unresolved here.

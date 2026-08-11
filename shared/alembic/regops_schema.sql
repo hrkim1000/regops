@@ -18,6 +18,10 @@
 --   * the `vector` extension, and clause_embeddings.embedding as vector(768) with an HNSW
 --     cosine index. This is why docker-compose's `db` is pgvector/pgvector:pg16 rather than stock
 --     postgres — see migration 0005.
+--   * `UNIQUE NULLS NOT DISTINCT` on alerts and alert_subscriptions. tenant_id is null until
+--     Phase 3 and PostgreSQL's default treats two nulls as distinct, so a plain UNIQUE would
+--     enforce nothing at all today — which is exactly when phase1.4's "one amendment is one
+--     alert, not forty" is being built. PostgreSQL 15+; the stack is 16.
 --
 -- Five absences in this file are load-bearing and deliberate:
 --   * fetch_observations has no request-URL column   -- ADR-0003 decision 13
@@ -34,7 +38,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict g7BdesrAPLw3gZQWslKRfIPDR3rbHIyV0h2StwAaaOwCYIorL7btD9Rkib1CgwG
+\restrict ekPeHJ9gc3MBeswEtUjt7ioVm0fFNF6iQk5YbGbvsIoDMHyXJejZdFTY8qxLava
 
 -- Dumped from database version 16.14 (Debian 16.14-1.pgdg12+1)
 -- Dumped by pg_dump version 16.14 (Debian 16.14-1.pgdg12+1)
@@ -62,6 +66,39 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
+
+
+--
+-- Name: alert_channel; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.alert_channel AS ENUM (
+    'in_app',
+    'webhook',
+    'email'
+);
+
+
+--
+-- Name: alert_severity; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.alert_severity AS ENUM (
+    'high',
+    'medium',
+    'low'
+);
+
+
+--
+-- Name: alert_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.alert_status AS ENUM (
+    'pending',
+    'delivered',
+    'failed'
+);
 
 
 --
@@ -131,6 +168,17 @@ CREATE TYPE public.clause_kind AS ENUM (
     'table',
     'table_row',
     'form'
+);
+
+
+--
+-- Name: delivery_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.delivery_status AS ENUM (
+    'pending',
+    'sent',
+    'failed'
 );
 
 
@@ -350,6 +398,78 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.alembic_version (
     version_num character varying(32) NOT NULL
+);
+
+
+--
+-- Name: alert_deliveries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.alert_deliveries (
+    id uuid NOT NULL,
+    tenant_id uuid,
+    alert_id uuid NOT NULL,
+    subscription_id uuid NOT NULL,
+    channel public.alert_channel NOT NULL,
+    destination text,
+    attempt integer DEFAULT 1 NOT NULL,
+    status public.delivery_status DEFAULT 'pending'::public.delivery_status NOT NULL,
+    error character varying(512),
+    attempted_at timestamp with time zone DEFAULT now() NOT NULL,
+    delivered_at timestamp with time zone,
+    next_retry_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT ck_alert_deliveries_attempt_positive CHECK ((attempt >= 1))
+);
+
+
+--
+-- Name: alert_subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.alert_subscriptions (
+    id uuid NOT NULL,
+    tenant_id uuid,
+    subscriber_id uuid NOT NULL,
+    cell_id uuid NOT NULL,
+    channel public.alert_channel DEFAULT 'in_app'::public.alert_channel NOT NULL,
+    destination text,
+    min_severity public.alert_severity DEFAULT 'low'::public.alert_severity NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT ck_alert_subscriptions_destination_for_remote_channel CHECK (((channel = 'in_app'::public.alert_channel) OR (destination IS NOT NULL)))
+);
+
+
+--
+-- Name: alerts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.alerts (
+    id uuid NOT NULL,
+    tenant_id uuid,
+    cell_id uuid NOT NULL,
+    document_id uuid NOT NULL,
+    document_version_id uuid NOT NULL,
+    from_version_id uuid,
+    severity public.alert_severity NOT NULL,
+    status public.alert_status DEFAULT 'pending'::public.alert_status NOT NULL,
+    title text NOT NULL,
+    summary text DEFAULT ''::text NOT NULL,
+    clause_count integer DEFAULT 0 NOT NULL,
+    change_event_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    clause_references jsonb,
+    cited_by_locked_ir boolean DEFAULT false NOT NULL,
+    locked_ir_count integer DEFAULT 0 NOT NULL,
+    published_at timestamp with time zone,
+    retrieved_at timestamp with time zone,
+    detected_at timestamp with time zone NOT NULL,
+    owner_id uuid,
+    assigned_by uuid,
+    assigned_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT ck_alerts_clause_count_positive CHECK ((clause_count > 0))
 );
 
 
@@ -907,6 +1027,30 @@ ALTER TABLE ONLY public.alembic_version
 
 
 --
+-- Name: alert_deliveries alert_deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alert_deliveries
+    ADD CONSTRAINT alert_deliveries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: alert_subscriptions alert_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alert_subscriptions
+    ADD CONSTRAINT alert_subscriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: alerts alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alerts
+    ADD CONSTRAINT alerts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: answer_citations answer_citations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1107,6 +1251,30 @@ ALTER TABLE ONLY public.structure_drift_alerts
 
 
 --
+-- Name: alert_deliveries uq_alert_deliveries_attempt; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alert_deliveries
+    ADD CONSTRAINT uq_alert_deliveries_attempt UNIQUE (alert_id, subscription_id, attempt);
+
+
+--
+-- Name: alert_subscriptions uq_alert_subscriptions_target; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alert_subscriptions
+    ADD CONSTRAINT uq_alert_subscriptions_target UNIQUE NULLS NOT DISTINCT (tenant_id, subscriber_id, cell_id, channel);
+
+
+--
+-- Name: alerts uq_alerts_target; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alerts
+    ADD CONSTRAINT uq_alerts_target UNIQUE NULLS NOT DISTINCT (tenant_id, cell_id, document_version_id);
+
+
+--
 -- Name: answer_citations uq_answer_citations_target; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1272,6 +1440,76 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.verification_results
     ADD CONSTRAINT verification_results_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ix_alert_deliveries_alert_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alert_deliveries_alert_id ON public.alert_deliveries USING btree (alert_id);
+
+
+--
+-- Name: ix_alert_deliveries_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alert_deliveries_status ON public.alert_deliveries USING btree (status);
+
+
+--
+-- Name: ix_alert_deliveries_subscription_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alert_deliveries_subscription_id ON public.alert_deliveries USING btree (subscription_id);
+
+
+--
+-- Name: ix_alert_subscriptions_cell_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alert_subscriptions_cell_id ON public.alert_subscriptions USING btree (cell_id);
+
+
+--
+-- Name: ix_alert_subscriptions_subscriber_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alert_subscriptions_subscriber_id ON public.alert_subscriptions USING btree (subscriber_id);
+
+
+--
+-- Name: ix_alert_subscriptions_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alert_subscriptions_tenant_id ON public.alert_subscriptions USING btree (tenant_id);
+
+
+--
+-- Name: ix_alerts_cell_id_detected_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alerts_cell_id_detected_at ON public.alerts USING btree (cell_id, detected_at);
+
+
+--
+-- Name: ix_alerts_owner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alerts_owner_id ON public.alerts USING btree (owner_id);
+
+
+--
+-- Name: ix_alerts_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alerts_status ON public.alerts USING btree (status);
+
+
+--
+-- Name: ix_alerts_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_alerts_tenant_id ON public.alerts USING btree (tenant_id);
 
 
 --
@@ -1580,6 +1818,62 @@ CREATE CONSTRAINT TRIGGER trg_ir_citations_require_citation AFTER DELETE ON publ
 --
 
 CREATE CONSTRAINT TRIGGER trg_irs_require_citation AFTER INSERT OR UPDATE ON public.irs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.assert_ir_has_citation();
+
+
+--
+-- Name: alert_deliveries alert_deliveries_alert_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alert_deliveries
+    ADD CONSTRAINT alert_deliveries_alert_id_fkey FOREIGN KEY (alert_id) REFERENCES public.alerts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: alert_deliveries alert_deliveries_subscription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alert_deliveries
+    ADD CONSTRAINT alert_deliveries_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.alert_subscriptions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: alert_subscriptions alert_subscriptions_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alert_subscriptions
+    ADD CONSTRAINT alert_subscriptions_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id);
+
+
+--
+-- Name: alerts alerts_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alerts
+    ADD CONSTRAINT alerts_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id);
+
+
+--
+-- Name: alerts alerts_document_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alerts
+    ADD CONSTRAINT alerts_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+
+
+--
+-- Name: alerts alerts_document_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alerts
+    ADD CONSTRAINT alerts_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id);
+
+
+--
+-- Name: alerts alerts_from_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alerts
+    ADD CONSTRAINT alerts_from_version_id_fkey FOREIGN KEY (from_version_id) REFERENCES public.document_versions(id);
 
 
 --
@@ -1922,5 +2216,5 @@ ALTER TABLE ONLY public.verification_results
 -- PostgreSQL database dump complete
 --
 
-\unrestrict g7BdesrAPLw3gZQWslKRfIPDR3rbHIyV0h2StwAaaOwCYIorL7btD9Rkib1CgwG
+\unrestrict ekPeHJ9gc3MBeswEtUjt7ioVm0fFNF6iQk5YbGbvsIoDMHyXJejZdFTY8qxLava
 

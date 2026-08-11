@@ -192,6 +192,18 @@ services:
       - ./services/monitoring:/app
     profiles: [app]
 
+  # Routing and delivery run off the API process: an amendment fans out to every claiming cell's
+  # subscribers, and a webhook receiver that hangs must not hold a request thread. No beat — the
+  # scheduler lives with `regulation`, and a failed delivery schedules its own retry by countdown.
+  monitoring-worker:
+    <<: *service-base
+    build: {context: ., dockerfile: services/monitoring/Dockerfile}
+    command: celery -A app.celery_app.celery_app worker -Q monitoring -c 2 -l info
+    volumes:
+      - ./shared:/shared
+      - ./services/monitoring:/app
+    profiles: [app]
+
   assistant:
     <<: *service-base
     build: {context: ., dockerfile: services/assistant/Dockerfile}

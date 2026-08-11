@@ -79,16 +79,18 @@ and `assistant` are scaffolded as health-check-only services; their content is p
 
 ## Risks & open questions
 
-- 🔴 **Four services at 6.5 FTE — the W1 decision has lapsed and defaulted by construction.** Phase 0
-  scaffolded all four services, so "open with four" is now the de facto answer; it was never taken
-  as a decision. ADR-0009 names `monitoring` as the cheapest reversal (three tables and one seam)
-  and that stays true only until [phase1.4](phase1.4_monitoring.md) starts at W7. **Confirm or
-  reverse before W7**, and record it — an unmade decision is not the same as a made one, and this
-  is exactly the W8 discovery the original entry warned against.
-- 🔴 **ADR-0005 open question 1** — whether `regulation` and `assistant` stay split. Same lapse, same
-  W7 deadline: the ADR leans split and notes that separating later means moving the embedding tables
-  and rewriting reads as raw SQL. [phase1.3](phase1.3_retrieval_qa.md) builds `assistant` from W5,
-  so the reversal window closes earlier than for `monitoring`.
+- 🟢 ~~**Four services at 6.5 FTE — the W1 decision has lapsed and defaulted by construction.**~~ —
+  **closed 2026-08-11: four services, `monitoring` stays its own**
+  ([ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md) open question 2). Phase 0
+  scaffolded all four, so "open with four" was the de facto answer for months before anyone chose
+  it; it was confirmed on the merits at the W7 deadline, before [phase1.4](phase1.4_monitoring.md)
+  built into the boundary. The outcome matches the default, which is exactly why it needed taking —
+  a decision that agrees with the drift is still a decision, and this one now has a date and a
+  reason instead of a scaffold.
+- 🟢 ~~**ADR-0005 open question 1** — whether `regulation` and `assistant` stay split.~~ —
+  **closed 2026-08-05: they stay split**, before [phase1.3](phase1.3_retrieval_qa.md) built
+  `assistant` at W5 and made the reversal mean moving the embedding tables and rebuilding the index.
+  The accepted cost is that `assistant` reads `clauses` constantly and every such read is raw SQL.
 - ~~**ADR-0005 open question 3**~~ — **resolved** in
   [ADR-0011](../design/ADR-0011-audit-trail-immutability.md): enforced, not conventional.
 

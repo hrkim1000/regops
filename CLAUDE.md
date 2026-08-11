@@ -30,7 +30,13 @@ Guardrails are in `.claude/settings.json` hooks; delegation in `.claude/agents/`
 6. Make every change as simple as possible — smallest possible impact on the codebase.
 7. Finally, provide a summary of the changes made.
 
-Commit or push **only when explicitly asked**.
+Commit or push **only when explicitly asked** — with one standing exception: **when a phase slice is
+finished, commit it and push to `origin` without asking** (2026-08-11). Every gate green first, and
+the phase file, `docs/plan/README.md` and the root `README.md` status rows move in the same commit —
+a commit whose docs claim a phase is done while its code is in the next one makes the history lie.
+
+The `startup` docs sync stays a per-occasion ask. It is a repository owned by another account, which
+is a different kind of action from pushing to your own.
 
 ## Plan Documentation
 
@@ -53,16 +59,18 @@ pillars on one shared knowledge layer:
 3. Compliance gap analysis & control mapping
 4. SaaS productization for external customers
 
-**Current state: phase 0, 1.0, 1.1, 1.2 and 1.3 are done; phase 1.5's foundation is built early.**
+**Current state: phase 0, 1.0, 1.1, 1.2, 1.3 and 1.4 are done; phase 1.5's foundation is built early.**
 The compose stack, `regops_shared`, `platform-core` (auth · RBAC · audit chain) and the `regulation`
 L1–L2 pipeline exist and run — ingest → parse → diff → change events → IR, with a clause store of
 25,729 clauses over 526 documents of the gated corpus, and draft → locked IRs behind the Requirement
 Extraction agent. `assistant` now answers: pgvector index over 조-level passages, hybrid
 BM25 + vector retrieval, citation-enforced generation, and an evidence-verification pass that can
-fail an answer. `monitoring` is still a health-check-only scaffold; the `frontend` has its 1.5
-foundation, a read-only regulation browser, the IR review + lock surface, a submission-document view
-derived from the clause tree, and the Q&A workbench — ask, cited answer, and the superseded-citation
-queue. Only the monitoring dashboard is still missing, and it waits on 1.4.
+fail an answer. `monitoring` routes: cell subscriptions, one alert per amendment with its clause
+list, impact grading, delivery with per-attempt retry, a briefing composed on read, and the coverage
+and latency metrics the two gates are measured with. The `frontend` has its 1.5 foundation, a
+read-only regulation browser, the IR review + lock surface, a submission-document view derived from
+the clause tree, and the Q&A workbench — ask, cited answer, and the superseded-citation queue. Only
+the monitoring dashboard is still missing; 1.4 has unblocked it.
 Architecture is settled through [ADR-0001 – ADR-0017](docs/design/); anything below still marked
 *target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 
@@ -240,8 +248,12 @@ name only**: `send_task("svc.task_name", args=[...], queue="svc")` — never imp
 task graph.
 
 The ingestion chain (fetch → archive → parse → diff → emit) runs on the `regulation` queue,
-committing incrementally so progress is visible and a retry skips completed rows. The scheduler
-(beat) lives with `regulation` — it drives `source_schedules` and has no other consumer.
+committing incrementally so progress is visible and a retry skips completed rows. **The scheduler
+(beat) lives with `regulation` and nowhere else** — it drives `source_schedules` and has no other
+consumer. `monitoring` needed a delivery retry and did *not* get a second beat for it: a failed
+delivery re-dispatches `monitoring.deliver_alert` with a Celery `countdown`, so the backoff belongs
+to the delivery, is recorded on the row as `next_retry_at`, and survives a worker restart. A sweep
+would have spent a periodic query re-discovering work that was already scheduled.
 
 **Extraction is deliberately *not* chained off parse.** Every other stage is deterministic and cheap
 enough to run on every fetch; extraction calls an LLM per obligation-bearing clause over a 25,729-
@@ -262,6 +274,12 @@ answer's evidence exactly as it stales an IR, but into a different lifecycle in 
 table ([ADR-0006](docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 10).
 So `regulation` never writes `answer_citations`; it sends `assistant.supersede_answer_citations` with
 the version id, and `assistant` reads `clause_diffs` one-way and flags its own rows.
+
+**It tells `monitoring` the same way, and the events are already committed when it does.** The diff
+stage sends `monitoring.route_change_events` with the version id; `monitoring` reads `change_events`
+joined to `clause_diffs` one-way and composes its own alerts. It is dispatched even when every diff
+was a renumber — deciding that an amendment is not worth alerting on is a judgement `monitoring`
+makes, grades and counts, not one to make silently on the writing side.
 
 ## Shared Library
 
@@ -286,7 +304,7 @@ the authoritative dump and is updated in the same change.
 ## Commands
 
 ```bash
-docker compose --profile app up -d         # infra + services + regulation and assistant workers
+docker compose --profile app up -d         # infra + services + regulation/assistant/monitoring workers
 docker compose run --rm migrate            # alembic upgrade head, then exits
 docker compose exec -T regulation python /scripts/seed_sources.py    # idempotent source registry
 docker compose exec -T <svc> python -m pytest tests/unit -q

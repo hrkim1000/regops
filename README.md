@@ -222,7 +222,7 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Scope, data tiers, roadmap | [docs/RegOps.md](docs/RegOps.md) | 🟢 settled |
 | Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
-| Service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🟡 `assistant` split taken; `monitoring` held to W7 |
+| Service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🟢 both taken — `assistant` split retained (2026-08-05); `monitoring` stays its own service (2026-08-11, at the W7 deadline) |
 | Architecture decisions | [ADR-0001 – ADR-0017](docs/design/) | 🟢 complete for Phase 1 — 0001, 0004, 0006 and 0012–0017 accepted; the rest proposed |
 | Phase plan — 13 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
 | Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
@@ -230,8 +230,8 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Normalization — clause schema, diff | [phase1.1](docs/plan/phase1.1_normalization.md) | 🟢 done (2026-08-06) — 25,729 clauses over 526 documents, 9/9 acceptance, both falsifiers not triggered |
 | IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | 🟢 done (2026-08-07) — 7/7 acceptance; extraction is triggered, not chained off parse |
 | Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | 🟢 done (2026-08-11) — 9/9 acceptance; hybrid retrieval, generation constrained to what retrieval returned, verification able to fail an answer |
-| Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | ⬜ planned (W7–10) |
-| Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · **Q&A workbench (2026-08-11)**; monitoring dashboard waits on 1.4, Playwright E2E not written |
+| Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | 🟢 done (2026-08-11) — 6/6 acceptance; 109 change events → 7 alerts, 100% detection coverage on both gated cells |
+| Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · **Q&A workbench (2026-08-11)**; monitoring dashboard unblocked by 1.4 but not built, Playwright E2E not written |
 | Evaluation + pilot — the 6 gates | [phase1.6](docs/plan/phase1.6_evaluation.md) | ⬜ planned (W7–16) |
 | Tier C + remaining 6 cells | [phase2.0](docs/plan/phase2.0_tier_c_scale.md) | ⬜ Phase 2 |
 | Semantic enrichment + graph | [phase2.1](docs/plan/phase2.1_semantic_graph.md) | ⬜ Phase 2 |

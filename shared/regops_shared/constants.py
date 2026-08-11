@@ -702,5 +702,116 @@ MAX_PROMPT_BLOCK_CHARS: Final[int] = MAX_PASSAGE_CHARS
 #: more of the prompt on its address list than on its text.
 MAX_CITABLE_PATHS_PER_PASSAGE: Final[int] = 24
 
+# --- monitoring: matching, grading, delivery (ADR-0009 decisions 2-3) ----------------------
+
+
+class AlertChannel(StrEnum):
+    """Where an alert is delivered.
+
+    ``EMAIL`` is declared and **not implemented in Phase 1**: there is no mail relay in the stack,
+    and a channel that silently drops would make the delivery-failure criterion untestable. It is
+    named here so adding a relay is a channel implementation rather than an enum migration.
+    """
+
+    IN_APP = "in_app"  # recorded and read back from the API — the default
+    WEBHOOK = "webhook"  # POST to a subscriber-configured URL
+    EMAIL = "email"  # declared, unimplemented until a relay exists
+
+
+class AlertSeverity(StrEnum):
+    """Impact grade. **Cell-level, never product-level** (ADR-0007, ADR-0009 decision 5).
+
+    Until the Product context exists an IR applies to a *cell*, so the strongest thing Phase 1 can
+    say is "something in your cell changed, and here is how much of it". Presenting these as
+    product-level precision would be a claim the data cannot support.
+    """
+
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+#: Ordered least- to most-urgent, so ``min_severity`` on a subscription is an index comparison.
+SEVERITY_ORDER: Final[tuple[AlertSeverity, ...]] = (
+    AlertSeverity.LOW,
+    AlertSeverity.MEDIUM,
+    AlertSeverity.HIGH,
+)
+
+
+class AlertStatus(StrEnum):
+    """Where an alert got to, derived from its deliveries after every pass.
+
+    Three values, not four: a partial success reads as ``DELIVERED`` because the per-subscriber
+    truth is on ``alert_deliveries``, and an alert-level "partial" would be a second copy of a fact
+    that is already recorded per attempt.
+    """
+
+    PENDING = "pending"  # at least one delivery still has attempts left
+    DELIVERED = "delivered"  # nothing retriable remains and at least one attempt succeeded
+    FAILED = "failed"  # every subscriber's attempts are exhausted
+
+
+class DeliveryStatus(StrEnum):
+    """One attempt. The row is written *before* the attempt, so a crash mid-send leaves a record."""
+
+    PENDING = "pending"
+    SENT = "sent"
+    FAILED = "failed"
+
+
+#: Change kinds that move a clause's **address** without changing what it requires
+#: (:class:`ChangeKind`, ADR-0002 decision 7). An amendment consisting only of these produces no
+#: end-user alert: it is not a substantive change, and false positives attack the detection-coverage
+#: story from the side no gate measures.
+NON_SUBSTANTIVE_CHANGE_KINDS: Final[frozenset[ChangeKind]] = frozenset(
+    {ChangeKind.RENUMBERED, ChangeKind.MOVED}
+)
+
+#: Substantive clauses in one amendment above which it is graded ``MEDIUM`` on size alone.
+#:
+#: Deliberately crude, and labelled as such. Phase 1 grading has three inputs — change kind, clause
+#: count, and whether a locked IR cites the touched text — and no corpus of graded amendments to
+#: calibrate against. 20 sits above the largest routine 고시 touch-up and below a restructuring;
+#: phase 1.6 re-derives it from the pilot rather than nudging it here.
+ALERT_BULK_CLAUSE_COUNT: Final[int] = 20
+
+#: Attempts per (alert, subscriber) before delivery is abandoned. Each attempt writes its own
+#: ``alert_deliveries`` row, so an exhausted delivery is visible rather than merely absent.
+DELIVERY_MAX_ATTEMPTS: Final[int] = 5
+
+#: Exponential backoff, doubling from one minute and capped at six hours. Capped because the gate
+#: is publication → alert within 24h: a backoff that grows without bound would let a relay that
+#: recovers on day two report a success that missed the only deadline that matters.
+DELIVERY_BACKOFF_BASE_SECONDS: Final[int] = 60
+DELIVERY_BACKOFF_CAP_SECONDS: Final[int] = 6 * 60 * 60
+
+
+def delivery_backoff_seconds(attempt: int) -> int:
+    """Seconds to wait before ``attempt`` + 1. ``attempt`` is 1-based."""
+    wait = DELIVERY_BACKOFF_BASE_SECONDS * 2 ** max(attempt - 1, 0)
+    return min(wait, DELIVERY_BACKOFF_CAP_SECONDS)
+
+
+#: The Go/No-Go detection-latency gate, measured publication → alert (RegOps.md).
+DETECTION_LATENCY_TARGET_HOURS: Final[int] = 24
+
+#: Window the daily briefing covers, ending at "now" in the authority's own timezone.
+BRIEFING_WINDOW_HOURS: Final[int] = 24
+
+#: The timezone an authority publishes in — what "today" means to the person being alerted.
+#:
+#: Not decoration, and the one thing :func:`version_status` explicitly defers to this phase: a
+#: Korean effective date evaluated in UTC reads as pending for nine hours after it takes effect in
+#: Korea. Harmless on a browser label, wrong on a *daily* briefing, whose whole content is decided
+#: by where the day boundary falls.
+AUTHORITY_TIMEZONE: Final[dict[Authority, str]] = {
+    Authority.MFDS: "Asia/Seoul",
+    Authority.FDA: "America/New_York",
+    Authority.EU: "Europe/Brussels",
+    Authority.NMPA: "Asia/Shanghai",
+}
+
+
 #: Genesis value for the first audit_log row's ``prev_hash`` (ADR-0011).
 AUDIT_CHAIN_GENESIS: Final[str] = "0" * 64

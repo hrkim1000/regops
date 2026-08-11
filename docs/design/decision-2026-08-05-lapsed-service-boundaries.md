@@ -1,8 +1,11 @@
 # Decision brief — the two lapsed service-boundary decisions
 
 - **Date:** 2026-08-05
-- **Status:** **Decision 1 taken 2026-08-05** (split retained → [ADR-0005](ADR-0005-service-architecture.md)
-  open question 1). **Decision 2 held, deliberately, until W7.**
+- **Status:** **Both taken.** Decision 1 on 2026-08-05 (split retained →
+  [ADR-0005](ADR-0005-service-architecture.md) open question 1); decision 2 on **2026-08-11**
+  (four services kept → [ADR-0009](ADR-0009-service-boundaries-per-pillar.md) open question 2),
+  at the W7 deadline and before [phase1.4](../plan/phase1.4_monitoring.md) built into the boundary.
+  Nothing here is outstanding; the file is kept for the reasoning.
 - **Owner:** whoever owns the plan. Not the implementer.
 - **Why now:** both were scoped as **W1** decisions. Phase 0 closed without taking them, phase 1.0
   closed without taking them, and [phase1.1](../plan/phase1.1_normalization.md) runs W3–W6 — so the
@@ -55,11 +58,15 @@ at W9 that nobody chose costs the index build.
 
 ---
 
-## Decision 2 — four services, or fold `monitoring` into `regulation`? · **HELD to W7**
+## Decision 2 — four services, or fold `monitoring` into `regulation`? · **TAKEN: four**
 
 **Source:** [phase0](../plan/phase0_foundation.md) risks ·
 [ADR-0009](ADR-0009-service-boundaries-per-pillar.md) · **Due: W7** ·
-**Held 2026-08-05, deliberately.**
+**Held 2026-08-05, deliberately. Decided 2026-08-11: `monitoring` stays its own service.**
+
+Taken at the deadline rather than past it — before [phase1.4](../plan/phase1.4_monitoring.md) wrote
+anything into the boundary, which is the condition the hold depended on. Recorded in ADR-0009 open
+question 2; the cost curve below is the reasoning, not an outstanding item.
 
 This is not a third lapse, and the difference is worth stating because it is the whole point of
 writing the brief. The first two deferrals were silent — nobody chose, and the scaffold chose for
@@ -74,13 +81,20 @@ the boundary. The moment 1.4 writes subscription matching, impact grading or del
 it is the last moment the hold is free.** If 1.4 is pulled forward, the decision moves with it.
 
 `monitoring` owns three tables — `alert_subscriptions`, `alerts`, `alert_deliveries` — and reads
-`change_events` one-way by raw SQL. Today it is a health-check-only scaffold.
+`change_events` one-way by raw SQL. At the time this brief was written it was a health-check-only
+scaffold.
 
 | When | Cost of folding it in |
 |---|---|
 | **now** | three tables and one seam. ADR-0009 calls this the cheapest reversal in the design |
 | after W7 | [phase1.4](../plan/phase1.4_monitoring.md) has built subscription matching, impact grading and delivery inside it |
 | after the pilot | alert history exists and users depend on it |
+
+> **The row that came true.** [phase1.4](../plan/phase1.4_monitoring.md) landed on 2026-08-11, the
+> same day the decision closed and immediately after it. Subscription matching, impact grading,
+> delivery and the briefing now live inside `monitoring`, so the cost of folding it in has moved to
+> the second row exactly as scheduled. That is the intended outcome, not a missed window: the
+> decision was taken *before* the code, which is the only ordering that made it a choice.
 
 **What pulls them apart.** The seam is clean and one-directional: everything that *writes* the
 clause store is `regulation`; `monitoring` begins where writing ends. That is a genuine ownership

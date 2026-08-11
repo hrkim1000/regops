@@ -32,10 +32,12 @@ log = structlog.get_logger(__name__)
 QUEUE = "regulation"
 
 #: Cross-service dispatch is by task **name** only (CLAUDE.md § Celery Queue Architecture), so these
-#: two strings are the entire coupling to `assistant`. Nothing here imports that service's task
-#: graph, and nothing here writes its tables.
+#: four strings are the entire coupling to `assistant` and `monitoring`. Nothing here imports either
+#: service's task graph, and nothing here writes their tables.
 ASSISTANT_QUEUE = "assistant"
 ANSWER_SUPERSEDE_TASK = "assistant.supersede_answer_citations"
+MONITORING_QUEUE = "monitoring"
+ROUTE_CHANGE_EVENTS_TASK = "monitoring.route_change_events"
 
 
 @celery_app.task(name="regulation.dispatch_due_sources")
@@ -185,6 +187,16 @@ def diff_document_version(document_version_id: str) -> dict[str, object]:
         # and flags its own rows.
         celery_app.send_task(
             ANSWER_SUPERSEDE_TASK, args=[document_version_id], queue=ASSISTANT_QUEUE
+        )
+
+    if not result.baseline and result.change_events:
+        # The events are committed; routing them is somebody else's pillar. `monitoring` begins
+        # where writing ends (ADR-0009 decision 2) — it reads `change_events` one-way and composes
+        # its own alerts, so this service never learns what a subscription is. Dispatched even when
+        # every diff was a renumber: deciding that an amendment is not worth alerting on is a
+        # judgement `monitoring` makes and records, not one to make silently here.
+        celery_app.send_task(
+            ROUTE_CHANGE_EVENTS_TASK, args=[document_version_id], queue=MONITORING_QUEUE
         )
 
     return {

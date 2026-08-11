@@ -4,6 +4,15 @@ The owning service re-exports what it owns (`from regops_shared.models import Us
 imports another service's model onto its own metadata.
 """
 
+from regops_shared.models.alert import (
+    Alert,
+    AlertDelivery,
+    AlertSubscription,
+    alert_channel_enum,
+    alert_severity_enum,
+    alert_status_enum,
+    delivery_status_enum,
+)
 from regops_shared.models.answer import (
     Answer,
     AnswerCitation,
@@ -59,6 +68,9 @@ from regops_shared.models.user import Session, User, role_enum
 
 __all__ = [
     "IR",
+    "Alert",
+    "AlertDelivery",
+    "AlertSubscription",
     "Answer",
     "AnswerCitation",
     "Attachment",
@@ -88,12 +100,16 @@ __all__ = [
     "UUIDPrimaryKey",
     "User",
     "VerificationResult",
+    "alert_channel_enum",
+    "alert_severity_enum",
+    "alert_status_enum",
     "answer_status_enum",
     "attachment_kind_enum",
     "authority_enum",
     "change_kind_enum",
     "classification_kind_enum",
     "clause_kind_enum",
+    "delivery_status_enum",
     "doc_type_enum",
     "domain_enum",
     "drift_signal_enum",

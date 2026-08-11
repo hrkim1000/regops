@@ -22,8 +22,8 @@ starts at the first connector and assumes a stack already exists. It does not.
 | 1.1 | [phase1.1_normalization.md](phase1.1_normalization.md) | Phase 1 | W3–W6 | 🟢 done (2026-08-06) — 9/9 acceptance, both falsifiers not triggered |
 | 1.2 | [phase1.2_ir_extraction.md](phase1.2_ir_extraction.md) | Phase 1 | W3–W8 | 🟢 done (2026-08-07) — 7/7 acceptance |
 | 1.3 | [phase1.3_retrieval_qa.md](phase1.3_retrieval_qa.md) | Phase 1 | W5–W10 | 🟢 done (2026-08-11) — 9/9 acceptance |
-| 1.4 | [phase1.4_monitoring.md](phase1.4_monitoring.md) | Phase 1 | W7–W10 | ⬜ planned |
-| 1.5 | [phase1.5_frontend.md](phase1.5_frontend.md) | Phase 1 | W7–W12 | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench (2026-08-11); dashboard waits on 1.4 |
+| 1.4 | [phase1.4_monitoring.md](phase1.4_monitoring.md) | Phase 1 | W7–W10 | 🟢 done (2026-08-11) — 6/6 acceptance, 100% detection coverage on both gated cells |
+| 1.5 | [phase1.5_frontend.md](phase1.5_frontend.md) | Phase 1 | W7–W12 | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench (2026-08-11); dashboard unblocked by 1.4, not yet built |
 | 1.6 | [phase1.6_evaluation.md](phase1.6_evaluation.md) | Phase 1 | W2–W16 | ⬜ planned |
 | 2.0 | [phase2.0_tier_c_scale.md](phase2.0_tier_c_scale.md) | Phase 2 · M5–12 | — | ⬜ planned |
 | 2.1 | [phase2.1_semantic_graph.md](phase2.1_semantic_graph.md) | Phase 2 | — | ⬜ planned |
@@ -60,7 +60,7 @@ A decision left unmade is taken by whatever gets built first. These have deadlin
 
 | Decision | Due | Closes because |
 |---|---|---|
-| Four services, or fold `monitoring` into `regulation`? ([brief](../design/decision-2026-08-05-lapsed-service-boundaries.md)) | **held to W7** (deliberately, 2026-08-05 — not a lapse) | 1.4 starts at W7; after that the reversal is no longer three tables and one seam |
+| ~~Four services, or fold `monitoring` into `regulation`?~~ | **taken 2026-08-11** | **Four — `monitoring` stays its own service.** [ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md) open question 2; reasoning in the [brief](../design/decision-2026-08-05-lapsed-service-boundaries.md). Taken at the W7 deadline, before [phase1.4](phase1.4_monitoring.md) built into the boundary |
 | ~~Do `regulation` and `assistant` stay split?~~ | **taken 2026-08-05** | **Yes — split retained.** [ADR-0005](../design/ADR-0005-service-architecture.md) open question 1; reasoning in the [brief](../design/decision-2026-08-05-lapsed-service-boundaries.md) |
 | ~~Annex storage — does `annex_rows` exist, and who owns it?~~ | **taken 2026-08-06** | **No `annex_rows`.** [ADR-0014](../design/ADR-0014-annex-row-granularity.md) — an annex table row is a `Clause`, columns typed per table in `jsonb`. Closes ADR-0006 open question 3 and ADR-0004 open question 2 |
 | ~~Unresolvable effective dates~~ | **taken** | [ADR-0013](../design/ADR-0013-unresolvable-effective-dates.md) — null plus the retained raw 부칙 phrase |
@@ -73,10 +73,15 @@ The two **service-boundary** decisions at the top of that table were scoped as W
 lapsed twice in silence. The
 [decision brief](../design/decision-2026-08-05-lapsed-service-boundaries.md) set out the cost curve
 for each; on 2026-08-05 the first was **taken** (split retained) and the second **held to W7 on
-purpose** — a recorded choice to wait, which is not the same as another lapse. The hold is only free
-while nothing is built into the boundary: once [phase1.4](phase1.4_monitoring.md) starts,
-`monitoring` stops being three tables and one seam, so W7 is the last moment rather than a
-reminder.
+purpose** — a recorded choice to wait, which is not the same as another lapse. **Both are now
+taken:** the hold ran to its date and closed on 2026-08-11 with `monitoring` kept as its own
+service, before [phase1.4](phase1.4_monitoring.md) wrote anything into the boundary. That timing was
+the whole condition — once 1.4 builds subscription matching and delivery inside it, `monitoring`
+stops being three tables and one seam, and the reversal stops being cheap whether or not anyone
+noticed.
+
+**Every decision in this table is now closed.** A new one goes in with its deadline the moment it is
+identified, not when it becomes urgent — that is what the two silent lapses cost.
 
 ## Working with these files
 
