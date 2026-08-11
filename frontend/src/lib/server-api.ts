@@ -30,18 +30,38 @@ export async function accessToken(): Promise<string | null> {
  * `<EmptyState>` instead of blanking a page that also shows unrelated data (frontend-page skill).
  * The reason is logged server-side — a silent null is a debugging trap.
  */
+/**
+ * Query parameters. An **array becomes repeated keys** (`?status=draft&status=locked`), which is how
+ * FastAPI spells a multi-value filter — joining them with a comma would arrive as one bogus value
+ * and the endpoint would 422 rather than filter.
+ */
+export type QueryParams = Record<
+  string,
+  string | number | boolean | readonly string[] | undefined
+>;
+
+function buildUrl(service: ServiceName, path: string, params?: QueryParams): URL {
+  const url = new URL(`${ORIGINS[service]}/api/v1${path}`);
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value === undefined || value === '') continue;
+    if (Array.isArray(value)) {
+      for (const item of value) url.searchParams.append(key, String(item));
+    } else {
+      url.searchParams.set(key, String(value));
+    }
+  }
+  return url;
+}
+
 export async function serverGet<T>(
   service: ServiceName,
   path: string,
-  params?: Record<string, string | number | boolean | undefined>,
+  params?: QueryParams,
 ): Promise<T | null> {
   const token = await accessToken();
   if (!token) return null;
 
-  const url = new URL(`${ORIGINS[service]}/api/v1${path}`);
-  for (const [key, value] of Object.entries(params ?? {})) {
-    if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
-  }
+  const url = buildUrl(service, path, params);
 
   try {
     const response = await fetch(url, {
@@ -66,15 +86,12 @@ export async function serverGet<T>(
 export async function serverGetPage<T>(
   service: ServiceName,
   path: string,
-  params?: Record<string, string | number | boolean | undefined>,
+  params?: QueryParams,
 ): Promise<Envelope<T> | null> {
   const token = await accessToken();
   if (!token) return null;
 
-  const url = new URL(`${ORIGINS[service]}/api/v1${path}`);
-  for (const [key, value] of Object.entries(params ?? {})) {
-    if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
-  }
+  const url = buildUrl(service, path, params);
 
   try {
     const response = await fetch(url, {

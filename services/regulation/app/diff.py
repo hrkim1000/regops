@@ -45,6 +45,8 @@ from regops_shared.models import (
 )
 from regops_shared.models.base import utcnow
 
+from .extraction.staleness import mark_stale
+
 log = structlog.get_logger(__name__)
 
 #: Above this length, similarity is computed on a prefix. ``SequenceMatcher`` is quadratic, and
@@ -63,6 +65,9 @@ class DiffResult:
     change_events: int = 0
     needs_review: int = 0
     citations_superseded: int = 0
+    #: IRs moved to ``stale`` because an amendment touched a clause they cite. Re-derivation is a
+    #: separate task (ADR-0004 decision 5) — flagging must not wait on a model being reachable.
+    irs_marked_stale: int = 0
     baseline: bool = False
 
 
@@ -92,7 +97,9 @@ def diff_version(session: Session, version: DocumentVersion) -> DiffResult:
             result.needs_review += 1
 
     result.change_events = _emit(session, version, diffs)
-    result.citations_superseded = _supersede_citations(session, previous, diffs)
+    result.citations_superseded, result.irs_marked_stale = _supersede_citations(
+        session, previous, diffs
+    )
     session.commit()
 
     log.info(
@@ -102,6 +109,7 @@ def diff_version(session: Session, version: DocumentVersion) -> DiffResult:
         change_events=result.change_events,
         needs_review=result.needs_review,
         superseded=result.citations_superseded,
+        stale_irs=result.irs_marked_stale,
     )
     return result
 
@@ -384,14 +392,22 @@ def _emit(session: Session, version: DocumentVersion, diffs: list[ClauseDiff]) -
 
 def _supersede_citations(
     session: Session, previous: DocumentVersion, diffs: list[ClauseDiff]
-) -> int:
-    """Flag citations into amended clauses as superseded. **Never rewrite one.**
+) -> tuple[int, int]:
+    """Flag citations into amended clauses, and stale the IRs behind them. **Never rewrite one.**
 
     A citation is pinned to an immutable version (ADR-0002 decision 4). Repointing it at the new
     version would silently change the evidence behind an obligation an RA already locked, while the
     audit trail still showed one approved record. So the row is flagged, the original stays
     resolvable, and re-verification is queued — which is the product feature that makes "missed
     amendment impact analyses = 0" measurable, not a maintenance chore.
+
+    Flagging the citation is not enough on its own: the *IR* is what downstream reads, and an IR
+    still marked ``locked`` over evidence that has moved would keep flowing into answers and impact
+    grades. So it moves to ``stale`` here, synchronously, in the same transaction — re-derivation is
+    a separate task (ADR-0004 decision 5) precisely so that stopping the flow never waits on a model
+    being reachable.
+
+    Returns ``(citations_superseded, irs_marked_stale)``.
     """
     touched = {
         diff.from_clause_path or diff.clause_path: diff
@@ -399,22 +415,24 @@ def _supersede_citations(
         if diff.change_kind is not ChangeKind.ADDED
     }
     if not touched:
-        return 0
+        return 0, 0
 
-    citations = session.scalars(
-        select(IRCitation).where(
-            IRCitation.document_version_id == previous.id,
-            IRCitation.clause_path.in_(list(touched)),
-            IRCitation.superseded_at.is_(None),
+    citations = list(
+        session.scalars(
+            select(IRCitation).where(
+                IRCitation.document_version_id == previous.id,
+                IRCitation.clause_path.in_(list(touched)),
+                IRCitation.superseded_at.is_(None),
+            )
         )
-    ).all()
+    )
 
     now = utcnow()
     for citation in citations:
         citation.superseded_at = now
         citation.superseded_by_diff_id = touched[citation.clause_path].id
     session.flush()
-    return len(citations)
+    return len(citations), mark_stale(session, citations)
 
 
 # --- lookups -------------------------------------------------------------------------------

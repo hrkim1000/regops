@@ -1,4 +1,4 @@
-import { ChevronLeft, FileText, ListTree } from 'lucide-react';
+import { ChevronLeft, ClipboardList, FileText, ListTree, Scale } from 'lucide-react';
 import Link from 'next/link';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -142,8 +142,10 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
                 </dl>
 
                 <div className="mt-3 flex flex-wrap items-center gap-4">
-                  {/* Parse output and archived bytes, side by side — a parse defect is only
-                      visible when both are one click apart. */}
+                  {/* The three readings of one version, one click apart: what the parser made of
+                      it, what the authority actually sent, and what was extracted from it. A parse
+                      defect is only visible when the first two sit beside each other, and an
+                      extraction is only reviewable when it sits beside the clause it cites. */}
                   <Link
                     href={`/regulations/${document.id}/versions/${version.id}/clauses`}
                     className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
@@ -155,6 +157,18 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
                     className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
                   >
                     <FileText size={13} /> 원문 보기
+                  </Link>
+                  <Link
+                    href={`/regulations/${document.id}/versions/${version.id}/irs`}
+                    className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                  >
+                    <Scale size={13} /> IR 보기
+                  </Link>
+                  <Link
+                    href={`/regulations/${document.id}/versions/${version.id}/submissions`}
+                    className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                  >
+                    <ClipboardList size={13} /> 제출 서류
                   </Link>
                 </div>
               </li>

@@ -423,6 +423,100 @@ class IRStatus(StrEnum):
     SUPERSEDED = "superseded"
 
 
+#: The only statuses downstream consumers may read (ADR-0004 decision 4). Retrieval, impact grading
+#: and gap analysis filter on this — a draft IR is inert, and a stale one is an obligation whose
+#: evidence has moved out from under it. Both would look like findings if they leaked.
+IR_VISIBLE_STATUSES: Final[tuple[IRStatus, ...]] = (IRStatus.LOCKED,)
+
+
+class ClassificationKind(StrEnum):
+    """Every clause is examined and gets one of these (ADR-0004 decision 6).
+
+    There is no third value and no absence. "50 IRs from 200 clauses" is uninterpretable unless the
+    other 150 are on record as *examined and deliberately empty* — otherwise it cannot be told apart
+    from 150 missed obligations, and gap-analysis completeness has nothing to rest on.
+    """
+
+    OBLIGATION_BEARING = "obligation_bearing"
+    EXCLUDED = "excluded"
+
+
+class ExclusionReason(StrEnum):
+    """Why an examined clause yielded no IR. Required whenever ``kind = excluded``.
+
+    A free-text reason would be unaggregatable, and the coverage claim depends on being able to say
+    *how many* clauses were excluded for each reason — a sudden jump in ``UNPARSEABLE`` is a parser
+    regression wearing an extraction costume.
+    """
+
+    DEFINITION = "definition"  # 정의 조항 — states what a term means, binds nobody
+    SCOPE = "scope"  # 목적 / 적용범위
+    HEADING = "heading"  # 편/장/절/관 and annex section headings
+    PERMISSIVE = "permissive"  # 할 수 있다 / may — ADR-0004 decision 1, no IR
+    PROCEDURAL = "procedural"  # 시행일, 경과조치 and other administrative machinery
+    DELEGATION = "delegation"  # "…는 총리령으로 정한다" — defers the duty rather than stating one
+    TABLE_CONTAINER = "table_container"  # a table node; its rows carry the obligations, not it
+    FORM = "form"  # a blank 서식/별지 template
+    EMPTY = "empty"  # no substantive text (a stub or a structural placeholder)
+    NO_OBLIGATION = "no_obligation"  # examined, prose, and simply states no duty
+    UNPARSEABLE = "unparseable"  # the agent returned nothing usable; recorded, never silently
+
+
+class ExtractionRunStatus(StrEnum):
+    """Where one extraction run got to. A run that dies mid-corpus must be visibly incomplete."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+#: Obligation modals per language, fixed at W3-4 (ADR-0004 decision 1). The inventory is *closed*:
+#: an extracted IR whose modal is not in its language's tuple is rejected, because "one bearer + one
+#: modal + one required action" is only a rule if the modal set is enumerable.
+#:
+#: Keyed by language rather than by domain — a modal is a property of Korean, not of cosmetics.
+MODAL_INVENTORY: Final[dict[str, tuple[str, ...]]] = {
+    "ko": ("하여야 한다", "해야 한다", "도록 한다", "금지한다", "아니 된다"),
+    "en": ("shall", "must", "is required to", "may not"),
+}
+
+#: Permissive forms yield **no IR** (ADR-0004 decision 1). They are recorded as context on a related
+#: IR where one exists, and as an ``ExclusionReason.PERMISSIVE`` classification where none does.
+PERMISSIVE_MODALS: Final[dict[str, tuple[str, ...]]] = {
+    "ko": ("할 수 있다", "수 있다"),
+    "en": ("may", "can", "is permitted to"),
+}
+
+#: Obligation taxonomy per domain (ADR-0004 decision 3). This and the modal inventory and the prompt
+#: are the **entire** content of the domain branch — same tables, same stages, same lifecycle.
+TAXONOMY_CODES: Final[dict[Domain, tuple[str, ...]]] = {
+    Domain.SAMD: ("design_control", "risk", "vnv", "postmarket"),
+    Domain.COSMETIC: ("ingredient", "labelling", "claims", "gmp", "notification"),
+}
+
+#: Bumped when the atomicity rules, modal inventory or taxonomy change. Stamped on every IR: an
+#: obligation extracted under an older rule set is not comparable with one extracted under this one,
+#: and the golden-set score is only meaningful per rule version.
+IR_RULE_VERSION: Final[str] = "1.2.0"
+
+#: Bumped independently of the rules — a prompt can be reworded without the rule set moving.
+IR_PROMPT_VERSION: Final[str] = "1.2.0"
+
+#: Extraction is run at temperature 0 and any delta between two runs at the same
+#: ``(rule_version, prompt_version, llm_model)`` is treated as a regression (ADR-0017 decision 1).
+#: Sampling makes this approximate rather than guaranteed, which is why it is a *test*, not a claim.
+EXTRACTION_TEMPERATURE: Final[float] = 0.0
+
+#: Clauses per LLM call. One at a time: the atomicity rule is about a single clause's obligations,
+#: and batching invites the model to merge duties across clause boundaries — the exact error that
+#: makes IR counts non-comparable.
+EXTRACTION_BATCH_SIZE: Final[int] = 1
+
+#: How many clauses are written before the orchestrator commits. Long work commits incrementally so
+#: progress survives a worker restart and a retry skips what is already classified.
+EXTRACTION_COMMIT_EVERY: Final[int] = 25
+
+
 #: Stamped onto every ``document_versions.parser_version`` and used to decide whether a stored parse
 #: is stale. Bump it whenever a profile changes what it emits — that is the signal to re-parse the
 #: archive, which ADR-0015 makes possible without re-fetching.
@@ -431,6 +525,182 @@ PARSER_VERSION: Final[str] = "1.1.0"
 #: Embeddings are pinned regardless of the generation provider (ADR-0005 decision 7).
 EMBEDDING_MODEL: Final[str] = "nomic-embed-text"
 EMBEDDING_DIM: Final[int] = 768
+
+
+class EmbeddingScope(StrEnum):
+    """What a stored vector actually covers (ADR-0006 decisions 1–2).
+
+    The unit is the **조**, not the clause: a 호 embedded alone is unretrievable — ``3. 갈색``
+    carries no meaning without its parent. So one vector covers an article with its 항/호/목 rolled
+    in, and citation still resolves to whichever child the answer used.
+
+    ``TABLE_HEADER`` is the annex compromise. Rows are never embedded — thousands of near-identical
+    ingredient lines are the worst possible input to a semantic index — but the table's title and
+    column labels are, so *"화장품에 쓸 수 없는 원료 목록이 있나?"* still finds the annex and the
+    lookup that follows is relational.
+    """
+
+    ARTICLE = "article"  # a 조 (or § / regulation-level unit) with its children rolled in
+    ARTICLE_FRAGMENT = "article_fragment"  # a long 조, split at 항 boundaries, heading re-prepended
+    TABLE_HEADER = "table_header"  # an annex table's title + column labels — never its rows
+    FORM = "form"  # a blank 서식/별지: its title is all there is to retrieve on
+
+
+#: Characters per embedded passage before it is split (ADR-0006 decision 1).
+#:
+#: ``nomic-embed-text`` takes 2,048 tokens, and the conversion from characters is *worse* for Korean
+#: than for English rather than better: a hangul syllable is three UTF-8 bytes and BPE typically
+#: spends more than one token on it, so 2,000 characters of 고시 text overruns the window. Measured
+#: on the gated corpus, an unbounded pass produced passages of 21,588 characters — a whole 서식 with
+#: an embedded table — and Ollama answered those with **HTTP 500** rather than truncating, which is
+#: why this is a hard cap enforced on every passage and not only on long articles.
+#:
+#: 1,200 leaves margin for the heading each fragment re-prepends. Changing it changes every stored
+#: vector, so bump :data:`EMBEDDING_PASSAGE_VERSION` with it.
+MAX_PASSAGE_CHARS: Final[int] = 1200
+
+#: Passages embedded before the pipeline commits. Same reasoning as ``EXTRACTION_COMMIT_EVERY``:
+#: long work commits incrementally so a worker restart resumes instead of restarting.
+EMBEDDING_COMMIT_EVERY: Final[int] = 50
+
+#: Bumped when passage construction changes — a vector built under an older assembly rule is not
+#: comparable with one built under this one, and the stored value is what decides re-embedding.
+EMBEDDING_PASSAGE_VERSION: Final[str] = "1.3.1"
+
+
+# --- retrieval (ADR-0006 decision 3) -------------------------------------------------------
+
+#: Candidates each retrieval arm contributes before fusion, and how many survive it.
+RETRIEVAL_CANDIDATES: Final[int] = 40
+RETRIEVAL_TOP_K: Final[int] = 8
+
+#: Reciprocal-rank-fusion damping. The standard 60 — large enough that the top few ranks of the two
+#: arms are close in weight, so a result found by both beats one found deeply by either.
+RRF_K: Final[int] = 60
+
+#: Arm weights for fusion. Lexical is weighted **above** vector, which is not the usual default:
+#: regulatory corpora are identifier-dense (ADR-0006 decision 3), and 원료명 / CAS 번호 / 조문 번호
+#: are the questions RA staff ask most. ADR-0006 open question 2 leaves the exact ratio to be tuned
+#: against the golden set — these are a starting point, not a measured optimum.
+RETRIEVAL_LEXICAL_WEIGHT: Final[float] = 1.2
+RETRIEVAL_VECTOR_WEIGHT: Final[float] = 1.0
+
+#: An identifier the query names outright (제5조, 별표 1, § 892.2050) resolves **exactly** and is
+#: placed above every fused result. ``65-29-2`` has no useful embedding; an exact match on it does.
+RETRIEVAL_IDENTIFIER_BOOST: Final[float] = 100.0
+
+#: Postgres text-search configuration for the lexical arm. ``simple`` deliberately: the stemming
+#: configurations are language-specific and there is none for Korean, so anything else would stem
+#: English tokens inside a Korean corpus and leave the rest untouched.
+FTS_CONFIG: Final[str] = "simple"
+
+
+# --- generation and verification (ADR-0006 decisions 4–8) ----------------------------------
+
+
+class AnswerStatus(StrEnum):
+    """Where an answer ended up. Two of these are *successes*.
+
+    ``NEEDS_VERIFICATION`` is the promise in RegOps.md kept, not a failure — no unsourced answer is
+    ever emitted. ``NEEDS_REVIEW`` is the sub-threshold-confidence route: the answer has citations
+    and survived verification, but not by enough to reach a user as final.
+    """
+
+    ANSWERED = "answered"
+    NEEDS_VERIFICATION = "needs_verification"
+    NEEDS_REVIEW = "needs_review"
+
+
+#: The only status a caller may present as a final answer. Everything else is on its way to a human.
+ANSWER_FINAL_STATUSES: Final[tuple[AnswerStatus, ...]] = (AnswerStatus.ANSWERED,)
+
+
+class VerificationVerdict(StrEnum):
+    """One claim, judged against the clause text it cites — and nothing else (decision 6).
+
+    A verifier that can only annotate is theatre, so ``UNSUPPORTED`` fails the answer outright.
+    ``PARTIAL`` does not fail it but costs confidence, which is what routes borderline answers to
+    review instead of silently downgrading them with a caveat.
+    """
+
+    SUPPORTED = "supported"
+    PARTIAL = "partial"
+    UNSUPPORTED = "unsupported"
+
+
+#: Why an answer could not be given. Recorded rather than left to prose: the "needs verification"
+#: rate is a monitored two-sided metric (ADR-0006 decision 7), and a rate is uninterpretable if the
+#: reasons behind it cannot be counted.
+class NoAnswerReason(StrEnum):
+    NO_RETRIEVAL = "no_retrieval"  # nothing in the cell matched at all
+    NO_CITATION = "no_citation"  # the model answered without citing anything
+    FABRICATED_CITATION = "fabricated_citation"  # cited a clause retrieval never returned (dec 4)
+    UNSUPPORTED_CLAIM = "unsupported_claim"  # the verification pass rejected a claim (dec 6)
+    UNPARSEABLE = "unparseable"  # the model returned nothing usable
+    #: The model could not be reached, or did not answer in time. Recorded rather than raised: a
+    #: question that was asked must end in a stored outcome, or the rate in decision 7 silently
+    #: excludes every failure and the asker watches a spinner forever.
+    MODEL_UNAVAILABLE = "model_unavailable"
+
+
+#: Below this, an answer routes to human review rather than reaching the user as final.
+#:
+#: 0.7 is not a round number picked for looking careful — it is where the weights below put the
+#: boundary between two specific outcomes:
+#:
+#: - every claim only ``partial``, cited at rank 1 → ``0.7·0.5 + 0.3·1.0 = 0.65`` → **review**
+#: - every claim ``supported``, cited at the *worst* surviving rank → ``0.7·1.0 + 0.3·0.125 =
+#:   0.7375`` → **final**
+#:
+#: So an answer whose evidence only half-establishes it always reaches a human, and one that is
+#: fully supported is not sent to review merely for having been found deep in the ranking. Move
+#: either weight and this number has to be re-derived, not nudged. Phase 1.6 re-calibrates it
+#: against the golden set — a threshold nobody measures is a guess with a decimal point.
+ANSWER_CONFIDENCE_THRESHOLD: Final[float] = 0.7
+
+#: Confidence weights. Verification dominates on purpose: mis-citation is the hallucination class
+#: that survives every structural check (ADR-0006 decision 5), so how the verifier voted has to
+#: outweigh how well retrieval scored.
+CONFIDENCE_VERIFICATION_WEIGHT: Final[float] = 0.7
+CONFIDENCE_RETRIEVAL_WEIGHT: Final[float] = 0.3
+
+#: Generation runs at temperature 0 for the same reason extraction does (ADR-0017 decision 1):
+#: a delta between two runs at the same (prompt_version, model) is a regression to investigate.
+GENERATION_TEMPERATURE: Final[float] = 0.0
+
+#: Bumped when the answer or verification prompt changes. A citation-accuracy score is only
+#: comparable within one prompt version.
+#: 1.3.1 dropped the free-text ``answer`` field: the answer is composed from the validated claims,
+#: so every sentence a reader sees carries a citation and faces verification. It also roughly halves
+#: output tokens, which on a small local model is the difference between a usable answer and a
+#: timeout — measured at ~3 tokens/second.
+ANSWER_PROMPT_VERSION: Final[str] = "1.3.1"
+VERIFICATION_PROMPT_VERSION: Final[str] = "1.3.0"
+
+#: Bumped when passage assembly, fusion or scoping changes what retrieval returns. Stored on the
+#: answer, because "which clauses were even available to cite" is part of an answer's provenance.
+RETRIEVAL_VERSION: Final[str] = "1.3.0"
+
+#: Guard against a model that never stops. Real regulatory answers are a handful of claims; a reply
+#: with more than this is a runaway, not a thorough analysis.
+MAX_CLAIMS_PER_ANSWER: Final[int] = 12
+
+#: Characters of clause text per passage in the generation prompt.
+#:
+#: **This is not the same bound as :data:`MAX_PASSAGE_CHARS` and forgetting that cost a working
+#: query.** That one caps what gets *embedded*; a retrieval hit carries the raw clause text, which
+#: has no bound at all. Measured on a live question in `mfds_samd`: eight hits totalling 185,161
+#: characters, one 별표 clause contributing 130,603 of them — ≈58,000 tokens into a 32,768 window,
+#: which Ollama truncates silently. The visible symptom was a three-minute timeout; the invisible
+#: one is a model citing passages whose text was cut away before it ever saw them.
+#:
+#: Set to the same value as ``MAX_PASSAGE_CHARS`` on purpose: what the model reads should be the
+#: unit retrieval actually matched, not an arbitrary window over something larger.
+MAX_PROMPT_BLOCK_CHARS: Final[int] = MAX_PASSAGE_CHARS
+
+#: Child paths listed as citable under one passage. A 조 with hundreds of 호 would otherwise spend
+#: more of the prompt on its address list than on its text.
+MAX_CITABLE_PATHS_PER_PASSAGE: Final[int] = 24
 
 #: Genesis value for the first audit_log row's ``prev_hash`` (ADR-0011).
 AUDIT_CHAIN_GENESIS: Final[str] = "0" * 64

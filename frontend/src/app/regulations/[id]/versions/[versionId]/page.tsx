@@ -1,4 +1,4 @@
-import { ChevronLeft, Download, ListTree } from 'lucide-react';
+import { ChevronLeft, ClipboardList, Download, ListTree, Scale } from 'lucide-react';
 import Link from 'next/link';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -114,6 +114,18 @@ export default async function RawVersionPage({
             className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
           >
             <ListTree size={13} /> 조문 보기
+          </Link>
+          <Link
+            href={`/regulations/${id}/versions/${versionId}/irs`}
+            className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+          >
+            <Scale size={13} /> IR 보기
+          </Link>
+          <Link
+            href={`/regulations/${id}/versions/${versionId}/submissions`}
+            className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+          >
+            <ClipboardList size={13} /> 제출 서류
           </Link>
           <a
             href={`/api/regulation/document-versions/${versionId}/raw?download=1`}

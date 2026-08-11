@@ -13,6 +13,7 @@ import uuid
 import structlog
 from sqlalchemy import select
 
+from regops_shared.constants import Domain
 from regops_shared.db import sync_session
 from regops_shared.models import DocumentVersion, Source, SourceSchedule
 from regops_shared.models.base import utcnow
@@ -20,6 +21,8 @@ from regops_shared.models.base import utcnow
 from .celery_app import celery_app
 from .diff import diff_version
 from .discovery import fetch_admrul_index, reconcile
+from .extraction import domains_for, extract_version, rederive_version
+from .extraction.extract import REDERIVE_TASK
 from .ingest import ingest_source
 from .parse import DIFF_TASK, parse_version
 from .scheduling import advance
@@ -27,6 +30,12 @@ from .scheduling import advance
 log = structlog.get_logger(__name__)
 
 QUEUE = "regulation"
+
+#: Cross-service dispatch is by task **name** only (CLAUDE.md § Celery Queue Architecture), so these
+#: two strings are the entire coupling to `assistant`. Nothing here imports that service's task
+#: graph, and nothing here writes its tables.
+ASSISTANT_QUEUE = "assistant"
+ANSWER_SUPERSEDE_TASK = "assistant.supersede_answer_citations"
 
 
 @celery_app.task(name="regulation.dispatch_due_sources")
@@ -163,6 +172,21 @@ def diff_document_version(document_version_id: str) -> dict[str, object]:
             return {"document_version_id": document_version_id, "status": "unknown_version"}
         result = diff_version(session, version)
 
+    if result.irs_marked_stale:
+        # Targeted, not a corpus sweep: only the IRs this amendment actually staled. Dispatched by
+        # name so the extraction stage stays reachable without importing its task graph (ADR-0015).
+        celery_app.send_task(REDERIVE_TASK, args=[document_version_id], queue=QUEUE)
+
+    if not result.baseline and result.counts:
+        # Stored answers cite clauses too, and an amendment moves their evidence the same way it
+        # stales an IR — but into a *different* lifecycle, in a different service's table
+        # (ADR-0006 decision 10). So this service does not write `answer_citations`; it says the
+        # version has been diffed, by task name only, and `assistant` reads `clause_diffs` one-way
+        # and flags its own rows.
+        celery_app.send_task(
+            ANSWER_SUPERSEDE_TASK, args=[document_version_id], queue=ASSISTANT_QUEUE
+        )
+
     return {
         "document_version_id": document_version_id,
         "status": "baseline" if result.baseline else "diffed",
@@ -170,6 +194,75 @@ def diff_document_version(document_version_id: str) -> dict[str, object]:
         "change_events": result.change_events,
         "needs_review": result.needs_review,
         "citations_superseded": result.citations_superseded,
+        "irs_marked_stale": result.irs_marked_stale,
+    }
+
+
+@celery_app.task(name="regulation.extract_document_version", bind=True, max_retries=0)
+def extract_document_version(self, document_version_id: str, domain: str | None = None) -> dict:
+    """Clauses → draft IRs, once per claiming domain (ADR-0004).
+
+    **Not chained off the parse stage.** Every other stage in this service is deterministic and
+    cheap enough to run on every fetch; this one calls an LLM per obligation-bearing clause, and the
+    gated corpus is 25,729 clauses. Auto-running it on each poll would spend a full extraction to
+    discover that nothing changed. Amendments are covered by the targeted re-derivation sweep
+    instead, and a first extraction is triggered explicitly — by the API, or by this task.
+
+    ``max_retries=0`` for the same reason the fetch task uses it: the run records its own failure
+    and stays visibly incomplete, and a blind retry would re-spend the whole call budget.
+    """
+    version_id = uuid.UUID(document_version_id)
+    with sync_session() as session:
+        version = session.get(DocumentVersion, version_id)
+        if version is None:
+            log.warning("extract.unknown_version", document_version_id=document_version_id)
+            return {"document_version_id": document_version_id, "status": "unknown_version"}
+
+        targets = [Domain(domain)] if domain else domains_for(session, version.document_id)
+        if not targets:
+            # No claiming cell means no rule set to extract under. Silent extraction against a
+            # guessed domain would put obligations in a taxonomy nobody chose.
+            log.warning("extract.no_claiming_cell", version=document_version_id)
+            return {"document_version_id": document_version_id, "status": "no_claiming_cell"}
+
+        runs = [extract_version(session, version, domain=target) for target in targets]
+
+    return {
+        "document_version_id": document_version_id,
+        "status": "extracted",
+        "runs": [
+            {
+                "domain": run.domain_profile.value,
+                "run_id": str(run.run_id) if run.run_id else None,
+                "clauses_seen": run.clauses_seen,
+                "obligation_bearing": run.obligation_bearing,
+                "excluded": run.excluded,
+                "irs": run.irs_written,
+                "rejected_uncited": run.rejected_uncited,
+            }
+            for run in runs
+        ],
+    }
+
+
+@celery_app.task(name=REDERIVE_TASK, bind=True, max_retries=0)
+def rederive_stale_irs(self, document_version_id: str) -> dict:
+    """Re-extract the IRs this version's amendment staled, into superseding IRs."""
+    version_id = uuid.UUID(document_version_id)
+    with sync_session() as session:
+        version = session.get(DocumentVersion, version_id)
+        if version is None:
+            log.warning("rederive.unknown_version", document_version_id=document_version_id)
+            return {"document_version_id": document_version_id, "status": "unknown_version"}
+        result = rederive_version(session, version)
+
+    return {
+        "document_version_id": document_version_id,
+        "status": "rederived",
+        "stale_seen": result.stale_seen,
+        "superseded": result.superseded,
+        "irs_written": result.irs_written,
+        "unresolved": result.unresolved,
     }
 
 
@@ -177,6 +270,8 @@ __all__ = [
     "diff_document_version",
     "discover_sources",
     "dispatch_due_sources",
+    "extract_document_version",
     "fetch_source",
     "parse_document_version",
+    "rederive_stale_irs",
 ]

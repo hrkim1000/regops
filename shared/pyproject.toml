@@ -15,6 +15,10 @@ dependencies = [
     # Alembic runs sync; services run async. Both drivers are needed.
     "psycopg2-binary>=2.9.9",
     "alembic>=1.13",
+    # The `vector` column type and its SQLAlchemy binding. The extension itself ships with the
+    # database image (docker-compose `db`), which is why that image is pgvector's and not stock
+    # postgres — see migration 0005.
+    "pgvector>=0.3",
     "python-jose[cryptography]>=3.3",
     "bcrypt>=4.2",
     "celery[redis]>=5.4",

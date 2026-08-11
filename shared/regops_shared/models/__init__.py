@@ -4,6 +4,16 @@ The owning service re-exports what it owns (`from regops_shared.models import Us
 imports another service's model onto its own metadata.
 """
 
+from regops_shared.models.answer import (
+    Answer,
+    AnswerCitation,
+    ClauseEmbedding,
+    Query,
+    VerificationResult,
+    answer_status_enum,
+    embedding_scope_enum,
+    verification_verdict_enum,
+)
 from regops_shared.models.audit import AuditLog
 from regops_shared.models.base import Base, TimestampMixin, UUIDPrimaryKey, utcnow
 from regops_shared.models.cell import Cell, authority_enum, domain_enum
@@ -22,7 +32,17 @@ from regops_shared.models.document import (
     attachment_kind_enum,
     doc_type_enum,
 )
-from regops_shared.models.ir import IR, IRCitation, ir_status_enum
+from regops_shared.models.ir import (
+    IR,
+    ClauseClassification,
+    ExtractionRun,
+    IRCitation,
+    IRStandardCitation,
+    classification_kind_enum,
+    exclusion_reason_enum,
+    extraction_run_status_enum,
+    ir_status_enum,
+)
 from regops_shared.models.source import (
     FetchObservation,
     Source,
@@ -39,18 +59,25 @@ from regops_shared.models.user import Session, User, role_enum
 
 __all__ = [
     "IR",
+    "Answer",
+    "AnswerCitation",
     "Attachment",
     "AuditLog",
     "Base",
     "Cell",
     "ChangeEvent",
     "Clause",
+    "ClauseClassification",
     "ClauseDiff",
+    "ClauseEmbedding",
     "Document",
     "DocumentCell",
     "DocumentVersion",
+    "ExtractionRun",
     "FetchObservation",
     "IRCitation",
+    "IRStandardCitation",
+    "Query",
     "Session",
     "Source",
     "SourceDiscoveryRun",
@@ -60,13 +87,19 @@ __all__ = [
     "TimestampMixin",
     "UUIDPrimaryKey",
     "User",
+    "VerificationResult",
+    "answer_status_enum",
     "attachment_kind_enum",
     "authority_enum",
     "change_kind_enum",
+    "classification_kind_enum",
     "clause_kind_enum",
     "doc_type_enum",
     "domain_enum",
     "drift_signal_enum",
+    "embedding_scope_enum",
+    "exclusion_reason_enum",
+    "extraction_run_status_enum",
     "fetch_outcome_enum",
     "ir_status_enum",
     "role_enum",
@@ -74,4 +107,5 @@ __all__ = [
     "source_tier_enum",
     "standard_status_enum",
     "utcnow",
+    "verification_verdict_enum",
 ]
