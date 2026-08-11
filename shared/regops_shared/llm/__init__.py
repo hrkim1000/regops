@@ -30,7 +30,9 @@ class LLMClient(ABC):
     model: str
 
     @abstractmethod
-    async def complete(self, prompt: str, *, system: str | None = None) -> Completion: ...
+    async def complete(
+        self, prompt: str, *, system: str | None = None, temperature: float | None = None
+    ) -> Completion: ...
 
     @abstractmethod
     async def embed(self, text: str) -> list[float]: ...
@@ -43,12 +45,28 @@ class OllamaClient(LLMClient):
         self._base = settings.ollama_base_url.rstrip("/")
         self.model = settings.ollama_model
         self._embedding_model = settings.embedding_model
+        self._timeout = settings.llm_timeout_seconds
+        self._num_ctx = settings.ollama_num_ctx
 
-    async def complete(self, prompt: str, *, system: str | None = None) -> Completion:
+    async def complete(
+        self, prompt: str, *, system: str | None = None, temperature: float | None = None
+    ) -> Completion:
         body: dict[str, object] = {"model": self.model, "prompt": prompt, "stream": False}
         if system:
             body["system"] = system
-        async with httpx.AsyncClient(timeout=120) as client:
+        # Ollama takes sampling parameters under `options`, not at the top level; a stray
+        # top-level `temperature` is silently ignored, which would make a pinned-to-zero run
+        # look deterministic while sampling normally.
+        options: dict[str, object] = {}
+        if temperature is not None:
+            options["temperature"] = temperature
+        if self._num_ctx:
+            # A prompt longer than the window is truncated without an error, and a generator that
+            # loses the tail of its passage list cites what it can no longer see.
+            options["num_ctx"] = self._num_ctx
+        if options:
+            body["options"] = options
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(f"{self._base}/api/generate", json=body)
             response.raise_for_status()
             return Completion(
@@ -56,7 +74,7 @@ class OllamaClient(LLMClient):
             )
 
     async def embed(self, text: str) -> list[float]:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
                 f"{self._base}/api/embeddings",
                 json={"model": self._embedding_model, "prompt": text},
@@ -73,10 +91,13 @@ class ClaudeClient(LLMClient):
             raise ValueError("llm_provider='claude' requires anthropic_api_key")
         self._api_key = settings.anthropic_api_key
         self.model = settings.anthropic_model
+        self._timeout = settings.llm_timeout_seconds
         #: Embeddings never come from Claude — they stay pinned to Ollama.
         self._embedder = OllamaClient(settings)
 
-    async def complete(self, prompt: str, *, system: str | None = None) -> Completion:
+    async def complete(
+        self, prompt: str, *, system: str | None = None, temperature: float | None = None
+    ) -> Completion:
         body: dict[str, object] = {
             "model": self.model,
             "max_tokens": 4096,
@@ -84,7 +105,9 @@ class ClaudeClient(LLMClient):
         }
         if system:
             body["system"] = system
-        async with httpx.AsyncClient(timeout=120) as client:
+        if temperature is not None:
+            body["temperature"] = temperature
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 json=body,

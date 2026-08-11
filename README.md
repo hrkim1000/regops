@@ -162,6 +162,10 @@ STAGE=dev docker compose --profile local-llm up -d
 | [ADR-0011](docs/design/ADR-0011-audit-trail-immutability.md) | Audit-trail immutability — grants plus hash chain |
 | [ADR-0012](docs/design/ADR-0012-annex-version-identity.md) | Annexes are child Documents, not attachments on a version |
 | [ADR-0013](docs/design/ADR-0013-unresolvable-effective-dates.md) | An unresolvable effective date is null plus the raw phrase |
+| [ADR-0014](docs/design/ADR-0014-annex-row-granularity.md) | Annex table rows are Clauses; there is no `annex_rows` table |
+| [ADR-0015](docs/design/ADR-0015-diff-stage-boundary.md) | Diff is its own stage, dispatched by task name |
+| [ADR-0016](docs/design/ADR-0016-pending-effect-versions.md) | 시행예정 versions: MST is the version, staged dates are not clause-level |
+| [ADR-0017](docs/design/ADR-0017-extraction-determinism-and-conditional-obligations.md) | Extraction determinism, and conditional obligations stay one IR |
 
 ---
 
@@ -219,15 +223,15 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
 | Service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🟡 `assistant` split taken; `monitoring` held to W7 |
-| Architecture decisions | [ADR-0001 – ADR-0016](docs/design/) | 🟢 proposed, complete for Phase 1 |
+| Architecture decisions | [ADR-0001 – ADR-0017](docs/design/) | 🟢 complete for Phase 1 — 0001, 0004, 0006 and 0012–0017 accepted; the rest proposed |
 | Phase plan — 13 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
 | Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
 | Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | 🟢 done (2026-08-05) — 20 sources live, 8/8 acceptance |
 | Normalization — clause schema, diff | [phase1.1](docs/plan/phase1.1_normalization.md) | 🟢 done (2026-08-06) — 25,729 clauses over 526 documents, 9/9 acceptance, both falsifiers not triggered |
-| IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | ⬜ planned (W3–8) |
-| Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | ⬜ planned (W5–10) |
+| IR extraction | [phase1.2](docs/plan/phase1.2_ir_extraction.md) | 🟢 done (2026-08-07) — 7/7 acceptance; extraction is triggered, not chained off parse |
+| Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | 🟢 done (2026-08-11) — 9/9 acceptance; hybrid retrieval, generation constrained to what retrieval returned, verification able to fail an answer |
 | Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | ⬜ planned (W7–10) |
-| Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | 🟡 foundation + regulation browser built early |
+| Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · **Q&A workbench (2026-08-11)**; monitoring dashboard waits on 1.4, Playwright E2E not written |
 | Evaluation + pilot — the 6 gates | [phase1.6](docs/plan/phase1.6_evaluation.md) | ⬜ planned (W7–16) |
 | Tier C + remaining 6 cells | [phase2.0](docs/plan/phase2.0_tier_c_scale.md) | ⬜ Phase 2 |
 | Semantic enrichment + graph | [phase2.1](docs/plan/phase2.1_semantic_graph.md) | ⬜ Phase 2 |
@@ -236,9 +240,9 @@ Build state by workstream. Update the **State** column as work lands — keep it
 
 > Legend: 🟢 done / settled · 🟡 partial · ⬜ planned.
 >
-> **No service code exists yet.** RegOps is greenfield ([ADR-0001](docs/design/ADR-0001-platform-foundation.md)):
-> the repository currently holds documentation and architecture decisions only. The ADRs are the
-> contract the first scaffold is built against.
+> **The ADRs are the contract the code is built against**, not a description written after it
+> ([ADR-0001](docs/design/ADR-0001-platform-foundation.md) — RegOps is greenfield). Where a row above
+> is not 🟢, the ADR says what to build rather than what runs.
 >
 > **Phase 1 gates** — the PoC produces numbers, not a demo. Detection coverage ≥95% · detection
 > latency ≤24h · citation accuracy ≥90% · hallucination rate ≤2% · research time savings ≥30% ·

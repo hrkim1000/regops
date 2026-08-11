@@ -38,16 +38,18 @@ Go/No-Go report.
 
 - [ ] RA hand-marks obligations in a sample of 화장품법 and 의료기기법 clauses
 - [ ] **Blind to extractor output.** Marking up after seeing extractor results inflates recall and produces a number that cannot be defended
-- [ ] Runs in parallel with [phase1.2](phase1.2_ir_extraction.md) work, delivered before W9–10 scoring
+- [ ] ~~Runs in parallel with [phase1.2](phase1.2_ir_extraction.md) work~~ — **the parallelism did not happen.** 1.2 closed 2026-08-07 with no markup authored, so the markup will now be written while a working extractor exists. Blindness is therefore the *only* protection left, not a belt-and-braces one: mark up from the clause text alone, never from `/irs` or `/coverage` output. Still delivered before W9–10 scoring
 - [ ] Without it, extraction **recall** is unmeasurable and the gap-analysis pillar has no evidence base
 
 ### Harness (W9–10)
 
 - [ ] Automated regression over both golden sets; per-domain, per-cell reporting
-- [ ] Extraction precision, recall, and citation correctness against the ground truth
+- [ ] **Submission-requirement detection precision/recall** against an RA-marked sample. The pattern yields 102–103 procedures where looser and stricter variants gave 341 and 92; nobody has confirmed which is right, and the feature ships with that stated ([phase1.5](phase1.5_frontend.md) deviation 6). Score false positives (a 기준 list read as a document list) separately from false negatives — the first is visible to a user and the second is not
+- [ ] Extraction precision, recall, and citation correctness against the ground truth. Atomicity agreement runs through `scripts/ir_agreement.py`, which is built and tested but has **no markup to run against yet**; until a second RA is funded it reports **test–retest, not inter-rater** ([phase1.2](phase1.2_ir_extraction.md) deviation 3) — quote that caveat with the number, because a consistent private misreading scores as perfect agreement
 - [ ] Citation accuracy and hallucination rate measured here — **not inferred from unit coverage**
 - [ ] **"Needs verification" rate reported per domain beside them** ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 7). It is not a gate, and it is what keeps two of the gates honest: a system that refuses every question scores perfectly on citation accuracy and hallucination rate. Report answer rate and refusal rate with every scored run
-- [ ] Model and prompt versions pinned and recorded with every run
+- [ ] Model, **rule** and prompt versions pinned and recorded with every run — a score is only meaningful per `(rule_version, prompt_version, llm_model)` triple
+- [ ] **Extraction-determinism regression** ([ADR-0017](../design/ADR-0017-extraction-determinism-and-conditional-obligations.md) decision 1) — re-extract a fixed clause sample at the same triple and treat any IR delta as a defect rather than variance. Temperature 0 is greedy decoding, not determinism, so **report the drift rate** rather than asserting zero: batching, quantization and a provider-side model update all move output, and a claim of zero that nobody measured is worse than a measured small number
 - [ ] **Score detection coverage against *scheduled* polls, not observed ones.** A day the poller did not run leaves no row in `fetch_observations` at all, so coverage computed over observations divides by the polls that happened rather than the polls that were due — and downtime silently *improves* the number. Observed for real on 2026-08-04 ([phase1.0](phase1.0_ingestion.md) risks): 28 observations on 08-03, 16 on 08-05, none on 08-04 while the stack was down. Derive expected polls from `source_schedules.interval_seconds` over the measurement window and report the shortfall as an explicit **uptime caveat** beside the gate. A gate that improves when the system is off is not measuring the system
 
 ### Pilot (W11–16)
@@ -102,6 +104,24 @@ report, because a gate set that can be satisfied by a degenerate system is evide
 - **Risk 7 — key-person dependency (development-plan.md § 9).** One RA is simultaneously golden-set designer, ground-truth marker, blind assessor, IR locker, and final signoff. That overlap makes both "blind" exercises non-blind in practice. At 1 FTE this risk is **accepted, not mitigated** — state it at kickoff rather than discovering it at M4. Budget a second RA reviewer, even part-time, to separate authorship from assessment.
 - **Retention needs 4 uncompressible weeks.** Any slip upstream eats the measurement window, not the build. Protect W13–16.
 - **Research-time-savings needs a baseline** captured before the pilot starts, or the 30% is unfalsifiable.
+- **Retrieval has no relevance floor, and there is now a measurement to tune one against.** Asked
+  on 2026-08-11 in the running stack: *"화장품 안전성 검토 문서 제출 시기"* — a cosmetic question —
+  with the ScopeBar on `mfds_samd`. Cell scoping worked; no cosmetic clause was used. But hybrid
+  retrieval never returns zero rows, so it returned **eight hits scoring 0.018–0.030**, all of them
+  blank 서식/별지/별표, and generation was handed application-form boilerplate and asked to answer.
+  The model duly quoted a form (*"…제조(수입) 허가를 신청합니다"*) and cited `'전부 위탁의 경우)'`,
+  which the mechanical citation check rejected.
+
+  **The final state was correct** — 확인 필요 — and the design intends verification to catch this.
+  The cost is that a question the system could refuse in 5 seconds takes 112. Two candidate fixes,
+  neither to be chosen by eye: a floor on the vector arm's cosine plus "no lexical exact match at
+  all", or excluding `form` passages from the vector arm (**1,018 of 7,640 passages are forms**, and
+  a form passage is a title — short enough to score well against a short query). Decide with the
+  golden set, scored per query shape, because a threshold set from two queries would start refusing
+  real answers.
+- **`no_retrieval` currently means "zero rows", which never happens.** The reason exists in the
+  closed inventory and the metrics report it, but under hybrid retrieval nothing can produce it.
+  Whatever floor the item above lands on is what will make that number mean something.
 
 ## Deviations & decisions
 

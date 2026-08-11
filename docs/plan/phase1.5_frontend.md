@@ -1,6 +1,6 @@
 # Phase 1.5 — Frontend
 
-- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟡 foundation + regulation browser built early (2026-08-05), clause view added once [phase1.1](phase1.1_normalization.md) landed (2026-08-06); dashboard · Q&A · IR review still blocked on 1.3/1.4
+- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟡 foundation + regulation browser built early (2026-08-05), clause view added once [phase1.1](phase1.1_normalization.md) landed (2026-08-06), **IR review + lock and the submission-document view built 2026-08-10**, **Q&A workbench built 2026-08-11** on [phase1.3](phase1.3_retrieval_qa.md); the monitoring dashboard still waits on [phase1.4](phase1.4_monitoring.md), and Playwright E2E is not written yet
 - **Governed by:** [.claude/skills/frontend-page](../../.claude/skills/frontend-page/SKILL.md), [ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md)
 - **Depends on:** [phase1.3](phase1.3_retrieval_qa.md), [phase1.4](phase1.4_monitoring.md)
 - **Service:** `frontend`
@@ -88,33 +88,34 @@ envelope (deviation 12). Both were silent in the API and in every test.
 
 ### Q&A workbench
 
-- [ ] Question → answer with citations rendered as deep links to clause text
-- [ ] **"Needs verification" is a first-class result state**, not an error toast — it is the product working correctly
-- [ ] Confidence displayed; sub-threshold answers visibly marked as pending human review
-- [ ] **Every answer renders the version and effective date it relied on** — *"시행일 2026-04-02 기준"* ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 8) — and flags visibly when its clauses straddle an effective-date boundary. An answer that silently mixes in-force and not-yet-effective provisions looks identical to a correct one
-- [ ] Query history with the audit trail
-- [ ] Superseded-citation banner on stored answers whose evidence has since been amended
+- [x] Question → answer with citations rendered as deep links to clause text — the link carries `clause_path`, and the clause view resolves it to whichever page holds it (deviation 5)
+- [x] **"Needs verification" is a first-class result state**, not an error toast — it is the product working correctly. It is a tab, a banner and a stored reason, and the two reasons that are *defect signals* (`fabricated_citation`, `unparseable`, `model_unavailable`) are styled apart from "근거 없음" so a model regression cannot read as an honest refusal
+- [x] Confidence displayed; sub-threshold answers visibly marked as pending human review
+- [x] **Every answer renders the version and effective date it relied on** — *"시행일 2026-04-02 기준"* ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 8) — and flags visibly when its clauses straddle an effective-date boundary. An answer that silently mixes in-force and not-yet-effective provisions looks identical to a correct one
+- [x] Query history with the audit trail — the answer log with its filters, and per-answer provenance (`llm_provider` / `llm_model` / `prompt_version` / `retrieval_version`)
+- [x] Superseded-citation banner on stored answers whose evidence has since been amended, plus the **근거 개정** queue it feeds
 
 ### IR review
 
-- [ ] Draft IR queue with source clause side by side
-- [ ] **Lock action gated to `ra`+**, with the signer and timestamp shown
-- [ ] Draft IRs visibly distinct from locked — a draft must never look authoritative
+- [x] Draft IR queue with source clause side by side — **linked, not side by side**; see deviation 3
+- [x] **Lock action gated to `ra`+**, with the signer and timestamp shown
+- [x] Draft IRs visibly distinct from locked — a draft must never look authoritative
+- [x] Classification-coverage panel above the list — ADR-0004 decision 6 as a number, with the unclassified remainder always shown
 
 ### Cross-cutting
 
-- [ ] `readUserRole()` → `<Forbidden/>`; roles hide actions the backend would 403
-- [ ] Fetch independently — one failed fetch must not blank unrelated data
-- [ ] Empty states for: no scope selected · no data · in progress (with elapsed mm:ss)
-- [ ] **UI states that final judgment rests with the human** — a RegOps.md risk commitment, not a nicety
+- [x] `readUserRole()` → `<Forbidden/>`; roles hide actions the backend would 403
+- [x] Fetch independently — one failed fetch must not blank unrelated data
+- [x] Empty states for: no scope selected · no data · in progress (with elapsed mm:ss)
+- [x] **UI states that final judgment rests with the human** — a RegOps.md risk commitment, not a nicety. On the answer page the caveats are rendered *above* the answer text: a straddled effective date, a superseded citation and a sub-threshold confidence all produce an answer that looks identical to a correct one, so a banner below the prose is a banner read after the reader has already acted
 
 ## Acceptance criteria
 
-- [ ] `npm run typecheck && npm run lint` clean
+- [x] `npm run typecheck && npm run lint` clean — run in the container, which is where `node_modules` lives
 - [ ] Playwright E2E: change detection → alert, and question → retrieval → cited answer
 - [ ] Playwright E2E covers the **"needs verification"** path and a superseded-citation re-verification
-- [ ] A `viewer` sees no lock button and is 403'd if the call is forged
-- [ ] Switching cells in the ScopeBar does not alter any rendered citation
+- [x] A `viewer` sees no lock button and is 403'd if the call is forged — verified live 2026-08-10 through the `/api/regulation/*` rewrite (403 viewer · 200 ra · 409 re-lock)
+- [x] Switching cells in the ScopeBar does not alter any rendered citation — every citation link is built from its own pinned `document_id` / `document_version_id`, and no page resolves one through the scope cookie
 - [ ] Pilot users complete both core journeys unaided in usability review
 
 ## Risks & open questions
@@ -138,3 +139,113 @@ ordered header on the parent 표 clause (ADR-0014 decision 4) is therefore the o
 order the authority published, and the renderer reads it from there. A row whose 표 fell on the
 previous page is deliberately **not** drawn as a table: guessed column order in a limit table is
 worse than no table, because it looks correct.
+
+**3. The draft IR queue links to its clause rather than showing it side by side.** The task said
+"side by side", and that is the right shape *once a reviewer is reading one IR at a time*. What was
+built is a list where every citation is a link into the clause view, anchored on `clause_path`.
+
+Two reasons, and the second is the load-bearing one. An IR can cite several clauses across several
+versions, so "the source clause" is not always one thing to put in a panel. And a citation must
+resolve through its **own** pinned `document_id` / `document_version_id`, never through the page it
+is rendered on — a superseded citation points at an older version, and following it has to land on
+the text that was actually cited, not on the current text at the same path. A side-by-side panel
+fed from the route's `versionId` would quietly show the wrong evidence for exactly the citations
+that matter most. Revisit as a per-IR detail view, where one IR bounds the panel honestly.
+
+**4. Coverage is rendered above the IR list, not below it.** "1 IR from 4 clauses" is
+uninterpretable without the classification ledger beside it (ADR-0004 decision 6) — it cannot be
+told apart from 3 missed obligations. Putting the count first and the denominator later is how a
+partial extraction reads as a complete one, so the panel leads and `unclassified` is shown **even
+when it is zero**: a figure that only appears when it is bad teaches a reader to assume it is fine.
+
+**5. The status filter defaults to `locked`, mirroring the API.** This page *is* the review queue,
+so drafts have to be reachable — but a reader who lands here without choosing sees only what
+actually flows downstream. An unrecognised `?status=` falls back to `locked` rather than to
+"everything": a typo in a query string must not widen what is shown.
+
+**6. A submission-document view was added, and it is deliberately not a checklist.** Korean
+procedural clauses state 항 = the filing duty and 호 = each required document, and phase 1.1 already
+parsed the 호 as child clauses — so the list is *read*, not extracted. Measured over the gated
+corpus: **103 procedures, 370 document items, 99% with items already parsed.**
+
+No LLM is involved and nothing is stored. The item text is the document name, so there is nothing to
+generate and nothing to hallucinate; and the whole result is a pure function of clauses, so storing
+it would create a second derived artefact to invalidate on re-parse — the bug
+`parse._invalidate_derived` exists to fix for diffs (2,373 orphaned rows, observed).
+
+The load-bearing constraint is that **conditions are never flattened**. Only **6 of 103 procedures
+(6%) are unconditional**; the rest are qualified by case, defer to another instrument, or take their
+enabling clause from a different law. So each item carries `conditional` plus its condition verbatim,
+each requirement publishes machine-readable `Caveat` codes, and the UI renders the caveats *above*
+the items with no tickboxes anywhere. A conditional list shown as a definitive one would manufacture
+exactly the compliance error the gap-analysis pillar exists to find.
+
+**What it does not answer:** which conditions bind a given company. Applicability is Compliance-owned
+and tenant-scoped ([ADR-0007](../design/ADR-0007-context-map-and-applicability.md), phase 2.2), and
+`regulation` has no product context — the same boundary [ADR-0017](../design/ADR-0017-extraction-determinism-and-conditional-obligations.md)
+decision 2 draws for class-restricted IRs. The page says so in its own copy rather than only here.
+
+Two measured limits, recorded rather than hidden:
+
+- **Detection is a pattern, and the pattern is the precision.** A loose first attempt matched 341
+  clauses, a strict one 92; the committed set yields 102–103 and its two negative patterns
+  (`다음 각 호의 사항|어느 하나`, and exemptions like `제출하지 아니할 수 있다`) are what earn that.
+  It has **not** been validated by an RA against a sample — that belongs with 1.6's markup.
+- **Cross-instrument lists are incomplete.** 55 of 103 procedures take their enabling clause from
+  another law (법 → 시행규칙). Joining them needs `clause_references`, which is phase 2.1
+  ([ADR-0010](../design/ADR-0010-semantic-enrichment-and-graph-model.md) decision 7). Flagged as the
+  `cross_instrument` caveat rather than silently under-reported.
+
+**7. The app shell moved out of `regulations/layout.tsx` into a shared `AppShell`.** Not tidying —
+the **ScopeBar has to be the same control on both sections**. Scope is an app-level axis (no
+per-page cell pickers), so a reader who scopes to `mfds_cosmetic` in the regulation browser must
+land in the same cell when they open Q&A. Two independent shells would have quietly reset the one
+bound that stops a cosmetic question being answered from device regulation
+([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 9). A route
+group would have been the other idiom; extracting a component moved no files and left every URL
+alone.
+
+**8. Cross-cell is a checkbox in the ask box, worded as the risk it carries.** The alternative — a
+cell picker on the page — would have made cross-cell retrieval an accident rather than the explicit
+mode the ADR requires. The label says what it does (*"다른 셀도 검색 — 화장품 질문에 의료기기
+규정으로 답할 수 있습니다"*) rather than naming the feature.
+
+**9. A citation deep link needed a backend parameter.** `GET /document-versions/{id}/clauses`
+paginates at 500 and the largest version holds 2,212 clauses, so linking by document would land the
+reader on page 1 of 5 — a link to the instrument, not to the evidence. `?clause_path=` now resolves
+to whichever page holds that clause, and the anchor already existed on every clause row. Rank is
+**counted by ordinal**, not derived from it: ordinals are a reading order and are not dense, so
+`ordinal // page_size` would send the reader past the end. A path that does not resolve returns page
+1 *and says so* — that case is a citation into a different version, which is exactly what an
+immutable citation looks like after an amendment.
+
+**10. Found by running it: a model timeout left a question with no answer at all.** Generation and
+verification calls were unguarded, so an `httpx.ReadTimeout` propagated out of the Celery task and
+the query row sat there answerless — the asker watching a spinner until the poll ceiling, and the
+monitored "needs verification" rate silently excluding every failure, which is the one direction
+that makes it look healthy. Both calls are now caught and recorded as `model_unavailable`, a new
+value in the closed `NoAnswerReason` inventory, and the verification side is the more important of
+the two: an answer whose claims were never checked must not reach a reader as though they had been.
+Fixed in `assistant`, covered by two cases in the 1.3 acceptance suite.
+
+**11. The answer list returns a summary, not full answers.** Rendering citations and verdicts per
+row meant two extra queries per answer — 400 round trips at `page_size=200` to draw a list nobody
+reads in full. The list carries `citation_count` and `superseded_citation_count` from one grouped
+query, and the detail endpoint enumerates. The counts are not decoration: on the 근거 개정 queue,
+*"2 of 3 citations have moved"* is the whole reason a row is in the list.
+
+**12. A pending question was invisible, and the ask box gave up silently.** The answer log lists
+*answers*, so a question whose worker is still running appeared nowhere at all — and on a small local
+model "still running" is minutes, not seconds. Reported from use as "계속 돌고 있음". The ask box now
+says what happened when its 4-minute poll ceiling is reached instead of quietly refreshing, and
+`/qa/queries/{id}` renders the pending question with an elapsed clock, redirecting to the answer once
+it lands. That URL stays valid for the whole life of a question rather than only after it is
+answered.
+
+**13. Refusal copy is per reason, in three tones.** Reported from the UI: `model_unavailable`
+rendered as *"모델이 잘못된 응답을 냈다는 뜻입니다"* — the model had not responded at all. One shared
+"defect signal" sentence covered three genuinely different facts. `NO_ANSWER_REASON_TONE` now splits
+them into `expected` (the product working — no evidence, or evidence that did not hold), `regression`
+(a 조문 번호 from memory, or an unusable reply) and `infrastructure` (never reached), each with its
+own sentence in `NO_ANSWER_REASON_HINT`. Rendering all three the same is how a broken model hides
+inside an honest-looking refusal rate.

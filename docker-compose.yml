@@ -45,8 +45,13 @@ x-service-base: &service-base
 
 services:
   # --- infrastructure ------------------------------------------------------
+  # pgvector's image, not stock postgres: phase 1.3 stores 768-dim clause embeddings with an HNSW
+  # cosine index, and `CREATE EXTENSION vector` needs the extension present in the image. Same
+  # PostgreSQL major version as the postgres:16-alpine it replaces, so the existing data directory
+  # is read as-is — but it is Debian/glibc where that was Alpine/musl, and glibc collates text
+  # differently. Migration 0005 REINDEXes the text indexes for exactly that reason.
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: regops
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-regops}
@@ -114,7 +119,10 @@ services:
     env_file:
     - ".env.${STAGE:-dev}"
     environment:
-      DATABASE_URL: postgresql+asyncpg://regops:regops@db:5432/regops
+      # Same `REGOPS_DB_NAME` knob the services use, so the documented
+      # `REGOPS_DB_NAME=regops_test docker compose run --rm migrate` actually reaches the test
+      # database instead of silently re-migrating the dev one.
+      DATABASE_URL: postgresql+asyncpg://regops:regops@db:5432/${REGOPS_DB_NAME:-regops}
     working_dir: /shared
     command: alembic upgrade head
     volumes: ["./shared:/shared"]
@@ -188,6 +196,18 @@ services:
     <<: *service-base
     build: {context: ., dockerfile: services/assistant/Dockerfile}
     ports: ["28003:8000"]
+    volumes:
+      - ./shared:/shared
+      - ./services/assistant:/app
+    profiles: [app]
+
+  # Embedding a version and answering a question are both long, model-bound work, so both run off
+  # the API process. Concurrency 2, matching the regulation worker: Ollama is one shared host-native
+  # instance and queueing there is cheaper than thrashing it.
+  assistant-worker:
+    <<: *service-base
+    build: {context: ., dockerfile: services/assistant/Dockerfile}
+    command: celery -A app.celery_app.celery_app worker -Q assistant -c 2 -l info
     volumes:
       - ./shared:/shared
       - ./services/assistant:/app

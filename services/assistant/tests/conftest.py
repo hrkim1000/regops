@@ -1,4 +1,4 @@
-"""Import paths for the `regulation` suites.
+"""Import paths for the `assistant` suites.
 
 The service package is ``app`` inside the container (``WORKDIR /app``), so tests import it that
 way whether they run in the image or from the repo root.
@@ -8,10 +8,11 @@ grew a unit suite. A host-side run of the documented gate
 
     python -m pytest shared/tests services/*/tests/unit -q
 
-would otherwise import whichever service's ``app`` came first and hand it to every later suite.
-pytest loads a directory's ``conftest.py`` before collecting the files in it, so evicting a stale
-package here is early enough — and it is the *service root* that decides, not the order the shell
-globbed the directories in.
+imports `regulation`'s ``app`` first and caches it in ``sys.modules``; every later
+``from app.ask import ...`` then resolves against that package and fails. pytest loads a
+directory's ``conftest.py`` before collecting the files in it, so evicting the stale package here
+is early enough — and it is the *service root* that decides, not the order the shell globbed the
+directories in.
 """
 
 from __future__ import annotations

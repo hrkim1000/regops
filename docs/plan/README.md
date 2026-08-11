@@ -20,10 +20,10 @@ starts at the first connector and assumes a stack already exists. It does not.
 | 0 | [phase0_foundation.md](phase0_foundation.md) | pre-M1 | W0–W2 | 🟢 done (4 items deferred to 1.5 / CI) |
 | 1.0 | [phase1.0_ingestion.md](phase1.0_ingestion.md) | Phase 1 · M0–4 | W1–W4 | 🟢 done (2026-08-05) — 8/8 acceptance, W3 recon complete |
 | 1.1 | [phase1.1_normalization.md](phase1.1_normalization.md) | Phase 1 | W3–W6 | 🟢 done (2026-08-06) — 9/9 acceptance, both falsifiers not triggered |
-| 1.2 | [phase1.2_ir_extraction.md](phase1.2_ir_extraction.md) | Phase 1 | W3–W8 | ⬜ planned |
-| 1.3 | [phase1.3_retrieval_qa.md](phase1.3_retrieval_qa.md) | Phase 1 | W5–W10 | ⬜ planned |
+| 1.2 | [phase1.2_ir_extraction.md](phase1.2_ir_extraction.md) | Phase 1 | W3–W8 | 🟢 done (2026-08-07) — 7/7 acceptance |
+| 1.3 | [phase1.3_retrieval_qa.md](phase1.3_retrieval_qa.md) | Phase 1 | W5–W10 | 🟢 done (2026-08-11) — 9/9 acceptance |
 | 1.4 | [phase1.4_monitoring.md](phase1.4_monitoring.md) | Phase 1 | W7–W10 | ⬜ planned |
-| 1.5 | [phase1.5_frontend.md](phase1.5_frontend.md) | Phase 1 | W7–W12 | 🟡 foundation + regulation browser + clause view built early |
+| 1.5 | [phase1.5_frontend.md](phase1.5_frontend.md) | Phase 1 | W7–W12 | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench (2026-08-11); dashboard waits on 1.4 |
 | 1.6 | [phase1.6_evaluation.md](phase1.6_evaluation.md) | Phase 1 | W2–W16 | ⬜ planned |
 | 2.0 | [phase2.0_tier_c_scale.md](phase2.0_tier_c_scale.md) | Phase 2 · M5–12 | — | ⬜ planned |
 | 2.1 | [phase2.1_semantic_graph.md](phase2.1_semantic_graph.md) | Phase 2 | — | ⬜ planned |
@@ -66,6 +66,8 @@ A decision left unmade is taken by whatever gets built first. These have deadlin
 | ~~Unresolvable effective dates~~ | **taken** | [ADR-0013](../design/ADR-0013-unresolvable-effective-dates.md) — null plus the retained raw 부칙 phrase |
 | ~~Diff inline, or split as its own stage?~~ | **taken 2026-08-06** | **Split.** [ADR-0015](../design/ADR-0015-diff-stage-boundary.md) — its own task, dispatched by name, so a profile improvement re-diffs the archive without re-fetching. Closes ADR-0003 open question 4 |
 | ~~How are 시행예정 versions keyed, and where do staged dates live?~~ | **taken 2026-08-06** | **One version per MST; staged dates stay in `effective_date_phrase`.** [ADR-0016](../design/ADR-0016-pending-effect-versions.md) — and it partly withdraws ADR-0003 open question 2, because `조문시행일자` is constant per document |
+| ~~Class-restricted obligation: one parameterised IR, or one per class?~~ | **taken 2026-08-07** | **One parameterised IR**, restriction in `condition_text`. [ADR-0017](../design/ADR-0017-extraction-determinism-and-conditional-obligations.md) decision 2 — applicability is Compliance-owned and tenant-scoped, so per-class fan-out would decide it for every tenant in the shared layer. Closes ADR-0004 open question 3 |
+| ~~Extraction determinism: pin temperature, or gate on the golden set only?~~ | **taken 2026-08-07** | **Pin to 0, store it on the run, treat a delta as a regression.** [ADR-0017](../design/ADR-0017-extraction-determinism-and-conditional-obligations.md) decision 1. Closes ADR-0004 open question 5 |
 
 The two **service-boundary** decisions at the top of that table were scoped as W1 decisions and
 lapsed twice in silence. The
@@ -91,4 +93,4 @@ reminder.
 | [development-plan.md](../development-plan.md) | The roadmap these files decompose — milestones, exit criteria, staffing, risk register |
 | [RegOps.md](../RegOps.md) | Scope, data tiers, five layers, Go/No-Go gate definitions |
 | [import-source-map.md](../import-source-map.md) | The single source catalog — never copied into a plan file |
-| [design/](../design/) | ADR-0001 – ADR-0010; a plan file cites them, never contradicts them |
+| [design/](../design/) | ADR-0001 – ADR-0017; a plan file cites them, never contradicts them |

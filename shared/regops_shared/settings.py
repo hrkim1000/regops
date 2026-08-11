@@ -43,6 +43,18 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5"
 
+    #: Read by the client rather than hard-coded there. Extraction sends one clause; generation
+    #: sends eight retrieved passages and asks for structured JSON back, and a small local model
+    #: takes minutes over that. The old hard-coded 120s killed real answers mid-generation and
+    #: surfaced as an httpx.ReadTimeout with no answer row, which reads like a bug in retrieval.
+    llm_timeout_seconds: float = 180.0
+
+    #: Ollama's context window for generation. **Not cosmetic**: a prompt longer than the window is
+    #: silently truncated, and a generator that loses the tail of its passage list will cite a
+    #: clause path it can no longer see — a fabricated citation manufactured by configuration
+    #: rather than by the model. Null leaves Ollama's own default in place.
+    ollama_num_ctx: int | None = None
+
     #: Embeddings are always Ollama and always this model/dim — changing them invalidates
     #: the whole index, so they are not configurable per provider.
     embedding_model: str = EMBEDDING_MODEL

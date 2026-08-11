@@ -49,11 +49,19 @@ async def list_clauses(
     _: CurrentUser,
     page: int = Query(1, ge=1),
     page_size: int = Query(CLAUSE_PAGE_SIZE, ge=1, le=CLAUSE_PAGE_SIZE_MAX),
+    clause_path: str | None = Query(
+        None,
+        description="Jump to the page holding this clause. What makes a citation a deep link.",
+    ),
 ) -> dict[str, Any]:
     """The clauses of one version, in document order.
 
     404s on an unknown version rather than returning an empty list: "this version does not exist"
     and "this version has no clauses" are different answers, and only one of them is a bug.
+
+    ``clause_path`` overrides ``page``. A citation names a clause, not a page number, and the
+    largest version in the corpus holds 2,212 clauses — a "deep link" that lands the reader on page
+    one of five is a link to the document, not to the evidence.
     """
     version = await db.get(DocumentVersion, version_id)
     if version is None:
@@ -66,6 +74,10 @@ async def list_clauses(
         )
         or 0
     )
+
+    focus = await _page_of(db, version_id=version_id, clause_path=clause_path, page_size=page_size)
+    if focus is not None:
+        page = focus
     rows = list(
         await db.scalars(
             select(Clause)
@@ -101,10 +113,42 @@ async def list_clauses(
             #: Whether *this document type* yields clauses at all. False for a feed, where an empty
             #: list is the correct outcome and not an ingestion gap.
             "parseable": is_parseable(document.doc_type) if document else False,
+            #: Echoed back only when it resolved. A caller that asked for a clause this version does
+            #: not have gets page 1 and a null here, rather than a silent scroll to nowhere.
+            "focus_clause_path": clause_path if focus is not None else None,
             "clauses": [_clause_out(clause) for clause in rows],
         },
         meta=Meta(page=page, page_size=page_size, total=total),
     )
+
+
+async def _page_of(
+    db: AsyncSession, *, version_id: uuid.UUID, clause_path: str | None, page_size: int
+) -> int | None:
+    """Which page holds ``clause_path``, or ``None`` if it does not resolve.
+
+    Rank is counted by ``ordinal``, which is the reading order the listing sorts by — not by
+    ``clause_path``, which would file 제10조 between 제1조 and 제2조 and send the reader to the
+    wrong page with complete confidence.
+    """
+    if not clause_path:
+        return None
+    ordinal = await db.scalar(
+        select(Clause.ordinal).where(
+            Clause.document_version_id == version_id, Clause.clause_path == clause_path
+        )
+    )
+    if ordinal is None:
+        return None
+    rank = (
+        await db.scalar(
+            select(func.count())
+            .select_from(Clause)
+            .where(Clause.document_version_id == version_id, Clause.ordinal < ordinal)
+        )
+        or 0
+    )
+    return rank // page_size + 1
 
 
 def _clause_out(clause: Clause) -> dict[str, Any]:

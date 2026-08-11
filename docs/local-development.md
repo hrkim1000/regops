@@ -64,9 +64,22 @@ compose pins both. Anything else there — `JWT_SECRET`, `LLM_*`, `LAW_GO_KR_OC`
 Select the test database with its own knob rather than fighting that precedence:
 
 ```bash
+REGOPS_DB_NAME=regops_test docker compose run --rm migrate          # once, to head
 STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm regulation \
     python -m pytest tests/integration -q
 ```
+
+The `migrate` service reads the same knob, so the test database is migrated with the same command
+that migrates the development one. It did not always — the DSN was hard-coded to `regops` until
+phase 1.3, so that first line silently re-migrated development and left the test database behind.
+
+## The database image is pgvector's, not stock postgres
+
+`db` runs `pgvector/pgvector:pg16` rather than `postgres:16-alpine`, because phase 1.3 stores clause
+embeddings and `CREATE EXTENSION vector` needs the extension present in the image. Same PostgreSQL
+major version, same data directory — but Debian/glibc where the old image was Alpine/musl, and the
+two collate text differently. Migration 0005 reindexes every table once and refreshes the collation
+version for exactly that reason; if you are restoring an older volume by hand, do the same.
 
 ## Changing a credential
 

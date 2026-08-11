@@ -6,26 +6,38 @@
 -- instead of replaying the migration history.
 --
 -- NOTE: dumped with --no-privileges, so the audit_log GRANT/REVOKE from migration 0001 and the
--- regulation-table grants from 0002/0003 are NOT represented here. Append-only enforcement lives
--- in the migration and in infra/postgres/init/01-app-role.sh (ADR-0011).
+-- regulation-table grants from 0002/0003/0004/0005 are NOT represented here. Append-only
+-- enforcement lives in the migration and in infra/postgres/init/01-app-role.sh (ADR-0011).
 --
--- Four absences in this file are load-bearing and deliberate:
+-- Two *presences* are load-bearing:
+--   * `assert_ir_has_citation()` and its two DEFERRABLE constraint triggers. "An IR without a
+--     citation does not exist" (ADR-0004 decision 2) is a schema guarantee, not a convention the
+--     extractor happens to follow — a FK cannot express "at least one" in that direction, so the
+--     check runs at commit from both sides (inserting an uncited IR, and deleting the last
+--     citation off an existing one).
+--   * the `vector` extension, and clause_embeddings.embedding as vector(768) with an HNSW
+--     cosine index. This is why docker-compose's `db` is pgvector/pgvector:pg16 rather than stock
+--     postgres — see migration 0005.
+--
+-- Five absences in this file are load-bearing and deliberate:
 --   * fetch_observations has no request-URL column   -- ADR-0003 decision 13
 --   * standard_references has no text column and no varchar over 512  -- ADR-0002 decision 2
 --   * clauses has no domain-specific column          -- ADR-0002 decision 3; a SaMD-only or
 --     Cosmetic-only column here is the phase 1.1 falsifier firing, not a schema detail
 --   * there is no annex_rows table                   -- ADR-0014; an annex table row is a Clause,
 --     so the citation contract needs no branch and there is no second store to keep in sync
+--   * answer_citations is NOT ir_citations           -- ADR-0006 decision 10; they share a shape
+--     and nothing else, because an amendment stales an IR and supersedes an answer
 --
 
 --
 -- PostgreSQL database dump
 --
 
-\restrict chtDf8ehvaDgHMJOk58ceJPh1rPhoeex9DzVT4V0eCeQt0ZKssiN8nnZhYbQaYg
+\restrict g7BdesrAPLw3gZQWslKRfIPDR3rbHIyV0h2StwAaaOwCYIorL7btD9Rkib1CgwG
 
--- Dumped from database version 16.13
--- Dumped by pg_dump version 16.13
+-- Dumped from database version 16.14 (Debian 16.14-1.pgdg12+1)
+-- Dumped by pg_dump version 16.14 (Debian 16.14-1.pgdg12+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -37,6 +49,31 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: vector; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION vector; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
+
+
+--
+-- Name: answer_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.answer_status AS ENUM (
+    'answered',
+    'needs_verification',
+    'needs_review'
+);
+
 
 --
 -- Name: attachment_kind; Type: TYPE; Schema: public; Owner: -
@@ -71,6 +108,16 @@ CREATE TYPE public.change_kind AS ENUM (
     'modified',
     'renumbered',
     'moved'
+);
+
+
+--
+-- Name: classification_kind; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.classification_kind AS ENUM (
+    'obligation_bearing',
+    'excluded'
 );
 
 
@@ -124,6 +171,48 @@ CREATE TYPE public.drift_signal AS ENUM (
     'empty_annex_body',
     'zero_clauses',
     'clause_count_delta'
+);
+
+
+--
+-- Name: embedding_scope; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.embedding_scope AS ENUM (
+    'article',
+    'article_fragment',
+    'table_header',
+    'form'
+);
+
+
+--
+-- Name: exclusion_reason; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.exclusion_reason AS ENUM (
+    'definition',
+    'scope',
+    'heading',
+    'permissive',
+    'procedural',
+    'delegation',
+    'table_container',
+    'form',
+    'empty',
+    'no_obligation',
+    'unparseable'
+);
+
+
+--
+-- Name: extraction_run_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.extraction_run_status AS ENUM (
+    'running',
+    'completed',
+    'failed'
 );
 
 
@@ -205,6 +294,52 @@ CREATE TYPE public.userrole AS ENUM (
 );
 
 
+--
+-- Name: verification_verdict; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.verification_verdict AS ENUM (
+    'supported',
+    'partial',
+    'unsupported'
+);
+
+
+--
+-- Name: assert_ir_has_citation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.assert_ir_has_citation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+        DECLARE
+            target uuid;
+        BEGIN
+            IF TG_OP = 'DELETE' THEN
+                target := OLD.ir_id;
+            ELSE
+                target := NEW.id;
+            END IF;
+
+            -- The check is deferred to commit, so the row it was queued for may have been deleted
+            -- since — by a CASCADE from `irs`, or by a later statement in the same transaction.
+            -- An IR that no longer exists cannot be an uncited IR, and asserting about one turns
+            -- ordinary cleanup ("unlink, then delete") into a spurious violation.
+            IF NOT EXISTS (SELECT 1 FROM irs WHERE id = target) THEN
+                RETURN NULL;
+            END IF;
+
+            IF NOT EXISTS (SELECT 1 FROM ir_citations WHERE ir_id = target) THEN
+                RAISE EXCEPTION
+                    'IR % has no citation; an IR without a citation does not exist '
+                    '(ADR-0004 decision 2)', target
+                    USING ERRCODE = '23514';
+            END IF;
+            RETURN NULL;
+        END;
+        $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -215,6 +350,49 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.alembic_version (
     version_num character varying(32) NOT NULL
+);
+
+
+--
+-- Name: answer_citations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.answer_citations (
+    id uuid NOT NULL,
+    answer_id uuid NOT NULL,
+    claim_index integer DEFAULT 0 NOT NULL,
+    document_id uuid NOT NULL,
+    document_version_id uuid NOT NULL,
+    clause_path character varying(512) NOT NULL,
+    effective_date date,
+    superseded_at timestamp with time zone,
+    superseded_by_diff_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: answers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.answers (
+    id uuid NOT NULL,
+    query_id uuid NOT NULL,
+    tenant_id uuid,
+    text text DEFAULT ''::text NOT NULL,
+    status public.answer_status NOT NULL,
+    confidence double precision DEFAULT 0 NOT NULL,
+    no_answer_reason character varying(32),
+    document_version_scope uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    effective_date_scope date,
+    straddles_effective_date boolean DEFAULT false NOT NULL,
+    llm_provider character varying(32) NOT NULL,
+    llm_model character varying(64) NOT NULL,
+    prompt_version character varying(32) NOT NULL,
+    retrieval_version character varying(32) NOT NULL,
+    superseded_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT ck_answers_confidence_range CHECK (((confidence >= (0)::double precision) AND (confidence <= (1)::double precision)))
 );
 
 
@@ -304,6 +482,24 @@ CREATE TABLE public.change_events (
 
 
 --
+-- Name: clause_classifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.clause_classifications (
+    id uuid NOT NULL,
+    clause_id uuid NOT NULL,
+    domain_profile public.domain NOT NULL,
+    kind public.classification_kind NOT NULL,
+    exclusion_reason public.exclusion_reason,
+    exclusion_note text,
+    extraction_run_id uuid,
+    classified_by uuid,
+    classified_at timestamp with time zone NOT NULL,
+    CONSTRAINT ck_clause_classifications_reason CHECK (((kind = 'excluded'::public.classification_kind) = (exclusion_reason IS NOT NULL)))
+);
+
+
+--
 -- Name: clause_diffs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -323,6 +519,28 @@ CREATE TABLE public.clause_diffs (
     reviewed_by uuid,
     review_note text,
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: clause_embeddings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.clause_embeddings (
+    id uuid NOT NULL,
+    clause_id uuid NOT NULL,
+    document_version_id uuid NOT NULL,
+    scope public.embedding_scope NOT NULL,
+    fragment_index integer DEFAULT 0 NOT NULL,
+    passage text NOT NULL,
+    child_clause_paths text[] DEFAULT '{}'::text[] NOT NULL,
+    content_hash character varying(64) NOT NULL,
+    embedding public.vector(768) NOT NULL,
+    model character varying(64) NOT NULL,
+    dim integer DEFAULT 768 NOT NULL,
+    passage_version character varying(32) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT ck_clause_embeddings_fragment_index_nonneg CHECK ((fragment_index >= 0))
 );
 
 
@@ -408,6 +626,30 @@ CREATE TABLE public.documents (
 
 
 --
+-- Name: extraction_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.extraction_runs (
+    id uuid NOT NULL,
+    document_version_id uuid NOT NULL,
+    domain_profile public.domain NOT NULL,
+    rule_version character varying(32) NOT NULL,
+    prompt_version character varying(32) NOT NULL,
+    llm_provider character varying(32) NOT NULL,
+    llm_model character varying(64) NOT NULL,
+    temperature double precision,
+    status public.extraction_run_status DEFAULT 'running'::public.extraction_run_status NOT NULL,
+    clauses_seen integer DEFAULT 0 NOT NULL,
+    irs_written integer DEFAULT 0 NOT NULL,
+    rejected_uncited integer DEFAULT 0 NOT NULL,
+    started_at timestamp with time zone NOT NULL,
+    completed_at timestamp with time zone,
+    error text,
+    CONSTRAINT ck_extraction_runs_counts_nonneg CHECK (((clauses_seen >= 0) AND (irs_written >= 0) AND (rejected_uncited >= 0)))
+);
+
+
+--
 -- Name: fetch_observations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -445,6 +687,19 @@ CREATE TABLE public.ir_citations (
 
 
 --
+-- Name: ir_standard_citations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ir_standard_citations (
+    id uuid NOT NULL,
+    ir_id uuid NOT NULL,
+    standard_reference_id uuid NOT NULL,
+    reference_text text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: irs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -466,7 +721,23 @@ CREATE TABLE public.irs (
     prompt_version character varying(32),
     rule_version character varying(32),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    extraction_run_id uuid
+);
+
+
+--
+-- Name: queries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.queries (
+    id uuid NOT NULL,
+    tenant_id uuid,
+    cell_id uuid NOT NULL,
+    cross_cell boolean DEFAULT false NOT NULL,
+    text text NOT NULL,
+    asked_by uuid,
+    asked_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -604,6 +875,23 @@ CREATE TABLE public.users (
 
 
 --
+-- Name: verification_results; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.verification_results (
+    id uuid NOT NULL,
+    answer_id uuid NOT NULL,
+    claim_index integer NOT NULL,
+    verdict public.verification_verdict NOT NULL,
+    reason text,
+    verifier_provider character varying(32) NOT NULL,
+    verifier_model character varying(64) NOT NULL,
+    prompt_version character varying(32) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: audit_log seq; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -616,6 +904,22 @@ ALTER TABLE ONLY public.audit_log ALTER COLUMN seq SET DEFAULT nextval('public.a
 
 ALTER TABLE ONLY public.alembic_version
     ADD CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num);
+
+
+--
+-- Name: answer_citations answer_citations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_citations
+    ADD CONSTRAINT answer_citations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: answers answers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answers
+    ADD CONSTRAINT answers_pkey PRIMARY KEY (id);
 
 
 --
@@ -651,11 +955,27 @@ ALTER TABLE ONLY public.change_events
 
 
 --
+-- Name: clause_classifications clause_classifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_classifications
+    ADD CONSTRAINT clause_classifications_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: clause_diffs clause_diffs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.clause_diffs
     ADD CONSTRAINT clause_diffs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: clause_embeddings clause_embeddings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_embeddings
+    ADD CONSTRAINT clause_embeddings_pkey PRIMARY KEY (id);
 
 
 --
@@ -691,6 +1011,14 @@ ALTER TABLE ONLY public.documents
 
 
 --
+-- Name: extraction_runs extraction_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.extraction_runs
+    ADD CONSTRAINT extraction_runs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: fetch_observations fetch_observations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -707,11 +1035,27 @@ ALTER TABLE ONLY public.ir_citations
 
 
 --
+-- Name: ir_standard_citations ir_standard_citations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_standard_citations
+    ADD CONSTRAINT ir_standard_citations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: irs irs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.irs
     ADD CONSTRAINT irs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: queries queries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queries
+    ADD CONSTRAINT queries_pkey PRIMARY KEY (id);
 
 
 --
@@ -763,6 +1107,14 @@ ALTER TABLE ONLY public.structure_drift_alerts
 
 
 --
+-- Name: answer_citations uq_answer_citations_target; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_citations
+    ADD CONSTRAINT uq_answer_citations_target UNIQUE (answer_id, claim_index, document_version_id, clause_path);
+
+
+--
 -- Name: attachments uq_attachments_version_kind_ordinal; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -803,11 +1155,27 @@ ALTER TABLE ONLY public.change_events
 
 
 --
+-- Name: clause_classifications uq_clause_classifications_target; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_classifications
+    ADD CONSTRAINT uq_clause_classifications_target UNIQUE (clause_id, domain_profile);
+
+
+--
 -- Name: clause_diffs uq_clause_diffs_target; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.clause_diffs
     ADD CONSTRAINT uq_clause_diffs_target UNIQUE (to_version_id, clause_path, change_kind);
+
+
+--
+-- Name: clause_embeddings uq_clause_embeddings_fragment; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_embeddings
+    ADD CONSTRAINT uq_clause_embeddings_fragment UNIQUE (clause_id, fragment_index);
 
 
 --
@@ -843,6 +1211,14 @@ ALTER TABLE ONLY public.ir_citations
 
 
 --
+-- Name: ir_standard_citations uq_ir_standard_citations_target; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_standard_citations
+    ADD CONSTRAINT uq_ir_standard_citations_target UNIQUE (ir_id, standard_reference_id);
+
+
+--
 -- Name: sessions uq_sessions_jti; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -875,11 +1251,62 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: verification_results uq_verification_results_claim; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verification_results
+    ADD CONSTRAINT uq_verification_results_claim UNIQUE (answer_id, claim_index);
+
+
+--
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: verification_results verification_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verification_results
+    ADD CONSTRAINT verification_results_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ix_answer_citations_answer_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_answer_citations_answer_id ON public.answer_citations USING btree (answer_id);
+
+
+--
+-- Name: ix_answer_citations_version_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_answer_citations_version_path ON public.answer_citations USING btree (document_version_id, clause_path);
+
+
+--
+-- Name: ix_answers_query_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_answers_query_id ON public.answers USING btree (query_id);
+
+
+--
+-- Name: ix_answers_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_answers_status ON public.answers USING btree (status);
+
+
+--
+-- Name: ix_answers_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_answers_tenant_id ON public.answers USING btree (tenant_id);
 
 
 --
@@ -911,6 +1338,20 @@ CREATE INDEX ix_change_events_document_id ON public.change_events USING btree (d
 
 
 --
+-- Name: ix_clause_classifications_kind; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_classifications_kind ON public.clause_classifications USING btree (kind);
+
+
+--
+-- Name: ix_clause_classifications_run; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_classifications_run ON public.clause_classifications USING btree (extraction_run_id);
+
+
+--
 -- Name: ix_clause_diffs_from_version_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -932,6 +1373,27 @@ CREATE INDEX ix_clause_diffs_to_version_id ON public.clause_diffs USING btree (t
 
 
 --
+-- Name: ix_clause_embeddings_hnsw; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_embeddings_hnsw ON public.clause_embeddings USING hnsw (embedding public.vector_cosine_ops);
+
+
+--
+-- Name: ix_clause_embeddings_model; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_embeddings_model ON public.clause_embeddings USING btree (model);
+
+
+--
+-- Name: ix_clause_embeddings_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clause_embeddings_version ON public.clause_embeddings USING btree (document_version_id);
+
+
+--
 -- Name: ix_clauses_clause_path; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -950,6 +1412,13 @@ CREATE INDEX ix_clauses_content_hash ON public.clauses USING btree (content_hash
 --
 
 CREATE INDEX ix_clauses_document_version_id_ordinal ON public.clauses USING btree (document_version_id, ordinal);
+
+
+--
+-- Name: ix_clauses_fts; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clauses_fts ON public.clauses USING gin (to_tsvector('simple'::regconfig, ((COALESCE(heading, ''::text) || ' '::text) || COALESCE(text, ''::text))));
 
 
 --
@@ -981,6 +1450,20 @@ CREATE INDEX ix_documents_parent_document_id ON public.documents USING btree (pa
 
 
 --
+-- Name: ix_extraction_runs_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_extraction_runs_status ON public.extraction_runs USING btree (status);
+
+
+--
+-- Name: ix_extraction_runs_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_extraction_runs_version ON public.extraction_runs USING btree (document_version_id, started_at);
+
+
+--
 -- Name: ix_fetch_observations_source_id_fetched_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1002,10 +1485,45 @@ CREATE INDEX ix_ir_citations_version_path ON public.ir_citations USING btree (do
 
 
 --
+-- Name: ix_ir_standard_citations_ir_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_ir_standard_citations_ir_id ON public.ir_standard_citations USING btree (ir_id);
+
+
+--
+-- Name: ix_irs_extraction_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_irs_extraction_run_id ON public.irs USING btree (extraction_run_id);
+
+
+--
 -- Name: ix_irs_status; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_irs_status ON public.irs USING btree (status);
+
+
+--
+-- Name: ix_irs_supersedes_ir_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_irs_supersedes_ir_id ON public.irs USING btree (supersedes_ir_id) WHERE (supersedes_ir_id IS NOT NULL);
+
+
+--
+-- Name: ix_queries_cell_asked_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_queries_cell_asked_at ON public.queries USING btree (cell_id, asked_at);
+
+
+--
+-- Name: ix_queries_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_queries_tenant_id ON public.queries USING btree (tenant_id);
 
 
 --
@@ -1044,6 +1562,67 @@ CREATE INDEX ix_users_email ON public.users USING btree (email);
 
 
 --
+-- Name: ix_verification_results_verdict; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_verification_results_verdict ON public.verification_results USING btree (verdict);
+
+
+--
+-- Name: ir_citations trg_ir_citations_require_citation; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER trg_ir_citations_require_citation AFTER DELETE ON public.ir_citations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.assert_ir_has_citation();
+
+
+--
+-- Name: irs trg_irs_require_citation; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER trg_irs_require_citation AFTER INSERT OR UPDATE ON public.irs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.assert_ir_has_citation();
+
+
+--
+-- Name: answer_citations answer_citations_answer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_citations
+    ADD CONSTRAINT answer_citations_answer_id_fkey FOREIGN KEY (answer_id) REFERENCES public.answers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: answer_citations answer_citations_document_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_citations
+    ADD CONSTRAINT answer_citations_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+
+
+--
+-- Name: answer_citations answer_citations_document_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_citations
+    ADD CONSTRAINT answer_citations_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id);
+
+
+--
+-- Name: answer_citations answer_citations_superseded_by_diff_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_citations
+    ADD CONSTRAINT answer_citations_superseded_by_diff_id_fkey FOREIGN KEY (superseded_by_diff_id) REFERENCES public.clause_diffs(id) ON DELETE SET NULL;
+
+
+--
+-- Name: answers answers_query_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answers
+    ADD CONSTRAINT answers_query_id_fkey FOREIGN KEY (query_id) REFERENCES public.queries(id) ON DELETE CASCADE;
+
+
+--
 -- Name: attachments attachments_document_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1076,6 +1655,22 @@ ALTER TABLE ONLY public.change_events
 
 
 --
+-- Name: clause_classifications clause_classifications_clause_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_classifications
+    ADD CONSTRAINT clause_classifications_clause_id_fkey FOREIGN KEY (clause_id) REFERENCES public.clauses(id) ON DELETE CASCADE;
+
+
+--
+-- Name: clause_classifications clause_classifications_extraction_run_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_classifications
+    ADD CONSTRAINT clause_classifications_extraction_run_id_fkey FOREIGN KEY (extraction_run_id) REFERENCES public.extraction_runs(id) ON DELETE SET NULL;
+
+
+--
 -- Name: clause_diffs clause_diffs_from_clause_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1105,6 +1700,22 @@ ALTER TABLE ONLY public.clause_diffs
 
 ALTER TABLE ONLY public.clause_diffs
     ADD CONSTRAINT clause_diffs_to_version_id_fkey FOREIGN KEY (to_version_id) REFERENCES public.document_versions(id);
+
+
+--
+-- Name: clause_embeddings clause_embeddings_clause_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_embeddings
+    ADD CONSTRAINT clause_embeddings_clause_id_fkey FOREIGN KEY (clause_id) REFERENCES public.clauses(id) ON DELETE CASCADE;
+
+
+--
+-- Name: clause_embeddings clause_embeddings_document_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clause_embeddings
+    ADD CONSTRAINT clause_embeddings_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id) ON DELETE CASCADE;
 
 
 --
@@ -1172,6 +1783,14 @@ ALTER TABLE ONLY public.documents
 
 
 --
+-- Name: extraction_runs extraction_runs_document_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.extraction_runs
+    ADD CONSTRAINT extraction_runs_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id) ON DELETE CASCADE;
+
+
+--
 -- Name: fetch_observations fetch_observations_source_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1212,11 +1831,43 @@ ALTER TABLE ONLY public.ir_citations
 
 
 --
+-- Name: ir_standard_citations ir_standard_citations_ir_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_standard_citations
+    ADD CONSTRAINT ir_standard_citations_ir_id_fkey FOREIGN KEY (ir_id) REFERENCES public.irs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ir_standard_citations ir_standard_citations_standard_reference_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ir_standard_citations
+    ADD CONSTRAINT ir_standard_citations_standard_reference_id_fkey FOREIGN KEY (standard_reference_id) REFERENCES public.standard_references(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: irs irs_extraction_run_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.irs
+    ADD CONSTRAINT irs_extraction_run_id_fkey FOREIGN KEY (extraction_run_id) REFERENCES public.extraction_runs(id) ON DELETE SET NULL;
+
+
+--
 -- Name: irs irs_supersedes_ir_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.irs
     ADD CONSTRAINT irs_supersedes_ir_id_fkey FOREIGN KEY (supersedes_ir_id) REFERENCES public.irs(id);
+
+
+--
+-- Name: queries queries_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queries
+    ADD CONSTRAINT queries_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id);
 
 
 --
@@ -1260,8 +1911,16 @@ ALTER TABLE ONLY public.structure_drift_alerts
 
 
 --
+-- Name: verification_results verification_results_answer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verification_results
+    ADD CONSTRAINT verification_results_answer_id_fkey FOREIGN KEY (answer_id) REFERENCES public.answers(id) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict chtDf8ehvaDgHMJOk58ceJPh1rPhoeex9DzVT4V0eCeQt0ZKssiN8nnZhYbQaYg
+\unrestrict g7BdesrAPLw3gZQWslKRfIPDR3rbHIyV0h2StwAaaOwCYIorL7btD9Rkib1CgwG
 

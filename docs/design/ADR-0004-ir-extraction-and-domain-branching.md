@@ -1,6 +1,6 @@
 # ADR-0004 — IR extraction and domain branching
 
-- **Status:** Proposed
+- **Status:** Accepted — built in [phase1.2](../plan/phase1.2_ir_extraction.md) (2026-08-07)
 - **Date:** 2026-07-29
 - **Depends on:** [ADR-0002](ADR-0002-canonical-regulation-model.md) (canonical model), [ADR-0003](ADR-0003-ingestion-and-change-detection.md) (ingestion)
 - **Resolves:** ADR-0002 open question 2 (IR versioning vs. re-derivation)
@@ -182,18 +182,24 @@ ir_citations(ir_id, document_version_id, clause_path, effective_date, superseded
    Embedding is unaffected — decisions 1–2 of
    [ADR-0006](ADR-0006-retrieval-and-citation-enforced-generation.md) still exclude rows from the
    index and serve them by exact match.
-3. **Conditional obligations by product class** — duties that apply only to a device class or
-   product category. One parameterised IR, or one IR per class? Parameterised is smaller; per-class
-   maps to controls more directly.
+3. ~~**Conditional obligations by product class**~~ — **closed by
+   [ADR-0017](ADR-0017-extraction-determinism-and-conditional-obligations.md) decision 2.** One
+   parameterised IR, with the restriction in `condition_text`. Not because it is smaller: *which*
+   products a duty binds is Compliance-owned and tenant-scoped (ADR-0007, phase 2.2), and fanning
+   out per class here would have the shared reference layer making an applicability decision on
+   every tenant's behalf.
 4. ~~**Cross-references**~~ (`제5조에 따른`, "as specified in Annex III") — **resolved** in
    [ADR-0010](ADR-0010-semantic-enrichment-and-graph-model.md) decision 7: neither option exactly.
    The clause text is retained verbatim and the resolution is stored beside it in
    `clause_references`, produced by a deterministic pipeline rather than at extraction time — so
    this ADR's W3-4 scope is unchanged. Staleness propagation via the referring clause is confirmed
    correct and becomes the mechanism behind impact grading.
-5. **Extraction determinism** — same clause, same rule and model version should yield the same IRs.
-   LLM sampling makes this approximate. Decide whether to pin temperature to 0 and treat any delta
-   as a regression, or accept variance and gate on the golden-set score only.
+5. ~~**Extraction determinism**~~ — **closed by
+   [ADR-0017](ADR-0017-extraction-determinism-and-conditional-obligations.md) decision 1.**
+   Temperature is pinned to 0, stored on `extraction_runs`, and a delta at the same
+   `(rule_version, prompt_version, llm_model)` is treated as a regression. Greedy decoding is not
+   determinism, so it is a measured target rather than a guarantee — which is why the value used is
+   stored rather than assumed.
 
 ## What this unblocks
 

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FileCode } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardList, FileCode, Scale } from 'lucide-react';
 import Link from 'next/link';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -32,16 +32,21 @@ export default async function ClausesPage({
   searchParams,
 }: {
   params: Promise<{ id: string; versionId: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; clause_path?: string }>;
 }) {
   const { id, versionId } = await params;
-  const page = Math.max(1, Number((await searchParams).page ?? '1') || 1);
+  const query = await searchParams;
+  const page = Math.max(1, Number(query.page ?? '1') || 1);
+  //: An answer citation links here by clause, not by page. The API resolves the path to whichever
+  //: page holds it — the largest version in the corpus is five pages long, and a "deep link" that
+  //: lands on page one is a link to the document rather than to the evidence.
+  const focusPath = query.clause_path?.trim() || undefined;
 
   // Independent fetches — a failed status lookup must not blank the clauses, and vice versa.
   const listing = await serverGetPage<ClauseListing>(
     'regulation',
     `/document-versions/${versionId}/clauses`,
-    { page, page_size: CLAUSE_PAGE_SIZE },
+    { page, page_size: CLAUSE_PAGE_SIZE, clause_path: focusPath },
   );
   const version = await serverGet<VersionDetail>('regulation', `/document-versions/${versionId}`);
 
@@ -50,9 +55,15 @@ export default async function ClausesPage({
   const { clauses, document, parseable } = listing.data;
   const total = listing.meta?.total ?? 0;
   const pageSize = listing.meta?.page_size ?? CLAUSE_PAGE_SIZE;
-  const first = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const last = Math.min(page * pageSize, total);
+  //: The API may have moved us: `clause_path` overrides `page`, so the pagination footer has to
+  //: follow `meta.page` rather than what the URL asked for, or "다음" would jump back.
+  const current = listing.meta?.page ?? page;
+  const first = total === 0 ? 0 : (current - 1) * pageSize + 1;
+  const last = Math.min(current * pageSize, total);
   const hasNext = last < total;
+  //: Asked for a clause this version does not contain — a citation into a *different* version.
+  //: Saying so beats scrolling to an anchor that is not on the page.
+  const focusMissed = Boolean(focusPath) && !listing.data.focus_clause_path;
 
   return (
     <div className="space-y-6">
@@ -106,13 +117,34 @@ export default async function ClausesPage({
             mono
           />
         </dl>
-        <Link
-          href={`/regulations/${id}/versions/${versionId}`}
-          className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
-        >
-          <FileCode size={13} /> 원문 보기
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href={`/regulations/${id}/versions/${versionId}`}
+            className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+          >
+            <FileCode size={13} /> 원문 보기
+          </Link>
+          <Link
+            href={`/regulations/${id}/versions/${versionId}/irs`}
+            className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+          >
+            <Scale size={13} /> IR 보기
+          </Link>
+          <Link
+            href={`/regulations/${id}/versions/${versionId}/submissions`}
+            className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+          >
+            <ClipboardList size={13} /> 제출 서류
+          </Link>
+        </div>
       </div>
+
+      {focusMissed ? (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
+          이 버전에는 <span className="font-mono">{focusPath}</span> 조문이 없습니다. 인용은 다른
+          버전을 가리키고 있을 수 있습니다 — 인용은 불변 버전에 고정되며 재지정되지 않습니다.
+        </p>
+      ) : null}
 
       {clauses.length === 0 ? (
         // "This document type has no clauses" and "this version was not parsed" are different
@@ -135,9 +167,9 @@ export default async function ClausesPage({
             {first.toLocaleString()}–{last.toLocaleString()} / {total.toLocaleString()}
           </span>
           <span className="flex gap-4">
-            {page > 1 ? (
+            {current > 1 ? (
               <Link
-                href={`/regulations/${id}/versions/${versionId}/clauses?page=${page - 1}`}
+                href={`/regulations/${id}/versions/${versionId}/clauses?page=${current - 1}`}
                 className="inline-flex items-center gap-1 text-accent hover:underline"
               >
                 <ChevronLeft size={13} /> 이전
@@ -145,7 +177,7 @@ export default async function ClausesPage({
             ) : null}
             {hasNext ? (
               <Link
-                href={`/regulations/${id}/versions/${versionId}/clauses?page=${page + 1}`}
+                href={`/regulations/${id}/versions/${versionId}/clauses?page=${current + 1}`}
                 className="inline-flex items-center gap-1 text-accent hover:underline"
               >
                 다음 <ChevronRight size={13} />

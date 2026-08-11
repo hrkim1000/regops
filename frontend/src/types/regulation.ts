@@ -147,5 +147,11 @@ export interface ClauseListing {
   } | null;
   /** False for a feed, where an empty clause list is correct rather than an ingestion gap. */
   parseable: boolean;
+  /**
+   * Echoed back only when the requested `clause_path` resolved in this version. Null means the
+   * caller asked for a clause that is not here — a citation into a different version, most likely —
+   * and the page it got is page 1 rather than the evidence.
+   */
+  focus_clause_path: string | null;
   clauses: Clause[];
 }

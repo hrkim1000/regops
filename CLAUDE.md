@@ -53,12 +53,17 @@ pillars on one shared knowledge layer:
 3. Compliance gap analysis & control mapping
 4. SaaS productization for external customers
 
-**Current state: phase 0, 1.0 and 1.1 are done; phase 1.5's foundation is built early.** The compose
-stack, `regops_shared`, `platform-core` (auth · RBAC · audit chain) and the `regulation` L1–L2
-pipeline exist and run — ingest → parse → diff → change events, with a clause store of ~10k clauses
-over the gated corpus. `monitoring` and `assistant` are still health-check-only scaffolds; the
-`frontend` has its 1.5 foundation plus a read-only regulation browser.
-Architecture is settled through [ADR-0001 – ADR-0016](docs/design/); anything below still marked
+**Current state: phase 0, 1.0, 1.1, 1.2 and 1.3 are done; phase 1.5's foundation is built early.**
+The compose stack, `regops_shared`, `platform-core` (auth · RBAC · audit chain) and the `regulation`
+L1–L2 pipeline exist and run — ingest → parse → diff → change events → IR, with a clause store of
+25,729 clauses over 526 documents of the gated corpus, and draft → locked IRs behind the Requirement
+Extraction agent. `assistant` now answers: pgvector index over 조-level passages, hybrid
+BM25 + vector retrieval, citation-enforced generation, and an evidence-verification pass that can
+fail an answer. `monitoring` is still a health-check-only scaffold; the `frontend` has its 1.5
+foundation, a read-only regulation browser, the IR review + lock surface, a submission-document view
+derived from the clause tree, and the Q&A workbench — ask, cited answer, and the superseded-citation
+queue. Only the monitoring dashboard is still missing, and it waits on 1.4.
+Architecture is settled through [ADR-0001 – ADR-0017](docs/design/); anything below still marked
 *target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 
 Phase 1 (PoC, 4 months) gates two of the eight cells — MFDS SaMD + MFDS Cosmetic — with a
@@ -151,11 +156,19 @@ Everything that **writes the clause store** is `regulation`. `monitoring` begins
 ends, reading `change_events` one-way by raw SQL. Multi-tenancy is cross-cutting — every service is
 tenant-aware, so it is never boxed into one service.
 
+`assistant` sits on the same seam from the other side: it **reads** the clause store one-way by raw
+SQL and writes only its own tables. `clause_embeddings` references `clauses` and is owned by
+`assistant` anyway — coupling the embedding lifecycle to the clause lifecycle would make swapping
+the embedding model a `regulation` migration, and the model is the replaceable part.
+
 ```text
 regulation                                      │  monitoring
   crawl → archive → parse → version → diff      │
     → emit change_event → extract IR            │
                        change_events ───────────┼──>  match · grade · alert
+                                                │
+  clauses ──────────────────────────────────────┼──>  assistant
+                                                │       embed · retrieve · generate · verify
 ```
 
 ### Table ownership
@@ -230,6 +243,26 @@ The ingestion chain (fetch → archive → parse → diff → emit) runs on the 
 committing incrementally so progress is visible and a retry skips completed rows. The scheduler
 (beat) lives with `regulation` — it drives `source_schedules` and has no other consumer.
 
+**Extraction is deliberately *not* chained off parse.** Every other stage is deterministic and cheap
+enough to run on every fetch; extraction calls an LLM per obligation-bearing clause over a 25,729-
+clause corpus, so auto-running it would spend a full extraction to discover nothing changed. A first
+extraction is explicit — `POST /api/v1/document-versions/{id}/extract`, or the
+`regulation.extract_document_version` task. Amendments are covered by the targeted
+`regulation.rederive_stale_irs` sweep the diff stage enqueues by name when it stales an IR
+(phase1.2 deviation 1). Chaining it is a plausible-looking "fix" that is not one.
+
+**Embedding is not chained off parse either, and for the same reason.** A first index build is
+explicit — `POST /api/v1/document-versions/{id}/embed`, or `assistant.embed_index` over the versions
+whose index is missing or built under a different model. Answering runs on the `assistant` queue
+too: `POST /api/v1/queries` writes the question row synchronously and returns `202`, and
+`assistant.answer_query` does the model-bound work.
+
+**The diff stage tells `assistant` an amendment landed, by task name.** An amendment moves an
+answer's evidence exactly as it stales an IR, but into a different lifecycle in another service's
+table ([ADR-0006](docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 10).
+So `regulation` never writes `answer_citations`; it sends `assistant.supersede_answer_citations` with
+the version id, and `assistant` reads `clause_diffs` one-way and flags its own rows.
+
 ## Shared Library
 
 *Target.* `shared/regops_shared/` is an installable package used by all services. It holds
@@ -253,7 +286,7 @@ the authoritative dump and is updated in the same change.
 ## Commands
 
 ```bash
-docker compose --profile app up -d         # infrastructure + services + regulation worker/beat
+docker compose --profile app up -d         # infra + services + regulation and assistant workers
 docker compose run --rm migrate            # alembic upgrade head, then exits
 docker compose exec -T regulation python /scripts/seed_sources.py    # idempotent source registry
 docker compose exec -T <svc> python -m pytest tests/unit -q
@@ -261,7 +294,8 @@ docker compose logs <svc> --tail=30
 
 # integration — separate database, selected by REGOPS_DB_NAME (never by DATABASE_URL in
 # .env.test: compose sets it under `environment:`, which wins over `env_file:`)
-STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm regulation \
+REGOPS_DB_NAME=regops_test docker compose run --rm migrate            # once, to head
+STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm <svc> \
     python -m pytest tests/integration -q
 
 # host-side gates

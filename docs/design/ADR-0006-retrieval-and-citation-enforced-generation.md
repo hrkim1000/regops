@@ -1,6 +1,6 @@
 # ADR-0006 — Retrieval and citation-enforced generation
 
-- **Status:** Proposed
+- **Status:** Accepted — built in [phase1.3](../plan/phase1.3_retrieval_qa.md) (2026-08-11)
 - **Date:** 2026-07-29
 - **Depends on:** [ADR-0002](ADR-0002-canonical-regulation-model.md), [ADR-0004](ADR-0004-ir-extraction-and-domain-branching.md), [ADR-0005](ADR-0005-service-architecture.md) (`assistant` service)
 - **Resolves:** ADR-0002 open question 1 (embedding granularity), ADR-0004 open question 2 (annex scale)
@@ -153,6 +153,20 @@ answers(id, query_id, text, confidence, status, llm_provider, llm_model,
 answer_citations(answer_id, document_version_id, clause_path, superseded_at)
 verification_results(answer_id, claim_index, verdict, reason, verifier_model)
 ```
+
+> **As built (migration 0005, 2026-08-11).** The shape above holds; three additions were needed to
+> make decisions 1, 4 and 7 checkable rather than merely stated, and are recorded in
+> [phase1.3](../plan/phase1.3_retrieval_qa.md) § Deviations:
+>
+> - `clause_embeddings` also carries `child_clause_paths`, `passage` and `passage_version`. Decision
+>   1's split granularity is only enforceable if the retrieved passage *names* the clauses it covers;
+>   without that, "generation may only cite what retrieval returned" has no set to check against.
+> - `answers.status` has a third value, **`needs_review`**, for the sub-threshold-confidence route.
+>   Something-found-wrong and not-enough-found-right are different outcomes, and collapsing them
+>   would make decision 7's monitored rate move whenever the threshold did.
+> - `answers.no_answer_reason` records *why* a refusal happened, from a closed inventory. Decision 7
+>   calls the rate a two-sided signal; a rate whose causes cannot be counted tells you it moved
+>   without telling you what moved it.
 
 ## Open questions
 
