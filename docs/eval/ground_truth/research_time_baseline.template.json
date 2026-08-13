@@ -1,0 +1,14 @@
+{
+  "_instructions": [
+    "The research-time-savings gate is ≥ 30% against the manual process FOR THE SAME QUERY TYPE. Both halves matter: without a baseline captured BEFORE the pilot starts the 30% is unfalsifiable, and comparing an identifier lookup against a manual conceptual search compares two different tasks.",
+    "Capture the baseline by timing RA staff doing the same query types by hand, on the same corpus, before they have access to the workbench. Record how many queries the average came from — a mean over three queries is not a baseline.",
+    "`measured_minutes` is the matched figure from the pilot, timed the same way. It is not the harness's `elapsed_seconds`: the gate is the analyst's time to a usable answer, which includes reading the citations and deciding whether to trust them.",
+    "Rename to research_time_baseline.json once both halves exist."
+  ],
+  "query_types": "REPLACE — name the matched query types, e.g. 'identifier lookup, conceptual obligation search'",
+  "sample_size": 0,
+  "baseline_captured_at": "YYYY-MM-DD",
+  "baseline_minutes": 0,
+  "measured_at": "YYYY-MM-DD",
+  "measured_minutes": 0
+}

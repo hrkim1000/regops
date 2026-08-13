@@ -1,0 +1,18 @@
+{
+  "_instructions": [
+    "The detection-coverage gate is the share of the authority's ACTUAL amendments that were captured. The denominator therefore cannot come from RegOps: the system can report how many amendments it saw, but not how many it missed, and 'we detected everything we detected' is 100% by construction.",
+    "Fill this by going to the authority's own publication listing for the measurement window and writing down every amendment it published for the cell — whether or not RegOps has it. Then rename this file to amendment_ledger.json and re-run `gates`.",
+    "Each entry must match the label the harness compares against: '<document title> @ <effective date>', or '<document title> @ 미해석' where the effective date could not be resolved (ADR-0013). The harness reports the missed entries by name, so a near-miss in spelling reads as a detection failure — check the titles against the regulation browser before signing.",
+    "Record the window you surveyed. A ledger covering a different window than the `gates --days` run is not a denominator, it is two measurements pretending to be one."
+  ],
+  "window_days": 30,
+  "surveyed_by": "REPLACE-WITH-YOUR-NAME",
+  "surveyed_at": "YYYY-MM-DD",
+  "source_of_truth": "국가법령정보센터 / MFDS 공고 게시판 — name the listing you actually read",
+  "mfds_samd": [
+    "의료기기법 @ 2026-07-01"
+  ],
+  "mfds_cosmetic": [
+    "화장품법 @ 2026-04-02"
+  ]
+}

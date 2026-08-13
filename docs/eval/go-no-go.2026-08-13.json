@@ -1,0 +1,174 @@
+{
+  "generated_at": "2026-08-13",
+  "recommendation": "INCOMPLETE",
+  "regime": {
+    "ir_rule_version": "1.2.0",
+    "ir_prompt_version": "1.2.0",
+    "answer_prompt_version": "1.3.1",
+    "verification_prompt_version": "1.3.0",
+    "retrieval_version": "1.3.0",
+    "embedding_passage_version": "1.3.1",
+    "answer_confidence_threshold": "0.7"
+  },
+  "gates": [
+    {
+      "gate": "detection_coverage",
+      "cell": "mfds_cosmetic",
+      "threshold": 0.95,
+      "ceiling": false,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "4 amended versions detected in the last 30 days",
+      "unmeasured_reason": "No RA amendment ledger for this cell. The denominator is what the authority actually published, which only after-the-fact manual comparison can supply — the system's own count of what it saw would score 100% by construction. Author docs/eval/ground_truth/amendment_ledger.json to measure this.",
+      "caveats": [
+        "Poll completion 76.2%: 493 of 647 scheduled polls ran over 30 days across 85 sources (154 missed). Detection coverage measured over observed polls would have divided by the polls that happened rather than the polls that were due, and downtime would have improved it."
+      ]
+    },
+    {
+      "gate": "detection_latency",
+      "cell": "mfds_cosmetic",
+      "threshold": 24.0,
+      "ceiling": true,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "4 alert(s) in the window, none of them measurable: 4 backfill, 0 with no publication date",
+      "unmeasured_reason": "No alert in the window covers an amendment published while this cell was under observation, so there is nothing the gate can be measured on yet. Latency from our own retrieval clock — worst case 123.731h — bounds our pipeline, not the gate. This resolves itself: the first amendment published after ingestion started is measurable.",
+      "caveats": [
+        "4 alert(s) cover amendments published before this cell came under observation (2026-08-03T06:47:00.137638+00:00) and are excluded: publication → alert on a backfilled corpus measures how long the instrument existed before RegOps arrived, not how fast RegOps noticed."
+      ]
+    },
+    {
+      "gate": "citation_accuracy",
+      "cell": "mfds_cosmetic",
+      "threshold": 0.9,
+      "ceiling": false,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "lower bound 2/5 citations matched an expected clause",
+      "unmeasured_reason": "No completed blind assessment. Whether a clause *supports* a claim is a reading, and the expected-path match is a lower bound, not the gate. The golden set is not RA-signed, so this run is not gate evidence.",
+      "caveats": []
+    },
+    {
+      "gate": "hallucination_rate",
+      "cell": "mfds_cosmetic",
+      "threshold": 0.02,
+      "ceiling": true,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "mechanical half: 0/2 answers cited a non-existent or forbidden clause (0.0%)",
+      "unmeasured_reason": "The contradiction half needs the blind assessment. Reporting the mechanical half alone as the gate would understate it by exactly the failures the verification agent exists to catch. The golden set is not RA-signed, so this run is not gate evidence.",
+      "caveats": []
+    },
+    {
+      "gate": "detection_coverage",
+      "cell": "mfds_samd",
+      "threshold": 0.95,
+      "ceiling": false,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "3 amended versions detected in the last 30 days",
+      "unmeasured_reason": "No RA amendment ledger for this cell. The denominator is what the authority actually published, which only after-the-fact manual comparison can supply — the system's own count of what it saw would score 100% by construction. Author docs/eval/ground_truth/amendment_ledger.json to measure this.",
+      "caveats": [
+        "Poll completion 76.2%: 493 of 647 scheduled polls ran over 30 days across 85 sources (154 missed). Detection coverage measured over observed polls would have divided by the polls that happened rather than the polls that were due, and downtime would have improved it."
+      ]
+    },
+    {
+      "gate": "detection_latency",
+      "cell": "mfds_samd",
+      "threshold": 24.0,
+      "ceiling": true,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "3 alert(s) in the window, none of them measurable: 3 backfill, 0 with no publication date",
+      "unmeasured_reason": "No alert in the window covers an amendment published while this cell was under observation, so there is nothing the gate can be measured on yet. Latency from our own retrieval clock — worst case 123.731h — bounds our pipeline, not the gate. This resolves itself: the first amendment published after ingestion started is measurable.",
+      "caveats": [
+        "3 alert(s) cover amendments published before this cell came under observation (2026-08-03T06:47:00.638181+00:00) and are excluded: publication → alert on a backfilled corpus measures how long the instrument existed before RegOps arrived, not how fast RegOps noticed."
+      ]
+    },
+    {
+      "gate": "citation_accuracy",
+      "cell": "mfds_samd",
+      "threshold": 0.9,
+      "ceiling": false,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "lower bound 8/10 citations matched an expected clause",
+      "unmeasured_reason": "No completed blind assessment. Whether a clause *supports* a claim is a reading, and the expected-path match is a lower bound, not the gate. The golden set is not RA-signed, so this run is not gate evidence.",
+      "caveats": []
+    },
+    {
+      "gate": "hallucination_rate",
+      "cell": "mfds_samd",
+      "threshold": 0.02,
+      "ceiling": true,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "mechanical half: 1/2 answers cited a non-existent or forbidden clause (50.0%)",
+      "unmeasured_reason": "The contradiction half needs the blind assessment. Reporting the mechanical half alone as the gate would understate it by exactly the failures the verification agent exists to catch. The golden set is not RA-signed, so this run is not gate evidence.",
+      "caveats": []
+    },
+    {
+      "gate": "pilot_retention",
+      "cell": "—",
+      "threshold": 0.6,
+      "ceiling": false,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "weekly active: [0, 0, 0, 0]",
+      "unmeasured_reason": "No pilot cohort recorded. Retention needs 20–30 onboarded users and four uncompressible weeks of real use; a rate computed over an empty cohort is not a small number, it is no number.",
+      "caveats": []
+    },
+    {
+      "gate": "research_time_saving",
+      "cell": "—",
+      "threshold": 0.3,
+      "ceiling": false,
+      "value": null,
+      "measured": false,
+      "passed": null,
+      "evidence": "—",
+      "unmeasured_reason": "No pre-pilot baseline. The manual time for matched query types has to be captured before the pilot starts, or the 30% is unfalsifiable.",
+      "caveats": []
+    }
+  ],
+  "guards": [
+    {
+      "label": "'확인 필요' rate — cosmetic",
+      "value": 0.8333,
+      "note": "Two-sided. Near 0% means the confidence threshold is too permissive and the hallucination gate is about to be missed; too high means the product is unusable however honest it is (ADR-0006 decision 7)."
+    },
+    {
+      "label": "'확인 필요' rate — samd",
+      "value": 0.8571,
+      "note": "Two-sided. Near 0% means the confidence threshold is too permissive and the hallucination gate is about to be missed; too high means the product is unusable however honest it is (ADR-0006 decision 7)."
+    },
+    {
+      "label": "Alert volume — mfds_cosmetic",
+      "value": 4.0,
+      "note": "53 of 53 change events alerted to 1 subscriber(s). Alert *precision* is not gated in Phase 1: a system that alerted on everything would pass detection coverage and latency cleanly."
+    },
+    {
+      "label": "Alert volume — mfds_samd",
+      "value": 3.0,
+      "note": "56 of 56 change events alerted to 1 subscriber(s). Alert *precision* is not gated in Phase 1: a system that alerted on everything would pass detection coverage and latency cleanly."
+    },
+    {
+      "label": "Scheduled-poll completion",
+      "value": 0.7619783616692427,
+      "note": "Not a gate, and the reason the coverage gate is scored against scheduled polls: a day the poller did not run leaves no observation row at all, so an observed-poll denominator makes downtime improve the number."
+    }
+  ],
+  "deviations": [],
+  "notes": [
+    "Three gates are human judgements and the harness does not fill them in: citation accuracy and the contradiction half of hallucination rate come from the blind worksheet, and research-time savings needs a baseline captured before the pilot starts."
+  ]
+}

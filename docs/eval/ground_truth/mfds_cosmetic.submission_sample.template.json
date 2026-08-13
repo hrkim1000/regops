@@ -1,0 +1,232 @@
+{
+  "_instructions": "For each clause below, decide whether it states a filing duty whose 각 호 are the documents to be submitted. Move its clause_path into procedure_clause_paths. Leave a 기준 list, a definition or a substantive requirement out. Do not consult the /submission-requirements endpoint: this sheet is the denominator its precision is measured against.",
+  "versions": [
+    {
+      "label": "화장품법 시행규칙 @ 2026-04-02",
+      "document_version_id": "86511f78-745a-4c06-9f90-74aa49a24cef",
+      "procedure_clause_paths": []
+    }
+  ],
+  "candidates": [
+    {
+      "clause_path": "제1조",
+      "heading": "목적"
+    },
+    {
+      "clause_path": "제2조",
+      "heading": "기능성화장품의 범위"
+    },
+    {
+      "clause_path": "제2조의2",
+      "heading": "맞춤형화장품의 제외 대상"
+    },
+    {
+      "clause_path": "제3조",
+      "heading": "제조업의 등록 등"
+    },
+    {
+      "clause_path": "제4조",
+      "heading": "화장품책임판매업의 등록 등"
+    },
+    {
+      "clause_path": "제5조",
+      "heading": "화장품제조업 등의 변경등록"
+    },
+    {
+      "clause_path": "제6조",
+      "heading": "시설기준 등"
+    },
+    {
+      "clause_path": "제7조",
+      "heading": "화장품의 품질관리기준 등"
+    },
+    {
+      "clause_path": "제8조",
+      "heading": "책임판매관리자의 자격기준 등"
+    },
+    {
+      "clause_path": "제8조의2",
+      "heading": "맞춤형화장품판매업의 신고"
+    },
+    {
+      "clause_path": "제8조의3",
+      "heading": "맞춤형화장품판매업의 변경신고"
+    },
+    {
+      "clause_path": "제8조의4",
+      "heading": "맞춤형화장품판매업의 시설기준"
+    },
+    {
+      "clause_path": "제8조의5",
+      "heading": "맞춤형화장품조제관리사 자격시험"
+    },
+    {
+      "clause_path": "제8조의6",
+      "heading": "맞춤형화장품조제관리사 자격증의 발급 신청 등"
+    },
+    {
+      "clause_path": "제8조의7",
+      "heading": "시험운영기관의 지정 등"
+    },
+    {
+      "clause_path": "제9조",
+      "heading": "기능성화장품의 심사"
+    },
+    {
+      "clause_path": "제10조",
+      "heading": "보고서 제출 대상 등"
+    },
+    {
+      "clause_path": "제10조의2",
+      "heading": "영유아 또는 어린이 사용 화장품의 표시ㆍ광고"
+    },
+    {
+      "clause_path": "제10조의3",
+      "heading": "제품별 안전성 자료의 작성ㆍ보관"
+    },
+    {
+      "clause_path": "제10조의4",
+      "heading": "실태조사의 실시"
+    },
+    {
+      "clause_path": "제10조의5",
+      "heading": "위해요소 저감화계획의 수립"
+    },
+    {
+      "clause_path": "제11조",
+      "heading": "화장품제조업자의 준수사항 등"
+    },
+    {
+      "clause_path": "제12조",
+      "heading": "화장품책임판매업자의 준수사항"
+    },
+    {
+      "clause_path": "제12조의2",
+      "heading": "맞춤형화장품판매업자의 준수사항"
+    },
+    {
+      "clause_path": "제13조",
+      "heading": "화장품의 생산실적 등 보고"
+    },
+    {
+      "clause_path": "제14조",
+      "heading": "책임판매관리자 등의 교육"
+    },
+    {
+      "clause_path": "제14조의2",
+      "heading": "회수 대상 화장품의 기준 및 위해성 등급 등"
+    },
+    {
+      "clause_path": "제14조의3",
+      "heading": "위해화장품의 회수계획 및 회수절차 등"
+    },
+    {
+      "clause_path": "제14조의4",
+      "heading": "행정처분의 감경 또는 면제"
+    },
+    {
+      "clause_path": "제15조",
+      "heading": "폐업 등의 신고"
+    },
+    {
+      "clause_path": "제16조",
+      "heading": null
+    },
+    {
+      "clause_path": "제17조",
+      "heading": "화장품 원료 등의 위해평가"
+    },
+    {
+      "clause_path": "제17조의2",
+      "heading": "지정ㆍ고시된 원료의 사용기준의 안전성 검토"
+    },
+    {
+      "clause_path": "제17조의3",
+      "heading": "원료의 사용금지 해제 또는 변경 신청 등"
+    },
+    {
+      "clause_path": "제18조",
+      "heading": "안전용기ㆍ포장 대상 품목 및 기준"
+    },
+    {
+      "clause_path": "제19조",
+      "heading": "화장품 포장의 기재ㆍ표시 등"
+    },
+    {
+      "clause_path": "제20조",
+      "heading": "화장품 가격의 표시"
+    },
+    {
+      "clause_path": "제21조",
+      "heading": "기재ㆍ표시상의 주의사항"
+    },
+    {
+      "clause_path": "제22조",
+      "heading": "표시ㆍ광고의 범위 등"
+    },
+    {
+      "clause_path": "제23조",
+      "heading": "표시ㆍ광고 실증의 대상 등"
+    },
+    {
+      "clause_path": "제23조의2",
+      "heading": null
+    },
+    {
+      "clause_path": "제23조의3",
+      "heading": null
+    },
+    {
+      "clause_path": "제24조",
+      "heading": "관계 공무원의 자격 등"
+    },
+    {
+      "clause_path": "제25조",
+      "heading": "수거 등"
+    },
+    {
+      "clause_path": "제26조",
+      "heading": "화장품 판매 모니터링"
+    },
+    {
+      "clause_path": "제26조의2",
+      "heading": "소비자화장품안전관리감시원의 자격 등"
+    },
+    {
+      "clause_path": "제27조",
+      "heading": "회수ㆍ폐기명령 등"
+    },
+    {
+      "clause_path": "제28조",
+      "heading": "위해화장품의 공표"
+    },
+    {
+      "clause_path": "제29조",
+      "heading": "행정처분기준"
+    },
+    {
+      "clause_path": "제30조",
+      "heading": "과징금의 징수절차"
+    },
+    {
+      "clause_path": "제30조의2",
+      "heading": "직접구매 해외화장품에 대한 검사"
+    },
+    {
+      "clause_path": "제30조의3",
+      "heading": "직접구매 해외화장품에 대한 실태조사"
+    },
+    {
+      "clause_path": "제31조",
+      "heading": "등록필증 등의 재발급 등"
+    },
+    {
+      "clause_path": "제32조",
+      "heading": "수수료"
+    },
+    {
+      "clause_path": "제33조",
+      "heading": "규제의 재검토"
+    }
+  ]
+}

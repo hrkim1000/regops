@@ -40,7 +40,12 @@ from regops_shared.models.base import utcnow
 
 from ...briefing import compose_briefing, local_timestamp
 from ...models import Alert, AlertDelivery, AlertSubscription
-from ...store import cells_by_id_async, change_event_totals_async, document_titles_async
+from ...store import (
+    cells_by_id_async,
+    change_event_totals_async,
+    document_titles_async,
+    watch_start_async,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["monitoring"])
 
@@ -260,11 +265,20 @@ async def alert_metrics(
     authority stated a publication date, and ``from_retrieved`` — always measurable — as the bound
     our own clock puts on it. ``unmeasurable`` counts the alerts with no publication date, which
     ADR-0003 decision 5 requires be reported as unmeasurable rather than as zero.
+
+    ``backfill`` counts a third case, and it is the one that silently ruins the gate:
+    an amendment **published before this cell came under observation**. Every alert from the first
+    ingestion of an existing corpus has a publication date months or years old, so publication →
+    alert measures how long the instrument existed before RegOps arrived. Measured on the gated
+    corpus on 2026-08-13 that read 5,385 hours — a FAIL on a system that had not yet had the chance
+    to be measured, and one that would later "pass" purely because the backfill aged out of the
+    window. Those alerts are counted apart and excluded from ``from_published``.
     """
     since = utcnow() - timedelta(days=days)
 
     alerts = list(await db.scalars(select(Alert).where(Alert.detected_at >= since)))
     emitted = await change_event_totals_async(db, since=since)
+    watching_since = await watch_start_async(db)
     cells = await cells_by_id_async(db, list({*emitted, *(alert.cell_id for alert in alerts)}))
     subscribers = dict(
         (
@@ -295,7 +309,7 @@ async def alert_metrics(
                     grade.value: sum(1 for alert in scoped if alert.severity is grade)
                     for grade in AlertSeverity
                 },
-                "latency_hours": _latency(scoped),
+                "latency_hours": _latency(scoped, watching_since.get(cell_id)),
             }
         )
 
@@ -330,11 +344,16 @@ def _filters(
     return predicates
 
 
-def _latency(alerts: list[Alert]) -> dict[str, Any]:
-    """Publication → alert, in hours, from both clocks.
+def _latency(alerts: list[Alert], watching_since: datetime | None) -> dict[str, Any]:
+    """Publication → alert, in hours, from both clocks, over the alerts the gate can be measured on.
 
     ``max`` rather than a mean: the gate is a ceiling, and a mean that hides one 40-hour outlier
     behind ninety fast ones would report a pass on a run that failed.
+
+    An alert whose amendment was published before ``watching_since`` is **backfill**: nothing about
+    it is a statement of how fast this system detects a change, because the change had already
+    happened when the system arrived. Excluded from ``from_published`` and counted on its own, the
+    same way an alert with no publication date is.
     """
 
     def hours(start: datetime | None, alert: Alert) -> float | None:
@@ -342,9 +361,19 @@ def _latency(alerts: list[Alert]) -> dict[str, Any]:
             return None
         return round((alert.created_at - start).total_seconds() / 3600.0, 3)
 
+    def is_backfill(alert: Alert) -> bool:
+        return (
+            watching_since is not None
+            and alert.published_at is not None
+            and alert.published_at < watching_since
+        )
+
+    measurable = [alert for alert in alerts if not is_backfill(alert)]
     published = [
-        value for alert in alerts if (value := hours(alert.published_at, alert)) is not None
+        value for alert in measurable if (value := hours(alert.published_at, alert)) is not None
     ]
+    # From our own clock, backfill included: retrieval → alert is entirely inside our pipeline, so
+    # it is a bound on us whether or not the amendment predates us.
     retrieved = [
         value for alert in alerts if (value := hours(alert.retrieved_at, alert)) is not None
     ]
@@ -364,6 +393,10 @@ def _latency(alerts: list[Alert]) -> dict[str, Any]:
         # Not zero, and not silently dropped: a source that publishes no date makes its own latency
         # unmeasurable, and a gate report has to say so (ADR-0003 decision 5).
         "unmeasurable": sum(1 for alert in alerts if alert.published_at is None),
+        # Published before we were watching. Reported so the excluded count is visible: a gate
+        # whose denominator quietly shrank is not more trustworthy than one that failed.
+        "backfill": sum(1 for alert in alerts if is_backfill(alert)),
+        "watching_since": watching_since.isoformat() if watching_since else None,
     }
 
 

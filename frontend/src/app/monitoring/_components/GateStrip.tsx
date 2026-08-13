@@ -75,6 +75,15 @@ export function GateStrip({ metrics }: { metrics: CellMetrics }) {
               공포일자 미제공 {latency.unmeasurable}건 — 측정 불가 (0시간이 아닙니다)
             </p>
           ) : null}
+          {latency.backfill > 0 ? (
+            // Excluded, and the count shown rather than the exclusion left silent: a gate whose
+            // denominator quietly shrank is no more trustworthy than one that failed. These are
+            // amendments published before we were watching, so 공포 → 알림 measures how long the
+            // instrument existed before RegOps arrived, not how fast RegOps noticed.
+            <p className="mt-1 text-[11px] text-slate-600">
+              관측 시작 전 공포 {latency.backfill}건 — 제외 (수집 이전 개정)
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-md border border-surface-border px-3 py-2">

@@ -147,14 +147,29 @@ services:
       start_period: 20s
     profiles: [app]
 
+  # An API and its worker run the SAME code, so they must run the SAME image. Compose names an
+  # image after the service unless told otherwise, which gives a worker its own tag that a
+  # `docker compose up -d --build regulation` leaves untouched — and a worker whose image predates
+  # a dependency being added to `shared` crashes on import while its API answers normally. Observed
+  # 2026-08-13: `regulation-worker` and `regulation-beat` were in a restart loop on
+  # `No module named 'pgvector'` (added to `shared` in phase 1.3) with `regulation` healthy, so the
+  # beat was down and no source was being polled at all. Pinning one `image:` per service family
+  # makes the three tags the same image id, and the build is a cache hit after the first.
   regulation:
     <<: *service-base
     build: {context: ., dockerfile: services/regulation/Dockerfile}
+    image: regops-regulation
     ports: ["28001:8000"]
     volumes:
       - ./shared:/shared
       - ./services/regulation:/app
       - ./scripts:/scripts
+      # The phase 1.6 evaluation harness runs here — it is the container that already carries
+      # /scripts, and running it inside the stack is what lets it mint its own token from the
+      # JWT secret already in the environment instead of holding a password. Scoped to the
+      # evaluation corpus rather than all of docs/: this mount is writable, and a harness has no
+      # business editing an ADR.
+      - ./docs/eval:/eval
     profiles: [app]
 
   # The ingestion chain runs here: fetch -> archive -> version, committing incrementally so a
@@ -162,6 +177,7 @@ services:
   regulation-worker:
     <<: *service-base
     build: {context: ., dockerfile: services/regulation/Dockerfile}
+    image: regops-regulation
     command: celery -A app.celery_app.celery_app worker -Q regulation -c 2 -l info
     volumes:
       - ./shared:/shared
@@ -177,6 +193,7 @@ services:
   regulation-beat:
     <<: *service-base
     build: {context: ., dockerfile: services/regulation/Dockerfile}
+    image: regops-regulation
     command: celery -A app.celery_app.celery_app beat -l info
     volumes:
       - ./shared:/shared
@@ -186,6 +203,7 @@ services:
   monitoring:
     <<: *service-base
     build: {context: ., dockerfile: services/monitoring/Dockerfile}
+    image: regops-monitoring
     ports: ["28002:8000"]
     volumes:
       - ./shared:/shared
@@ -198,6 +216,7 @@ services:
   monitoring-worker:
     <<: *service-base
     build: {context: ., dockerfile: services/monitoring/Dockerfile}
+    image: regops-monitoring
     command: celery -A app.celery_app.celery_app worker -Q monitoring -c 2 -l info
     volumes:
       - ./shared:/shared
@@ -207,6 +226,7 @@ services:
   assistant:
     <<: *service-base
     build: {context: ., dockerfile: services/assistant/Dockerfile}
+    image: regops-assistant
     ports: ["28003:8000"]
     volumes:
       - ./shared:/shared
@@ -219,6 +239,7 @@ services:
   assistant-worker:
     <<: *service-base
     build: {context: ., dockerfile: services/assistant/Dockerfile}
+    image: regops-assistant
     command: celery -A app.celery_app.celery_app worker -Q assistant -c 2 -l info
     volumes:
       - ./shared:/shared

@@ -1,0 +1,10 @@
+{
+  "_instructions": [
+    "The retention gate is ≥ 60% voluntary use, at least once a week, for four CONSECUTIVE weeks. The four weeks cannot be compressed and the cohort has to be fixed before they start — a cohort assembled afterwards from whoever kept using it scores 100% every time.",
+    "`users` holds the platform-core user id (uuid) of every onboarded pilot participant, including the ones who never come back. Dropping a non-returner is the single easiest way to manufacture a passing retention number.",
+    "Rename to pilot_cohort.json once the cohort is fixed. The harness reads weekly activity from `queries.asked_by` — voluntary use means a question asked, not a session opened."
+  ],
+  "cohort_fixed_at": "YYYY-MM-DD",
+  "business_unit": "REPLACE — one business unit, per the plan",
+  "users": []
+}

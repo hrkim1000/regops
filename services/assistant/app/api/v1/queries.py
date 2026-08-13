@@ -76,12 +76,20 @@ async def ask_question(body: AskRequest, db: DbSession, principal: CurrentUser) 
         asked_by=principal.id,
     )
     db.add(query)
-    await db.flush()
+    # Commit BEFORE dispatching. Dispatching first is a race the worker wins often enough to
+    # matter: it picks the task up, finds no row, logs `answer.unknown_query` and returns
+    # *success*, leaving a question that will never be answered, with no retry and no signal —
+    # observed repeatedly during the first phase 1.6 harness run.
+    #
+    # The reverse failure is strictly better. A crash between these two statements leaves a
+    # committed question with no worker, which is visible (`/qa/queries/{id}` renders a pending
+    # question with an elapsed clock) and re-dispatchable, because the row is there to dispatch
+    # for. An orphaned task is neither.
+    await db.commit()
 
     from ...celery_app import celery_app
 
     task = celery_app.send_task("assistant.answer_query", args=[str(query.id)], queue="assistant")
-    await db.commit()
     return {
         "code": status.HTTP_202_ACCEPTED,
         "status": "success",

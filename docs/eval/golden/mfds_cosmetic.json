@@ -1,0 +1,2343 @@
+{
+  "schema_version": "1.0",
+  "cell": "mfds_cosmetic",
+  "domain": "cosmetic",
+  "set_version": "1.0.0",
+  "authored_at": "2026-08-13",
+  "ra_signed_off": false,
+  "signed_off_by": null,
+  "signed_off_at": null,
+  "notes": "Seeded, not signed. Identifier, mis-citation and cross-domain items are generated from the clause store; conceptual, effective-date and unanswerable items are hand-authored in the .curated.json beside this file. No run over this set may be quoted against a Go/No-Go gate until an RA reviews every item and sets ra_signed_off.",
+  "items": [
+    {
+      "id": "cos-conc-001",
+      "axis": "conceptual",
+      "question": "화장품을 직접 만들어서 팔려고 하는데, 사업을 시작하기 전에 어디에 무엇을 해 두어야 하나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제3조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "식품의약품안전처장에게 화장품제조업 등록",
+      "authored_by": "seed-manual",
+      "notes": "Paraphrase of 영업의 등록 with none of the statute's vocabulary."
+    },
+    {
+      "id": "cos-conc-002",
+      "axis": "conceptual",
+      "question": "매장에서 손님 피부에 맞춰 그 자리에서 내용물을 섞어 파는 가게를 열려면 어떤 절차가 필요한가요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제3조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "맞춤형화장품판매업 신고",
+      "authored_by": "seed-manual",
+      "notes": "The reader would not know the term 맞춤형화장품판매업; the question describes the activity."
+    },
+    {
+      "id": "cos-conc-003",
+      "axis": "conceptual",
+      "question": "어떤 사람은 화장품 회사를 아예 등록할 수 없다고 들었는데 사실인가요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제3조의3"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "결격사유에 해당하면 등록·신고를 할 수 없음",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-004",
+      "axis": "conceptual",
+      "question": "주름이 개선된다고 내세우는 제품을 팔려면 판매 전에 따로 거쳐야 하는 절차가 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제4조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "기능성화장품 심사 또는 보고서 제출",
+      "authored_by": "seed-manual",
+      "notes": "The word 기능성화장품 is withheld on purpose — that is the concept to be retrieved."
+    },
+    {
+      "id": "cos-conc-005",
+      "axis": "conceptual",
+      "question": "아기가 쓰는 로션을 만들려고 합니다. 일반 제품보다 더 지켜야 하는 것이 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제4조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "영유아 또는 어린이 사용 화장품의 안전성 자료 작성·보관 등",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-006",
+      "axis": "conceptual",
+      "question": "화장품 회사가 평소에 늘 지켜야 하는 기본적인 의무에는 어떤 것들이 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제5조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "영업자의 의무 — 품질관리, 안전성 확보, 교육 이수 등",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-007",
+      "axis": "conceptual",
+      "question": "이미 판매한 제품에서 나중에 문제가 발견되면 회사는 무엇을 해야 하나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제5조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "위해화장품 회수 및 회수계획 보고",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-008",
+      "axis": "conceptual",
+      "question": "사업을 그만두게 되면 그냥 문을 닫으면 되나요, 아니면 따로 알려야 하나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제6조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "폐업·휴업 등의 신고 의무",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-009",
+      "axis": "conceptual",
+      "question": "제품에 넣으면 안 되는 성분은 누가 어떻게 정하나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제1절/제8조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "식품의약품안전처장이 사용할 수 없는 원료를 지정하여 고시",
+      "authored_by": "seed-manual",
+      "notes": "Retrieval has to cross from 제2장 into 제3장/제1절 — the chapter with 절 nesting."
+    },
+    {
+      "id": "cos-conc-010",
+      "axis": "conceptual",
+      "question": "어린이가 함부로 열지 못하도록 포장해야 하는 제품이 따로 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제1절/제9조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "안전용기·포장 대상 품목",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-011",
+      "axis": "conceptual",
+      "question": "제품 용기와 상자에 반드시 적어야 하는 정보는 무엇인가요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제2절/제10조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "화장품의 기재사항",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-012",
+      "axis": "conceptual",
+      "question": "소비자가 보는 판매 가격은 누가 표시하도록 되어 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제2절/제11조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "판매하려는 자가 표시",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-013",
+      "axis": "conceptual",
+      "question": "광고에서 쓰면 문제가 되는 표현에는 어떤 것이 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제2절/제13조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "부당한 표시·광고 행위의 금지 — 의약품 오인, 사실과 다른 표현 등",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-014",
+      "axis": "conceptual",
+      "question": "광고에 쓴 문구가 사실이라는 근거를 제출하라는 요구를 받을 수도 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제2절/제14조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "표시·광고 내용의 실증 요구",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-015",
+      "axis": "conceptual",
+      "question": "만들었더라도 아예 판매할 수 없는 제품이 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제3절/제15조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "영업의 금지 대상",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-016",
+      "axis": "conceptual",
+      "question": "동물에게 시험한 원료를 쓴 제품을 국내에서 유통할 수 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제3절/제15조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "동물실험을 실시한 화장품 등의 유통판매 금지, 예외 있음",
+      "authored_by": "seed-manual",
+      "notes": "The exceptions matter — an answer that states the ban without them is incomplete."
+    },
+    {
+      "id": "cos-conc-017",
+      "axis": "conceptual",
+      "question": "당국이 회사에 자료를 내라고 하거나 공장에 직접 나올 수 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제4장/제18조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "보고와 검사 등",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-018",
+      "axis": "conceptual",
+      "question": "당국이 직접 제품을 거둬들이거나 없애라고 명령할 수도 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제4장/제23조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "회수·폐기명령",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-019",
+      "axis": "conceptual",
+      "question": "규정을 어기면 사업 자체를 못 하게 되는 경우도 있나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제4장/제24조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "등록의 취소, 영업소 폐쇄, 업무정지 등",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-020",
+      "axis": "conceptual",
+      "question": "영업을 멈추는 처분 대신 돈을 내는 방법이 있다고 하던데 맞나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제4장/제28조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "과징금처분",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-021",
+      "axis": "conceptual",
+      "question": "가장 무겁게 처벌받는 위반 행위는 어떤 것인가요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제6장/제36조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "제36조 벌칙 — 가장 높은 법정형",
+      "authored_by": "seed-manual",
+      "notes": "제36조·제37조·제38조 are all 벌칙; the heaviest is the one asked for."
+    },
+    {
+      "id": "cos-conc-022",
+      "axis": "conceptual",
+      "question": "비교적 가벼운 위반은 벌금이 아니라 다른 금전적 제재를 받나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제6장/제40조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "과태료",
+      "authored_by": "seed-manual",
+      "notes": "과태료 and 벌금 are different instruments; conflating them is a plausible wrong answer."
+    },
+    {
+      "id": "cos-conc-023",
+      "axis": "conceptual",
+      "question": "아이용 제품의 안전성 자료는 얼마 동안 가지고 있어야 하나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [
+        "제10조의3"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "제품별 안전성 자료의 작성·보관 기간",
+      "authored_by": "seed-manual",
+      "notes": "The answer lives in the 시행규칙, not the 법 — a cross-instrument retrieval."
+    },
+    {
+      "id": "cos-conc-024",
+      "axis": "conceptual",
+      "question": "거둬들여야 하는 제품은 위험한 정도에 따라 등급이 나뉘나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [
+        "제14조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "회수 대상 화장품의 기준 및 위해성 등급",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-conc-025",
+      "axis": "conceptual",
+      "question": "제품을 직접 만들지 않고 위탁해서 파는 회사가 일상적으로 지켜야 하는 일은 무엇인가요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [
+        "제12조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "화장품책임판매업자의 준수사항",
+      "authored_by": "seed-manual",
+      "notes": "제11조 (제조업자) is the near-miss; picking it is a plausible wrong answer."
+    },
+    {
+      "id": "cos-conc-026",
+      "axis": "conceptual",
+      "question": "새로 쓰려는 원료가 안전한지는 어떻게 판단하나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [
+        "제17조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "화장품 원료 등의 위해평가",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-cross-001",
+      "axis": "cross_domain",
+      "question": "「(식품의약품안전처) 의료기기 허가·신의료기술평가 등 통합운영에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-002",
+      "axis": "cross_domain",
+      "question": "「디지털의료기기 임상시험등 계획 승인 및 실시·관리에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-003",
+      "axis": "cross_domain",
+      "question": "「디지털의료기기 전자적 침해행위 보안 지침」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-004",
+      "axis": "cross_domain",
+      "question": "「디지털의료기기 제조 및 품질관리 기준」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-005",
+      "axis": "cross_domain",
+      "question": "「디지털의료제품 분류 및 등급 지정 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-006",
+      "axis": "cross_domain",
+      "question": "「디지털의료제품 허가·인증·신고·심사 및 평가 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-007",
+      "axis": "cross_domain",
+      "question": "「디지털의료제품법」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-008",
+      "axis": "cross_domain",
+      "question": "「디지털의료제품법 시행규칙」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-009",
+      "axis": "cross_domain",
+      "question": "「디지털의료제품법 시행령」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-010",
+      "axis": "cross_domain",
+      "question": "「디지털의료제품법에 따른 기관 지정 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-011",
+      "axis": "cross_domain",
+      "question": "「생산·수입 중단 보고대상 의료기기 및 보고 방법」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-012",
+      "axis": "cross_domain",
+      "question": "「의료기기 기술문서심사기관 지정 및 운영 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-013",
+      "axis": "cross_domain",
+      "question": "「의료기기 기준규격」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-014",
+      "axis": "cross_domain",
+      "question": "「의료기기 부작용 등 안전성 정보 관리에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-015",
+      "axis": "cross_domain",
+      "question": "「의료기기 생산 및 수출·수입·수리실적 보고에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-016",
+      "axis": "cross_domain",
+      "question": "「의료기기 수입요건확인 면제 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-017",
+      "axis": "cross_domain",
+      "question": "「의료기기 시판 후 조사에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-018",
+      "axis": "cross_domain",
+      "question": "「의료기기 위탁 인증·신고의 대상 및 범위 등에 관한 지침」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-019",
+      "axis": "cross_domain",
+      "question": "「의료기기 이물 보고대상 및 절차 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-020",
+      "axis": "cross_domain",
+      "question": "「의료기기 임상시험 기본문서 관리에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-021",
+      "axis": "cross_domain",
+      "question": "「의료기기 임상시험계획 승인에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-022",
+      "axis": "cross_domain",
+      "question": "「의료기기 임상시험기관 지정에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-023",
+      "axis": "cross_domain",
+      "question": "「의료기기 재평가에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-024",
+      "axis": "cross_domain",
+      "question": "「의료기기 제조 및 품질관리 관련 기관 지정 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-025",
+      "axis": "cross_domain",
+      "question": "「의료기기 제조 및 품질관리 기준」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-026",
+      "axis": "cross_domain",
+      "question": "「의료기기 제조허가등 갱신에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-027",
+      "axis": "cross_domain",
+      "question": "「의료기기 통합정보 관리 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-028",
+      "axis": "cross_domain",
+      "question": "「의료기기 표시·기재 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-029",
+      "axis": "cross_domain",
+      "question": "「의료기기 표준코드의 표시 및 관리요령」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-030",
+      "axis": "cross_domain",
+      "question": "「의료기기 품목 및 품목별 등급에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 이 셀의 규정이 아님",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-eff-001",
+      "axis": "effective_date",
+      "question": "2027년 6월 기준으로 화장품법 제5조가 정하는 영업자의 의무는 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제5조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "그 시점에 시행 중인 버전을 기준으로 답하고, 어느 시행일 기준인지 밝혀야 함",
+      "authored_by": "seed-manual",
+      "notes": "화장품법 has versions effective 2026-04-02, 2026-10-08, 2026-11-27, 2026-12-31 and 2027-04-29. The answer must state which one it relied on (ADR-0006 decision 8)."
+    },
+    {
+      "id": "cos-eff-002",
+      "axis": "effective_date",
+      "question": "지금 시행 중인 화장품법과 앞으로 시행될 화장품법에서 영업의 등록 요건이 달라지나요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제3조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "시행 중인 버전과 시행예정 버전을 구분해서 제시해야 함",
+      "authored_by": "seed-manual",
+      "notes": "Straddles by construction. Silently answering from one side is the failure."
+    },
+    {
+      "id": "cos-eff-003",
+      "axis": "effective_date",
+      "question": "화장품법의 결격사유 규정은 언제부터 지금의 내용으로 적용되고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제3조의3"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "해당 조문이 속한 버전의 시행일",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-eff-004",
+      "axis": "effective_date",
+      "question": "2026년 12월에 제품을 출시한다면 표시·광고 규정은 어느 시점의 것을 따라야 합니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제2절/제13조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "2026-12 시점에 시행 중인 버전",
+      "authored_by": "seed-manual",
+      "notes": "A date that falls between two versions in the store."
+    },
+    {
+      "id": "cos-eff-005",
+      "axis": "effective_date",
+      "question": "맞춤형화장품조제관리사 자격에 관한 규정 중 아직 시행되지 않은 개정이 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제3조의4"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "시행예정 버전의 유무와 그 시행일",
+      "authored_by": "seed-manual",
+      "notes": "Directly asks the question the 시행예정 badge answers in the UI."
+    },
+    {
+      "id": "cos-eff-006",
+      "axis": "effective_date",
+      "question": "2028년에도 지금과 같은 안전용기·포장 기준이 적용됩니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제1절/제9조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "2028-01-01 시행 버전 기준으로 답하고 시행일을 밝혀야 함",
+      "authored_by": "seed-manual",
+      "notes": "화장품법 has a version effective 2028-01-01 in the store."
+    },
+    {
+      "id": "cos-eff-007",
+      "axis": "effective_date",
+      "question": "위해화장품 회수 의무 규정이 최근에 바뀌었습니까? 바뀌었다면 언제부터입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제5조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "개정 여부와 시행일",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-eff-008",
+      "axis": "effective_date",
+      "question": "화장품법 시행규칙의 회수 위해성 등급 기준은 현재 시행 중인 것이 맞습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [
+        "제14조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "시행 중 여부와 그 시행일",
+      "authored_by": "seed-manual",
+      "notes": "The store holds two 시행규칙 versions with the same 2026-04-02 effective date."
+    },
+    {
+      "id": "cos-eff-009",
+      "axis": "effective_date",
+      "question": "2029년 1월에 새로 사업을 시작한다면 등록 관련 조항 중 달라지는 것이 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제3조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "2029-01-01 시행 버전 기준",
+      "authored_by": "seed-manual",
+      "notes": "화장품법 has a version effective 2029-01-01."
+    },
+    {
+      "id": "cos-eff-010",
+      "axis": "effective_date",
+      "question": "동물실험 화장품 유통판매 금지 조항은 지금 적용되고 있습니까, 아니면 앞으로 적용됩니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제3절/제15조의2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "시행 여부와 시행일",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-eff-011",
+      "axis": "effective_date",
+      "question": "과태료 금액이 개정된 적이 있습니까? 지금 기준은 어느 시행일의 것입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제6장/제40조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "현행 과태료 규정과 그 시행일",
+      "authored_by": "seed-manual",
+      "notes": "A wrong-version penalty amount is the costliest shape of stale answer."
+    },
+    {
+      "id": "cos-eff-012",
+      "axis": "effective_date",
+      "question": "기능성화장품 심사 규정의 현재 버전과 다음 버전이 다른가요?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제4조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "두 버전의 차이 또는 차이 없음",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-eff-013",
+      "axis": "effective_date",
+      "question": "2027년 4월 29일부터 시행되는 화장품법 개정 내용에는 무엇이 포함됩니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제1장/제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "그 시행일 버전이 담고 있는 개정 사항",
+      "authored_by": "seed-manual",
+      "notes": "Pinned to a date the store actually holds a version for."
+    },
+    {
+      "id": "cos-eff-014",
+      "axis": "effective_date",
+      "question": "지금 답해 주시는 화장품 기재사항 규정은 어느 시행일 기준입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제3장/제2절/제10조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "시행일이 명시된 답변",
+      "authored_by": "seed-manual",
+      "notes": "Asks decision 8 directly: the answer must state its own effective-date scope."
+    },
+    {
+      "id": "cos-eff-015",
+      "axis": "effective_date",
+      "question": "영업자 의무 조항 중 공포는 되었지만 아직 시행되지 않은 부분이 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제2장/제5조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "시행예정 부분의 유무",
+      "authored_by": "seed-manual",
+      "notes": "공포 and 시행 are different dates; an answer that treats them as one is wrong."
+    },
+    {
+      "id": "cos-eff-016",
+      "axis": "effective_date",
+      "question": "2026년 4월과 2026년 11월 사이에 화장품법에서 달라진 것이 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제1장/제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "두 시행일 사이의 개정 여부",
+      "authored_by": "seed-manual",
+      "notes": "Both dates have versions in the store (2026-04-02 and 2026-11-27)."
+    },
+    {
+      "id": "cos-ident-001",
+      "axis": "identifier",
+      "question": "「기능성화장품 기준 및 시험방법」 제1조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "기능성화장품 기준 및 시험방법",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-002",
+      "axis": "identifier",
+      "question": "「기능성화장품 심사에 관한 규정」 제1조(목적)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "기능성화장품 심사에 관한 규정",
+      "expected_clause_paths": [
+        "제1장/제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-003",
+      "axis": "identifier",
+      "question": "「맞춤형화장품판매업자의 준수사항에 관한 규정」 제1조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "맞춤형화장품판매업자의 준수사항에 관한 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-004",
+      "axis": "identifier",
+      "question": "목적에 관한 「수입화장품 품질검사 면제에 관한 규정」 제1조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "수입화장품 품질검사 면제에 관한 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-005",
+      "axis": "identifier",
+      "question": "「영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정」 제1조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-006",
+      "axis": "identifier",
+      "question": "「우수화장품 제조 및 품질관리기준」 제1조(목적)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "우수화장품 제조 및 품질관리기준",
+      "expected_clause_paths": [
+        "제1장/제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-007",
+      "axis": "identifier",
+      "question": "「의약품등의 타르색소 지정과 기준 및 시험방법」 제1조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "의약품등의 타르색소 지정과 기준 및 시험방법",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-008",
+      "axis": "identifier",
+      "question": "목적에 관한 「인체적용제품의 위해성평가에 관한 규정」 제1조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "인체적용제품의 위해성평가에 관한 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-009",
+      "axis": "identifier",
+      "question": "「화장품 가격표시제 실시요령」 제1조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 가격표시제 실시요령",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-010",
+      "axis": "identifier",
+      "question": "「화장품 바코드 표시 및 관리요령」 제1조(목적)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 바코드 표시 및 관리요령",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-011",
+      "axis": "identifier",
+      "question": "「화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정」 제1조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-012",
+      "axis": "identifier",
+      "question": "목적에 관한 「화장품 안전기준 등에 관한 규정」 제1조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 안전기준 등에 관한 규정",
+      "expected_clause_paths": [
+        "제1장/제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-013",
+      "axis": "identifier",
+      "question": "「화장품 안전성 정보관리 규정」 제1조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 안전성 정보관리 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-014",
+      "axis": "identifier",
+      "question": "「화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정」 제1조(목적)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정",
+      "expected_clause_paths": [
+        "제1장/제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-015",
+      "axis": "identifier",
+      "question": "「화장품 표시·광고 실증에 관한 규정」 제1조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 표시·광고 실증에 관한 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-016",
+      "axis": "identifier",
+      "question": "목적에 관한 「화장품법」 제1조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제1장/제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-017",
+      "axis": "identifier",
+      "question": "「화장품법 시행규칙」 제1조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-018",
+      "axis": "identifier",
+      "question": "「화장품법 시행령」 제1조(목적)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행령",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-019",
+      "axis": "identifier",
+      "question": "「화장품의 색소 종류 및 기준」 제1조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품의 색소 종류 및 기준",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-020",
+      "axis": "identifier",
+      "question": "목적에 관한 「화장품의 생산ㆍ수입실적 및 원료목록 보고에 관한 규정」 제1조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품의 생산ㆍ수입실적 및 원료목록 보고에 관한 규정",
+      "expected_clause_paths": [
+        "제1조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "목적에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-021",
+      "axis": "identifier",
+      "question": "「기능성화장품 기준 및 시험방법」 제2조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "기능성화장품 기준 및 시험방법",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "세부사항의 구분에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-022",
+      "axis": "identifier",
+      "question": "「기능성화장품 심사에 관한 규정」 제2조(정의)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "기능성화장품 심사에 관한 규정",
+      "expected_clause_paths": [
+        "제1장/제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-023",
+      "axis": "identifier",
+      "question": "「맞춤형화장품판매업자의 준수사항에 관한 규정」 제2조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "맞춤형화장품판매업자의 준수사항에 관한 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "혼합ㆍ소분 안전관리기준에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-024",
+      "axis": "identifier",
+      "question": "실사신청에 관한 「수입화장품 품질검사 면제에 관한 규정」 제2조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "수입화장품 품질검사 면제에 관한 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "실사신청에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-025",
+      "axis": "identifier",
+      "question": "「영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정」 제2조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "적용범위에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-026",
+      "axis": "identifier",
+      "question": "「우수화장품 제조 및 품질관리기준」 제2조(용어의 정의)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "우수화장품 제조 및 품질관리기준",
+      "expected_clause_paths": [
+        "제1장/제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "용어의 정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-027",
+      "axis": "identifier",
+      "question": "「의약품등의 타르색소 지정과 기준 및 시험방법」 제2조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "의약품등의 타르색소 지정과 기준 및 시험방법",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "용어의 정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-028",
+      "axis": "identifier",
+      "question": "위해성평가정책위원회의 운영에 관한 「인체적용제품의 위해성평가에 관한 규정」 제2조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "인체적용제품의 위해성평가에 관한 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "위해성평가정책위원회의 운영에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-029",
+      "axis": "identifier",
+      "question": "「화장품 가격표시제 실시요령」 제2조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 가격표시제 실시요령",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-030",
+      "axis": "identifier",
+      "question": "「화장품 바코드 표시 및 관리요령」 제2조(정의)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 바코드 표시 및 관리요령",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-031",
+      "axis": "identifier",
+      "question": "「화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정」 제2조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "기재ㆍ표시 간소화 제외 대상에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-032",
+      "axis": "identifier",
+      "question": "적용범위에 관한 「화장품 안전기준 등에 관한 규정」 제2조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 안전기준 등에 관한 규정",
+      "expected_clause_paths": [
+        "제1장/제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "적용범위에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-033",
+      "axis": "identifier",
+      "question": "「화장품 안전성 정보관리 규정」 제2조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 안전성 정보관리 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-034",
+      "axis": "identifier",
+      "question": "「화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정」 제2조(정의)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정",
+      "expected_clause_paths": [
+        "제1장/제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-035",
+      "axis": "identifier",
+      "question": "「화장품 표시·광고 실증에 관한 규정」 제2조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품 표시·광고 실증에 관한 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-036",
+      "axis": "identifier",
+      "question": "정의에 관한 「화장품법」 제2조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [
+        "제1장/제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-037",
+      "axis": "identifier",
+      "question": "「화장품법 시행규칙」 제2조은(는) 무엇을 규정하고 있습니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "기능성화장품의 범위에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-038",
+      "axis": "identifier",
+      "question": "「화장품법 시행령」 제2조(영업의 세부 종류와 범위)의 내용을 알려주세요.",
+      "expected_outcome": "answered",
+      "expected_document": "화장품법 시행령",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "영업의 세부 종류와 범위에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-039",
+      "axis": "identifier",
+      "question": "「화장품의 색소 종류 및 기준」 제2조에 규정된 사항은 무엇입니까?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품의 색소 종류 및 기준",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "용어의 정의에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-040",
+      "axis": "identifier",
+      "question": "생산실적 등 보고방법에 관한 「화장품의 생산ㆍ수입실적 및 원료목록 보고에 관한 규정」 제2조의 규정 내용은?",
+      "expected_outcome": "answered",
+      "expected_document": "화장품의 생산ㆍ수입실적 및 원료목록 보고에 관한 규정",
+      "expected_clause_paths": [
+        "제2조"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "생산실적 등 보고방법에 관한 규정",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-mis-001",
+      "axis": "mis_citation",
+      "question": "「기능성화장품 심사에 관한 규정」 제30조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "기능성화장품 심사에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제30조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "기능성화장품 심사에 관한 규정 ends at 제19조; 제30조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-002",
+      "axis": "mis_citation",
+      "question": "「기능성화장품 심사에 관한 규정」 제46조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "기능성화장품 심사에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제46조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "기능성화장품 심사에 관한 규정 ends at 제19조; 제46조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-003",
+      "axis": "mis_citation",
+      "question": "「수입화장품 품질검사 면제에 관한 규정」 제19조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "수입화장품 품질검사 면제에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제19조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "수입화장품 품질검사 면제에 관한 규정 ends at 제8조; 제19조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-004",
+      "axis": "mis_citation",
+      "question": "「수입화장품 품질검사 면제에 관한 규정」 제35조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "수입화장품 품질검사 면제에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제35조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "수입화장품 품질검사 면제에 관한 규정 ends at 제8조; 제35조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-005",
+      "axis": "mis_citation",
+      "question": "「영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정」 제16조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제16조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정 ends at 제5조; 제16조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-006",
+      "axis": "mis_citation",
+      "question": "「영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정」 제32조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제32조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정 ends at 제5조; 제32조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-007",
+      "axis": "mis_citation",
+      "question": "「우수화장품 제조 및 품질관리기준」 제44조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "우수화장품 제조 및 품질관리기준",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제44조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "우수화장품 제조 및 품질관리기준 ends at 제33조; 제44조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-008",
+      "axis": "mis_citation",
+      "question": "「우수화장품 제조 및 품질관리기준」 제60조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "우수화장품 제조 및 품질관리기준",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제60조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "우수화장품 제조 및 품질관리기준 ends at 제33조; 제60조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-009",
+      "axis": "mis_citation",
+      "question": "「의약품등의 타르색소 지정과 기준 및 시험방법」 제17조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "의약품등의 타르색소 지정과 기준 및 시험방법",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제17조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "의약품등의 타르색소 지정과 기준 및 시험방법 ends at 제6조; 제17조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-010",
+      "axis": "mis_citation",
+      "question": "「의약품등의 타르색소 지정과 기준 및 시험방법」 제33조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "의약품등의 타르색소 지정과 기준 및 시험방법",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제33조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "의약품등의 타르색소 지정과 기준 및 시험방법 ends at 제6조; 제33조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-011",
+      "axis": "mis_citation",
+      "question": "「인체적용제품의 위해성평가에 관한 규정」 제19조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "인체적용제품의 위해성평가에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제19조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "인체적용제품의 위해성평가에 관한 규정 ends at 제8조; 제19조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-012",
+      "axis": "mis_citation",
+      "question": "「인체적용제품의 위해성평가에 관한 규정」 제35조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "인체적용제품의 위해성평가에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제35조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "인체적용제품의 위해성평가에 관한 규정 ends at 제8조; 제35조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-013",
+      "axis": "mis_citation",
+      "question": "「화장품 가격표시제 실시요령」 제24조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 가격표시제 실시요령",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제24조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 가격표시제 실시요령 ends at 제13조; 제24조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-014",
+      "axis": "mis_citation",
+      "question": "「화장품 가격표시제 실시요령」 제40조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 가격표시제 실시요령",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제40조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 가격표시제 실시요령 ends at 제13조; 제40조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-015",
+      "axis": "mis_citation",
+      "question": "「화장품 바코드 표시 및 관리요령」 제18조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 바코드 표시 및 관리요령",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제18조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 바코드 표시 및 관리요령 ends at 제7조; 제18조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-016",
+      "axis": "mis_citation",
+      "question": "「화장품 바코드 표시 및 관리요령」 제34조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 바코드 표시 및 관리요령",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제34조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 바코드 표시 및 관리요령 ends at 제7조; 제34조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-017",
+      "axis": "mis_citation",
+      "question": "「화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정」 제16조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제16조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정 ends at 제5조; 제16조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-018",
+      "axis": "mis_citation",
+      "question": "「화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정」 제32조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제32조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정 ends at 제5조; 제32조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-019",
+      "axis": "mis_citation",
+      "question": "「화장품 안전기준 등에 관한 규정」 제18조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 안전기준 등에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제18조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 안전기준 등에 관한 규정 ends at 제7조; 제18조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-020",
+      "axis": "mis_citation",
+      "question": "「화장품 안전기준 등에 관한 규정」 제34조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 안전기준 등에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제34조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 안전기준 등에 관한 규정 ends at 제7조; 제34조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-021",
+      "axis": "mis_citation",
+      "question": "「화장품 안전성 정보관리 규정」 제24조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 안전성 정보관리 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제24조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 안전성 정보관리 규정 ends at 제13조; 제24조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-022",
+      "axis": "mis_citation",
+      "question": "「화장품 안전성 정보관리 규정」 제40조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 안전성 정보관리 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제40조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 안전성 정보관리 규정 ends at 제13조; 제40조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-023",
+      "axis": "mis_citation",
+      "question": "「화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정」 제21조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제21조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정 ends at 제10조; 제21조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-024",
+      "axis": "mis_citation",
+      "question": "「화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정」 제37조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제37조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정 ends at 제10조; 제37조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-025",
+      "axis": "mis_citation",
+      "question": "「화장품 표시·광고 실증에 관한 규정」 제17조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 표시·광고 실증에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제17조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 표시·광고 실증에 관한 규정 ends at 제6조; 제17조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-026",
+      "axis": "mis_citation",
+      "question": "「화장품 표시·광고 실증에 관한 규정」 제33조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품 표시·광고 실증에 관한 규정",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제33조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품 표시·광고 실증에 관한 규정 ends at 제6조; 제33조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-027",
+      "axis": "mis_citation",
+      "question": "「화장품법」 제51조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제51조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품법 ends at 제40조; 제51조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-028",
+      "axis": "mis_citation",
+      "question": "「화장품법」 제67조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품법",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제67조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품법 ends at 제40조; 제67조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-029",
+      "axis": "mis_citation",
+      "question": "「화장품법 시행규칙」 제44조이(가) 정하는 기준을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제44조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품법 시행규칙 ends at 제33조; 제44조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-030",
+      "axis": "mis_citation",
+      "question": "「화장품법 시행규칙」 제60조에 따른 제출 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "화장품법 시행규칙",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "제60조"
+      ],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 해당 조문이 존재하지 않음",
+      "authored_by": "seed-generated",
+      "notes": "화장품법 시행규칙 ends at 제33조; 제60조 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-none-001",
+      "axis": "unanswerable",
+      "question": "ISO 22716 인증 심사원이 되기 위한 자격 요건은 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — Tier D 표준으로 본문을 보유하지 않음",
+      "authored_by": "seed-manual",
+      "notes": "Tier D. ISO standards are never ingested; only the recognition record is stored. Refusing is correct and doubles as a Tier D check."
+    },
+    {
+      "id": "cos-none-002",
+      "axis": "unanswerable",
+      "question": "대한민국약전에 실린 화장품 원료 시험법 본문을 그대로 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 약전 본문은 저장하지 않음",
+      "authored_by": "seed-manual",
+      "notes": "Tier D pharmacopoeia. Reproducing the text would be exactly the storage the tier prohibits."
+    },
+    {
+      "id": "cos-none-003",
+      "axis": "unanswerable",
+      "question": "미국 FDA에 화장품을 등록할 때 제출해야 하는 서류는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — fda_cosmetic 셀은 Phase 2",
+      "authored_by": "seed-manual",
+      "notes": "Another authority's cell, not ingested in Phase 1."
+    },
+    {
+      "id": "cos-none-004",
+      "axis": "unanswerable",
+      "question": "EU CPNP에 제품을 통보하는 절차를 단계별로 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요",
+      "authored_by": "seed-manual",
+      "notes": "CPNP is a login-gated notification portal and is reference-only by design — never an ingestion source."
+    },
+    {
+      "id": "cos-none-005",
+      "axis": "unanswerable",
+      "question": "중국 NMPA 화장품 등록에서 동물실험이 면제되는 조건은 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — nmpa_cosmetic 셀은 Phase 2",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-none-006",
+      "axis": "unanswerable",
+      "question": "화장품을 수출할 때 상대국에서 매기는 관세율은 얼마입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 관세는 이 지식층의 범위가 아님",
+      "authored_by": "seed-manual",
+      "notes": "Adjacent-sounding but outside the corpus entirely."
+    },
+    {
+      "id": "cos-none-007",
+      "axis": "unanswerable",
+      "question": "화장품법 위반으로 최근 3년간 형사처벌을 받은 건수는 몇 건입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 통계는 규정 본문이 아님",
+      "authored_by": "seed-manual",
+      "notes": "A statistic, not a provision. The clause store cannot answer it and must not try."
+    },
+    {
+      "id": "cos-none-008",
+      "axis": "unanswerable",
+      "question": "우리 회사 신제품이 기능성화장품에 해당하는지 판단해 주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 제품 적용성 판단은 Compliance 영역",
+      "authored_by": "seed-manual",
+      "notes": "Applicability is Compliance-owned and tenant-scoped (ADR-0007, phase 2.2). `regulation` has no product context."
+    },
+    {
+      "id": "cos-none-009",
+      "axis": "unanswerable",
+      "question": "경쟁사가 최근에 받은 행정처분 내역을 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요",
+      "authored_by": "seed-manual",
+      "notes": "Enforcement records are not in the corpus."
+    },
+    {
+      "id": "cos-none-010",
+      "axis": "unanswerable",
+      "question": "화장품 제조 설비의 감가상각 연수는 어떻게 잡아야 합니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 회계 문제",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-none-011",
+      "axis": "unanswerable",
+      "question": "ISO 9001과 ISO 22716의 차이를 조항별로 비교해 주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — Tier D",
+      "authored_by": "seed-manual",
+      "notes": "Tier D on both sides. A clause-by-clause comparison would require holding both texts."
+    },
+    {
+      "id": "cos-none-012",
+      "axis": "unanswerable",
+      "question": "화장품 신제품의 예상 매출을 규정에 근거해 추정해 주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요",
+      "authored_by": "seed-manual",
+      "notes": "No provision could ground this. A hedged prose answer here is a failure."
+    },
+    {
+      "id": "cos-none-013",
+      "axis": "unanswerable",
+      "question": "2030년에 화장품법이 어떻게 개정될 예정입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 공포되지 않은 개정은 존재하지 않음",
+      "authored_by": "seed-manual",
+      "notes": "The store holds 공포된 versions, including future-dated ones. A yet-to-be-drafted amendment is not one of them."
+    },
+    {
+      "id": "cos-none-014",
+      "axis": "unanswerable",
+      "question": "식품의약품안전처 화장품정책과 담당자의 연락처를 알려주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-none-015",
+      "axis": "unanswerable",
+      "question": "화장품 원료의 국제 시세는 어떻게 됩니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요",
+      "authored_by": "seed-manual",
+      "notes": null
+    },
+    {
+      "id": "cos-none-016",
+      "axis": "unanswerable",
+      "question": "우리 제품의 안전성 자료를 대신 작성해 주세요.",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 작성 대행은 이 시스템의 기능이 아님",
+      "authored_by": "seed-manual",
+      "notes": "A generation request wearing a regulatory question. The citation requirement has nothing to attach to."
+    },
+    {
+      "id": "cos-none-017",
+      "axis": "unanswerable",
+      "question": "IEC 62366의 사용적합성 요구사항을 화장품에 적용하면 어떻게 됩니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — Tier D이며 화장품 규정도 아님",
+      "authored_by": "seed-manual",
+      "notes": "Tier D and out of domain at once."
+    },
+    {
+      "id": "cos-none-018",
+      "axis": "unanswerable",
+      "question": "화장품 GMP 실사에서 실제로 가장 많이 지적되는 항목은 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 실사 통계는 보유하지 않음",
+      "authored_by": "seed-manual",
+      "notes": "우수화장품 제조 및 품질관리기준 is in the corpus; inspection findings are not. The near-miss is the point."
+    },
+    {
+      "id": "cos-none-019",
+      "axis": "unanswerable",
+      "question": "화장품 표시·광고 위반으로 과징금을 낮추려면 어떤 변호 전략이 효과적입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 법률 자문이 아님",
+      "authored_by": "seed-manual",
+      "notes": "행정처분의 감경 규정 exists (시행규칙 제14조의4); a strategy recommendation does not."
+    },
+    {
+      "id": "cos-none-020",
+      "axis": "unanswerable",
+      "question": "다른 회사들은 책임판매관리자를 보통 몇 명이나 두나요?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "확인 필요 — 업계 관행은 규정이 아님",
+      "authored_by": "seed-manual",
+      "notes": "The qualification requirement is in 시행규칙 제8조; industry practice is not a provision."
+    }
+  ]
+}

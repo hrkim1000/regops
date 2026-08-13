@@ -142,6 +142,7 @@ STAGE=dev docker compose --profile local-llm up -d
 | [docs/local-development.md](docs/local-development.md) | **Local ports and where each credential comes from** |
 | [docs/development-plan.md](docs/development-plan.md) | Execution plan — workstreams, milestones, quality gates |
 | [docs/plan/README.md](docs/plan/README.md) | **Phase plan** — one build file per phase (`phase0` … `phase3.0`), with the critical path |
+| [docs/eval/README.md](docs/eval/README.md) | **Evaluation corpus** — golden sets, ground-truth markup, and the rules that make a gate number defensible |
 | [docs/executive-summary.md](docs/executive-summary.md) | 1-page leadership summary for stage-gate decisions |
 | [docs/regulation-library-structure.md](docs/regulation-library-structure.md) | Per-cell library layout |
 
@@ -232,7 +233,7 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Retrieval + citation-enforced Q&A | [phase1.3](docs/plan/phase1.3_retrieval_qa.md) | 🟢 done (2026-08-11) — 9/9 acceptance; hybrid retrieval, generation constrained to what retrieval returned, verification able to fail an answer |
 | Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | 🟢 done (2026-08-11) — 6/6 acceptance; 109 change events → 7 alerts, 100% detection coverage on both gated cells |
 | Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench · **monitoring dashboard (2026-08-13)**; Playwright E2E not written |
-| Evaluation + pilot — the 6 gates | [phase1.6](docs/plan/phase1.6_evaluation.md) | ⬜ planned (W7–16) |
+| Evaluation + pilot — the 6 gates | [phase1.6](docs/plan/phase1.6_evaluation.md) | 🟡 harness + golden sets built (2026-08-13) — 162 items per gated cell over six axes, seeded and **not yet RA-signed**; 2 of 6 gates machine-measurable, the other 4 reported **미측정** with reasons pending an RA and a pilot |
 | Tier C + remaining 6 cells | [phase2.0](docs/plan/phase2.0_tier_c_scale.md) | ⬜ Phase 2 |
 | Semantic enrichment + graph | [phase2.1](docs/plan/phase2.1_semantic_graph.md) | ⬜ Phase 2 |
 | Compliance — applicability, gap analysis | [phase2.2](docs/plan/phase2.2_compliance.md) | ⬜ Phase 2 |

@@ -146,6 +146,23 @@ _CHANGE_EVENT_TOTALS = text(
     """
 )
 
+#: When this cell first came under observation — the earliest fetch of any of its sources.
+#:
+#: The latency gate is publication → alert, and that subtraction is only meaningful for an
+#: amendment published while we were *watching*. Every alert from the first ingestion of an existing
+#: corpus has a publication date months or years old, so the difference measures how long the
+#: instrument existed before RegOps arrived, not how fast RegOps noticed. Reading it as latency
+#: fails the gate on a system that has not yet had the chance to be measured — and, worse, would
+#: pass it later purely because the backfill aged out of the window.
+_WATCH_START = text(
+    """
+    SELECT s.cell_id, min(fo.fetched_at)
+    FROM fetch_observations fo
+    JOIN sources s ON s.id = fo.source_id
+    GROUP BY 1
+    """
+)
+
 
 # --- shaping ------------------------------------------------------------------------------------
 
@@ -256,6 +273,15 @@ async def change_event_totals_async(
     return {row[0]: row[1] for row in (await db.execute(_CHANGE_EVENT_TOTALS, {"since": since}))}
 
 
+async def watch_start_async(db: AsyncSession) -> dict[uuid.UUID, datetime]:
+    """``{cell_id: first fetch}`` — the point before which latency is not ours to be measured on.
+
+    Read one-way across the seam by raw SQL, like every other read here: ``fetch_observations``
+    and ``sources`` belong to `regulation`.
+    """
+    return {row[0]: row[1] for row in (await db.execute(_WATCH_START))}
+
+
 __all__ = [
     "AmendmentRef",
     "CellRef",
@@ -268,4 +294,5 @@ __all__ = [
     "change_events_for_version",
     "document_titles_async",
     "locked_ir_impact",
+    "watch_start_async",
 ]

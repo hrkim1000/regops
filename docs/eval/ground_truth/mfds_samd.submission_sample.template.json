@@ -1,0 +1,400 @@
+{
+  "_instructions": "For each clause below, decide whether it states a filing duty whose 각 호 are the documents to be submitted. Move its clause_path into procedure_clause_paths. Leave a 기준 list, a definition or a substantive requirement out. Do not consult the /submission-requirements endpoint: this sheet is the denominator its precision is measured against.",
+  "versions": [
+    {
+      "label": "의료기기법 시행규칙 @ 2026-07-01",
+      "document_version_id": "58b7153d-cbca-4375-a071-20b1a6cc74cc",
+      "procedure_clause_paths": []
+    }
+  ],
+  "candidates": [
+    {
+      "clause_path": "제1조",
+      "heading": "목적"
+    },
+    {
+      "clause_path": "제2조",
+      "heading": "등급분류 및 지정에 관한 기준 등"
+    },
+    {
+      "clause_path": "제3조",
+      "heading": "제조업허가의 신청절차"
+    },
+    {
+      "clause_path": "제4조",
+      "heading": "제조허가ㆍ제조인증 및 제조신고의 대상"
+    },
+    {
+      "clause_path": "제5조",
+      "heading": "제조허가의 절차"
+    },
+    {
+      "clause_path": "제6조",
+      "heading": "제조인증의 절차"
+    },
+    {
+      "clause_path": "제7조",
+      "heading": "제조신고의 절차"
+    },
+    {
+      "clause_path": "제8조",
+      "heading": "시설과 제조 및 품질관리체계의 기준"
+    },
+    {
+      "clause_path": "제9조",
+      "heading": "기술문서 등의 심사"
+    },
+    {
+      "clause_path": "제10조",
+      "heading": "의료기기 제조업허가 등의 면제"
+    },
+    {
+      "clause_path": "제11조",
+      "heading": "품질책임자 자격 등"
+    },
+    {
+      "clause_path": "제12조",
+      "heading": "품질책임자의 직무범위 등"
+    },
+    {
+      "clause_path": "제13조",
+      "heading": "품질책임자 교육 내용ㆍ시간 등"
+    },
+    {
+      "clause_path": "제14조",
+      "heading": "품질책임자 교육실시기관의 지정 등"
+    },
+    {
+      "clause_path": "제15조",
+      "heading": "교육실시기관의 준수사항 등"
+    },
+    {
+      "clause_path": "제15조의2",
+      "heading": "기술문서심사기관의 지정 등"
+    },
+    {
+      "clause_path": "제15조의3",
+      "heading": "기술문서심사기관의 준수사항"
+    },
+    {
+      "clause_path": "제16조",
+      "heading": "조건부 허가신청 등"
+    },
+    {
+      "clause_path": "제17조",
+      "heading": "조건 이행의 통보 및 확인"
+    },
+    {
+      "clause_path": "제18조",
+      "heading": "시판 후 조사 면제 대상 등"
+    },
+    {
+      "clause_path": "제18조의2",
+      "heading": "시판 후 조사 계획서 승인 등"
+    },
+    {
+      "clause_path": "제18조의3",
+      "heading": "시판 후 조사 정기보고의 방법 및 절차 등"
+    },
+    {
+      "clause_path": "제18조의4",
+      "heading": "시판 후 조사에 따른 결과 제출"
+    },
+    {
+      "clause_path": "제18조의5",
+      "heading": "시판 후 조사 결과 회수ㆍ폐기 등의 조치"
+    },
+    {
+      "clause_path": "제19조",
+      "heading": "재평가의 방법 및 절차 등"
+    },
+    {
+      "clause_path": "제20조",
+      "heading": "임상시험계획의 승인 등"
+    },
+    {
+      "clause_path": "제21조",
+      "heading": "임상시험기관 지정기준 및 절차 등"
+    },
+    {
+      "clause_path": "제21조의2",
+      "heading": "임상시험기관이 아닌 기관의 임상시험"
+    },
+    {
+      "clause_path": "제22조",
+      "heading": "집단시설"
+    },
+    {
+      "clause_path": "제23조",
+      "heading": null
+    },
+    {
+      "clause_path": "제24조",
+      "heading": "임상시험 실시기준 등"
+    },
+    {
+      "clause_path": "제24조의2",
+      "heading": "비임상시험실시기관의 지정 등"
+    },
+    {
+      "clause_path": "제24조의3",
+      "heading": "비임상시험실시기관의 준수사항"
+    },
+    {
+      "clause_path": "제25조",
+      "heading": "사전 검토의 대상 등"
+    },
+    {
+      "clause_path": "제26조",
+      "heading": "허가사항의 변경허가 신청 등"
+    },
+    {
+      "clause_path": "제27조",
+      "heading": "제조업자의 준수사항 등"
+    },
+    {
+      "clause_path": "제28조",
+      "heading": "폐업 등의 신고"
+    },
+    {
+      "clause_path": "제29조",
+      "heading": "수입업 허가신청 등"
+    },
+    {
+      "clause_path": "제30조",
+      "heading": "수입허가 신청 등"
+    },
+    {
+      "clause_path": "제31조",
+      "heading": "품질검사를 위한 시설과 제조 및 품질관리체계의 기준"
+    },
+    {
+      "clause_path": "제32조",
+      "heading": "의료기기 수입업허가 등의 면제"
+    },
+    {
+      "clause_path": "제33조",
+      "heading": "수입업자의 준수사항 등"
+    },
+    {
+      "clause_path": "제34조",
+      "heading": "준용"
+    },
+    {
+      "clause_path": "제34조의2",
+      "heading": "희소ㆍ긴급도입 필요 의료기기의 공급 방법"
+    },
+    {
+      "clause_path": "제34조의3",
+      "heading": "희소ㆍ긴급도입 필요 의료기기 공급 업무의 위탁"
+    },
+    {
+      "clause_path": "제35조",
+      "heading": "수리업의 신고 등"
+    },
+    {
+      "clause_path": "제36조",
+      "heading": "수리업자의 준수사항"
+    },
+    {
+      "clause_path": "제37조",
+      "heading": "판매업 또는 임대업의 신고 등"
+    },
+    {
+      "clause_path": "제38조",
+      "heading": "판매업 신고 등의 면제"
+    },
+    {
+      "clause_path": "제39조",
+      "heading": "판매업자ㆍ임대업자의 의료기기 품질 확보방법"
+    },
+    {
+      "clause_path": "제40조",
+      "heading": "판매업자ㆍ임대업자의 판매질서 유지에 관한 사항 등"
+    },
+    {
+      "clause_path": "제41조",
+      "heading": "중고의료기기 검사필증의 면제"
+    },
+    {
+      "clause_path": "제42조",
+      "heading": "용기 등의 기재사항"
+    },
+    {
+      "clause_path": "제43조",
+      "heading": "첨부문서의 기재사항"
+    },
+    {
+      "clause_path": "제44조",
+      "heading": "기재사항의 표시방법"
+    },
+    {
+      "clause_path": "제44조의2",
+      "heading": "시각장애인 등을 위한 정보제공"
+    },
+    {
+      "clause_path": "제45조",
+      "heading": "의료기기광고의 범위 등"
+    },
+    {
+      "clause_path": "제45조의2",
+      "heading": "자율심의기구의 재심의 결과에 대한 이의신청"
+    },
+    {
+      "clause_path": "제45조의3",
+      "heading": "자율심의기구의 신고 및 모니터링"
+    },
+    {
+      "clause_path": "제45조의4",
+      "heading": "봉함 대상 의료기기 등"
+    },
+    {
+      "clause_path": "제46조",
+      "heading": "전시 목적 의료기기의 진열 승인 등"
+    },
+    {
+      "clause_path": "제46조의2",
+      "heading": "의료기기의 경미한 변경 수리"
+    },
+    {
+      "clause_path": "제47조",
+      "heading": "의료기기의 변조ㆍ개조 허용 범위"
+    },
+    {
+      "clause_path": "제48조",
+      "heading": "제조 및 품질관리체계에 대한 적합성인정"
+    },
+    {
+      "clause_path": "제48조의2",
+      "heading": "제조 및 품질관리체계 심사원 등"
+    },
+    {
+      "clause_path": "제48조의3",
+      "heading": "적합성인정 대행기관의 지정 등"
+    },
+    {
+      "clause_path": "제48조의4",
+      "heading": "적합성인정의 취소 등"
+    },
+    {
+      "clause_path": "제49조",
+      "heading": "추적관리대상 의료기기의 지정 및 관리기준"
+    },
+    {
+      "clause_path": "제49조의2",
+      "heading": "장기추적조사대상 의료기기의 지정기준 등"
+    },
+    {
+      "clause_path": "제50조",
+      "heading": "추적관리대상 의료기기의 기록에 관한 사항 등"
+    },
+    {
+      "clause_path": "제50조의2",
+      "heading": "실사용 정보의 수집ㆍ분석ㆍ평가의 방법 및 절차"
+    },
+    {
+      "clause_path": "제51조",
+      "heading": "부작용 보고 등"
+    },
+    {
+      "clause_path": "제52조",
+      "heading": "위해 의료기기의 회수 기준 및 절차 등"
+    },
+    {
+      "clause_path": "제53조",
+      "heading": "회수계획의 공표 등"
+    },
+    {
+      "clause_path": "제54조",
+      "heading": "회수대상 의료기기의 폐기 등"
+    },
+    {
+      "clause_path": "제54조의2",
+      "heading": "의료기기 공급내역 보고"
+    },
+    {
+      "clause_path": "제54조의3",
+      "heading": "의료기기통합정보시스템 운영 등"
+    },
+    {
+      "clause_path": "제54조의4",
+      "heading": "이물 보고의 기준ㆍ대상 및 절차"
+    },
+    {
+      "clause_path": "제54조의5",
+      "heading": "이물 발견 사실 등의 공표"
+    },
+    {
+      "clause_path": "제55조",
+      "heading": "수거 등"
+    },
+    {
+      "clause_path": "제56조",
+      "heading": "의료기기감시원증"
+    },
+    {
+      "clause_path": "제56조의2",
+      "heading": "현지실사 절차 및 수입 중단 등"
+    },
+    {
+      "clause_path": "제57조",
+      "heading": "판매중지ㆍ회수ㆍ폐기 및 공표 명령 등"
+    },
+    {
+      "clause_path": "제58조",
+      "heading": "행정처분 기준"
+    },
+    {
+      "clause_path": "제59조",
+      "heading": "의료기기 감시원의 자격 및 직무범위"
+    },
+    {
+      "clause_path": "제59조의2",
+      "heading": "소비자의료기기감시원의 자격 등"
+    },
+    {
+      "clause_path": "제59조의3",
+      "heading": "의료기기안전정보 모니터링센터의 지정"
+    },
+    {
+      "clause_path": "제59조의4",
+      "heading": "모니터링센터의 사업범위 및 운영 등"
+    },
+    {
+      "clause_path": "제60조",
+      "heading": "의료기기 제조허가 등의 취소 절차ㆍ방법"
+    },
+    {
+      "clause_path": "제61조",
+      "heading": "정보원의 지도ㆍ감독"
+    },
+    {
+      "clause_path": "제61조의2",
+      "heading": "인과관계조사관의 자격ㆍ직무범위 및 증표 등"
+    },
+    {
+      "clause_path": "제62조",
+      "heading": "유효기간 적용 제외 의료기기"
+    },
+    {
+      "clause_path": "제62조의2",
+      "heading": "제조허가등의 갱신"
+    },
+    {
+      "clause_path": "제63조",
+      "heading": "허가증 등의 재발급 등"
+    },
+    {
+      "clause_path": "제64조",
+      "heading": "자료 제공의 협조"
+    },
+    {
+      "clause_path": "제65조",
+      "heading": "수수료"
+    },
+    {
+      "clause_path": "제66조",
+      "heading": "규제의 재검토"
+    }
+  ]
+}

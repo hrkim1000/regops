@@ -130,6 +130,16 @@ export interface CellMetrics {
     from_retrieved: LatencyBlock;
     /** Alerts whose source published no date at all. Reported, never counted as zero latency. */
     unmeasurable: number;
+    /**
+     * Alerts covering amendments published *before* this cell came under observation, excluded
+     * from `from_published`. On a backfilled corpus 공포 → 알림 measures how long the instrument
+     * existed before RegOps arrived — it read 5,385h on the gated corpus — so counting it as
+     * latency fails a system that has not yet had the chance to be measured, and would later
+     * "pass" purely because the backfill aged out of the window.
+     */
+    backfill: number;
+    /** First fetch of any source in this cell. Null before anything has been fetched. */
+    watching_since: string | null;
   };
 }
 

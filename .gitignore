@@ -161,3 +161,14 @@ corpus-data/**/*.pdf
 # Downloaded regulation originals. The archive of record is the WORM bucket, which is
 # content-addressed and immutable; a git copy would be a second, drifting one.
 data/
+
+# Evaluation run artifacts and filled assessment worksheets. The artifact is a machine record of
+# one run against one model at one moment — the *reviewed* output is the scored markdown and the
+# Go/No-Go report, and those are written where they are asked for. Filled worksheets carry an
+# assessor's individual judgements and are their working papers, not a repository artifact.
+docs/eval/runs/*
+docs/eval/worksheets/*
+# Keep the directories themselves, so a clone has somewhere for the harness to write and a
+# reader finds the note explaining why the contents are absent.
+!docs/eval/runs/.gitkeep
+!docs/eval/worksheets/.gitkeep

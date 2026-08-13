@@ -815,3 +815,76 @@ AUTHORITY_TIMEZONE: Final[dict[Authority, str]] = {
 
 #: Genesis value for the first audit_log row's ``prev_hash`` (ADR-0011).
 AUDIT_CHAIN_GENESIS: Final[str] = "0" * 64
+
+
+# --- Evaluation: the Go/No-Go gates (phase 1.6) ------------------------------------------------
+#
+# The thresholds live here rather than in the harness because the harness is not the only reader:
+# a service that reports one of these numbers must report it against the same line the gate is
+# scored on, and two copies of "0.95" drift the moment one of them is tuned.
+
+
+class EvaluationAxis(StrEnum):
+    """The query shapes a golden set must cover, closed (ADR-0006 open question 4).
+
+    The inventory is closed for one reason: a set of only identifier lookups measures the easy half
+    and scores well doing it. Coverage is asserted **per axis per domain**, so a passing citation
+    accuracy cannot rest on a handful of items in the hard categories.
+    """
+
+    #: 제5조, § 892.2050 — must resolve exactly, not fuzzily.
+    IDENTIFIER = "identifier"
+    #: The obligation asked in the reader's own words, with none of the statute's vocabulary.
+    CONCEPTUAL = "conceptual"
+    #: The answer differs depending on which version is in force (ADR-0006 decision 8).
+    EFFECTIVE_DATE = "effective_date"
+    #: The question asserts a clause that does not exist, or attributes content to the wrong one.
+    MIS_CITATION = "mis_citation"
+    #: Asked in the wrong cell. Declining is correct; answering from the neighbour is not
+    #: (ADR-0006 decision 9).
+    CROSS_DOMAIN = "cross_domain"
+    #: No clause in the corpus answers it. "Needs verification" is the correct outcome, and is
+    #: scored as one.
+    UNANSWERABLE = "unanswerable"
+
+
+class ExpectedOutcome(StrEnum):
+    """What a golden item asserts the system should do. Two values, because there are two."""
+
+    #: An answer with citations is correct here.
+    ANSWERED = "answered"
+    #: Refusing is correct here — the item is unanswerable, cross-domain, or a mis-citation trap.
+    NEEDS_VERIFICATION = "needs_verification"
+
+
+#: Per axis per domain. 200 items over six axes averages 33, and the phase file says plainly that
+#: this is thin; the floor makes the thinness visible per axis instead of hiding it in an average.
+GOLDEN_SET_MIN_ITEMS_PER_AXIS: Final[int] = 15
+
+#: Share of actual amendments captured. Scored against **scheduled** polls, never observed ones —
+#: a day the poller did not run leaves no ``fetch_observations`` row at all, so an observed-poll
+#: denominator makes downtime *improve* the number.
+DETECTION_COVERAGE_FLOOR: Final[float] = 0.95
+
+#: Share of cited clauses that actually support the claim, by blind RA assessment. The mechanical
+#: half (does the cited clause exist at that version) is a necessary condition, not this number.
+CITATION_ACCURACY_FLOOR: Final[float] = 0.90
+
+#: Outputs citing a clause that does not exist, or contradicting the source text. A ceiling, so the
+#: comparison is ``<=``.
+HALLUCINATION_RATE_CEILING: Final[float] = 0.02
+
+#: Versus the manual process for the same query type. Unfalsifiable without a baseline captured
+#: before the pilot starts.
+RESEARCH_TIME_SAVING_FLOOR: Final[float] = 0.30
+
+#: Voluntary use at least once a week for four consecutive weeks. The window cannot be compressed.
+PILOT_RETENTION_FLOOR: Final[float] = 0.60
+PILOT_RETENTION_WEEKS: Final[int] = 4
+
+#: No-Go is called at this many shortfalls. A cell that misses is not offset by the other passing.
+NO_GO_GATE_FAILURES: Final[int] = 4
+
+#: Below this, two raters applying the atomicity rule do not land in the same place, and every
+#: downstream count is non-comparable. Krippendorff's convention for content analysis.
+IR_AGREEMENT_FLOOR: Final[float] = 0.80
