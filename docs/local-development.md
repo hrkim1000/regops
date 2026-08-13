@@ -86,7 +86,7 @@ version for exactly that reason; if you are restoring an older volume by hand, d
 | Want to change | Do this |
 |---|---|
 | MinIO / pgAdmin / Postgres password | set the variable in your **shell or project-root `.env`**, then `docker compose down -v` — existing volumes were initialised with the old value and will not re-read it |
-| App login password | change it through `platform-core`. `scripts/seed_user.py` deliberately **will not** reset an existing user's password — it reports the row and leaves it alone, so re-running a seeder can never silently rotate a credential |
+| App login password | `REGOPS_RESET_EMAIL=… REGOPS_RESET_PASSWORD=… docker compose exec -T platform-core python /scripts/reset_password.py`. `seed_user.py` deliberately **will not** reset a password — re-running a seeder must not be able to rotate a credential as a side effect — and `platform-core` exposes no change-password endpoint, so this script is the only path. **Do not delete and re-seed the user instead:** the id is referenced by `queries.asked_by`, `irs.locked_by`, `alerts.owner_id` and every `audit_log` row naming them as actor, and a new id orphans all of it |
 | Add a user at a given role | `REGOPS_SEED_EMAIL=… REGOPS_SEED_PASSWORD=… REGOPS_SEED_ROLE=viewer\|ra\|admin docker compose exec -T platform-core python /scripts/seed_user.py`. Idempotent; exits non-zero if the email exists at a different role |
 | `LAW_GO_KR_OC` | edit `.env.dev` and restart `regulation`. The account is authorised by **egress IP**, so a network change breaks it too — that failure returns HTTP 200 with an error body and is filed as an `auth_failure` drift alert |
 
