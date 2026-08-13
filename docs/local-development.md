@@ -40,7 +40,7 @@ docker compose logs frontend --tail=30       # when a surface does not answer
 
 | Surface | Identity | Source of truth |
 |---|---|---|
-| **frontend login** | an application user in `users` | seeded by `scripts/seed_admin.py` from `REGOPS_ADMIN_EMAIL` / `REGOPS_ADMIN_PASSWORD`. The four dev accounts (`admin`, two `ra`, `viewer`) are asserted by `services/platform-core/tests/integration/test_phase0_acceptance.py`, which is where their fixtures live |
+| **frontend login** | an application user in `users` | seeded by `scripts/seed_user.py` at any role, from `REGOPS_SEED_EMAIL` / `REGOPS_SEED_PASSWORD` / `REGOPS_SEED_ROLE` (`REGOPS_ADMIN_*` still works and implies `admin`). The four dev accounts (`admin`, two `ra`, `viewer`) are asserted by `services/platform-core/tests/integration/test_phase0_acceptance.py`, which is where their fixtures live |
 | **MinIO console** | root user | `docker-compose.yml` → `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`, with local defaults inline. The same two variables drive the **server** and every **service client**, so they cannot drift apart |
 | **pgAdmin** | login | `docker-compose.yml` → `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_PASSWORD` |
 | **PostgreSQL (owner)** | `regops` | `docker-compose.yml` → `POSTGRES_PASSWORD`. Migrations connect as this role |
@@ -86,7 +86,8 @@ version for exactly that reason; if you are restoring an older volume by hand, d
 | Want to change | Do this |
 |---|---|
 | MinIO / pgAdmin / Postgres password | set the variable in your **shell or project-root `.env`**, then `docker compose down -v` — existing volumes were initialised with the old value and will not re-read it |
-| App login password | re-run `scripts/seed_admin.py` with new `REGOPS_ADMIN_*` values, or change it through `platform-core` |
+| App login password | change it through `platform-core`. `scripts/seed_user.py` deliberately **will not** reset an existing user's password — it reports the row and leaves it alone, so re-running a seeder can never silently rotate a credential |
+| Add a user at a given role | `REGOPS_SEED_EMAIL=… REGOPS_SEED_PASSWORD=… REGOPS_SEED_ROLE=viewer\|ra\|admin docker compose exec -T platform-core python /scripts/seed_user.py`. Idempotent; exits non-zero if the email exists at a different role |
 | `LAW_GO_KR_OC` | edit `.env.dev` and restart `regulation`. The account is authorised by **egress IP**, so a network change breaks it too — that failure returns HTTP 200 with an error body and is filed as an `auth_failure` drift alert |
 
 ## pgAdmin — connecting to the database

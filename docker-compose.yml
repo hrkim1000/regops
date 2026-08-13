@@ -139,6 +139,9 @@ services:
     volumes:
       - ./shared:/shared
       - ./services/platform-core:/app
+      # `users` is this service's table, so the user seeder runs here. Without this mount the
+      # documented seeding command pointed at a path that did not exist in the container.
+      - ./scripts:/scripts
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
       interval: 10s
