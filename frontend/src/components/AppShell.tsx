@@ -7,8 +7,14 @@ import { readScope } from '@/lib/scope';
 import { serverGet } from '@/lib/server-api';
 import type { Cell } from '@/types/regulation';
 
-/** The two pillars Phase 1 ships. `monitoring` joins them when 1.4 lands. */
+/**
+ * The two pillars Phase 1 ships, plus the corpus they both read from.
+ *
+ * Ordered as RegOps.md orders the pillars — change monitoring first, because it is the surface a
+ * subscriber opens daily and the only one that tells them something they did not go looking for.
+ */
 const SECTIONS = [
+  { key: 'monitoring', href: '/monitoring', label: '변경 모니터링' },
   { key: 'regulations', href: '/regulations', label: '규제 원문' },
   { key: 'qa', href: '/qa', label: '질의응답' },
 ] as const;
@@ -19,10 +25,11 @@ export type Section = (typeof SECTIONS)[number]['key'];
  * The chrome every signed-in page wears: identity, the cell ScopeBar, and the section nav.
  *
  * Shared rather than duplicated per section, because the **ScopeBar has to be the same control on
- * both**. Scope is an app-level axis (frontend-page skill: no per-page cell pickers), so a reader
- * who scopes to `mfds_cosmetic` in the regulation browser must land in the same cell when they
- * switch to Q&A — otherwise the one bound that prevents a cosmetic question being answered from
- * device regulation (ADR-0006 decision 9) would quietly reset on navigation.
+ * all three**. Scope is an app-level axis (frontend-page skill: no per-page cell pickers), so a
+ * reader who scopes to `mfds_cosmetic` in the regulation browser must land in the same cell when
+ * they switch to Q&A — otherwise the one bound that prevents a cosmetic question being answered
+ * from device regulation (ADR-0006 decision 9) would quietly reset on navigation. The same axis
+ * carries the alert feed: subscription matching is on cell and only on cell (ADR-0009 decision 5).
  *
  * The cells fetch is independent of whatever the page below fetches — a failed page load must not
  * take the ScopeBar with it.

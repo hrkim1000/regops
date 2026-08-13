@@ -1,6 +1,6 @@
 # Phase 1.5 — Frontend
 
-- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟡 foundation + regulation browser built early (2026-08-05), clause view added once [phase1.1](phase1.1_normalization.md) landed (2026-08-06), **IR review + lock and the submission-document view built 2026-08-10**, **Q&A workbench built 2026-08-11** on [phase1.3](phase1.3_retrieval_qa.md); the monitoring dashboard is **unblocked** now that [phase1.4](phase1.4_monitoring.md) has landed (2026-08-11) but is not built, and Playwright E2E is not written yet
+- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟡 foundation + regulation browser built early (2026-08-05), clause view added once [phase1.1](phase1.1_normalization.md) landed (2026-08-06), **IR review + lock and the submission-document view built 2026-08-10**, **Q&A workbench built 2026-08-11** on [phase1.3](phase1.3_retrieval_qa.md), **monitoring dashboard built 2026-08-13** on [phase1.4](phase1.4_monitoring.md); both pillar surfaces now exist and Playwright E2E is the remaining gap
 - **Governed by:** [.claude/skills/frontend-page](../../.claude/skills/frontend-page/SKILL.md), [ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md)
 - **Depends on:** [phase1.3](phase1.3_retrieval_qa.md), [phase1.4](phase1.4_monitoring.md)
 - **Service:** `frontend`
@@ -36,10 +36,10 @@ for 4 consecutive weeks) is a UX outcome, so "absorbs slack" is not "can be skip
 
 ### Scoping
 
-- [ ] **The scope axis is the cell** (`authority` × `domain`) — header ScopeBar cookies read server-side via `readScope()`
-- [ ] **No per-page cell pickers, no `?cell=` queries**
-- [ ] Version selection within a page: `?version_id=` + `VersionPicker`, labelling language unambiguously
-- [ ] A citation renders identically regardless of the viewer's selected cell — resolve from its pinned `document_version_id`, never from a scope cookie
+- [x] **The scope axis is the cell** (`authority` × `domain`) — header ScopeBar cookies read server-side via `readScope()`. The same bar now carries all three pillars: a reader scoped to `mfds_cosmetic` in the browser lands in the same cell in Q&A *and* in the alert feed, because subscription matching is on cell and only on cell ([ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md) decision 5)
+- [x] **No per-page cell pickers, no `?cell=` queries** — with **one deliberate exception**: the subscription form picks cells, because it does not *show* a cell, it manages a standing list of them, and making a reader switch scope four times to subscribe to four cells would serve the rule rather than the reader. Nothing on that page reads scoped data
+- [x] Version selection within a page: `?version_id=` + `VersionPicker`, labelling language unambiguously
+- [x] A citation renders identically regardless of the viewer's selected cell — resolve from its pinned `document_version_id`, never from a scope cookie
 
 ### Regulation browser (built 2026-08-05, ahead of sequence)
 
@@ -79,12 +79,14 @@ envelope (deviation 12). Both were silent in the API and in every test.
       — clause text read without it is how not-yet-in-force provisions get mistaken for current law
 - [x] Paginated at 500 clauses with a visible range and page links; the largest version holds 2,212
 
-### Monitoring dashboard (alpha W7–8)
+### Monitoring dashboard (built 2026-08-13, on [phase1.4](phase1.4_monitoring.md))
 
-- [ ] Change feed by cell, with `change_kind` and impact grade
-- [ ] Clause-level diff view — old vs new, renumbering shown as a move, not delete + add
-- [ ] Alert detail with owner assignment
-- [ ] Subscription management
+- [x] Change feed by cell, with `change_kind` and impact grade — **one row per amendment, not per change event**. 109 events over the gated corpus compose 7 alerts, and listing the events would bury 37 real edits under a thousand empty ones: the exact failure [ADR-0002](../design/ADR-0002-domain-model.md) decision 7 exists to prevent, reintroduced at the last step
+- [x] Clause-level diff view — old vs new, renumbering shown as a move, not delete + add. Needed a new `regulation` read (deviation 6); `match_basis` and `needs_review` travel with each row so a move the authority *stated* never renders like one we inferred
+- [x] Alert detail with owner assignment — `ra`+ only, written to the audit chain, reassignment included
+- [x] Subscription management — subscribe, raise the severity floor, **중지 rather than delete** so the delivery history survives
+- [x] The two Go/No-Go gates above the feed — detection coverage against the *emitted* event count from the other side of the seam, and latency from both clocks with `측정 불가` counted separately. Neither gate guards itself: a system that alerted on everything would score perfectly on coverage
+- [x] Daily briefing strip — composed on read, rolling 24h, timestamps in the authority's own timezone
 
 ### Q&A workbench
 
@@ -111,7 +113,7 @@ envelope (deviation 12). Both were silent in the API and in every test.
 
 ## Acceptance criteria
 
-- [x] `npm run typecheck && npm run lint` clean — run in the container, which is where `node_modules` lives
+- [x] `npm run typecheck && npm run lint` clean — both green on the host after `npm install` (2026-08-13); before that the toolchain existed only in the container image
 - [ ] Playwright E2E: change detection → alert, and question → retrieval → cited answer
 - [ ] Playwright E2E covers the **"needs verification"** path and a superseded-citation re-verification
 - [x] A `viewer` sees no lock button and is 403'd if the call is forged — verified live 2026-08-10 through the `/api/regulation/*` rewrite (403 viewer · 200 ra · 409 re-lock)
@@ -249,3 +251,24 @@ them into `expected` (the product working — no evidence, or evidence that did 
 (a 조문 번호 from memory, or an unusable reply) and `infrastructure` (never reached), each with its
 own sentence in `NO_ANSWER_REASON_HINT`. Rendering all three the same is how a broken model hides
 inside an honest-looking refusal rate.
+
+**14. The diff view needed a new `regulation` read** (2026-08-13). An alert names the clauses it
+covers and carries a `clause_diff_id` per reference, but `monitoring` never reads clause text —
+it composes alerts from `change_events` on its own side of the seam (CLAUDE.md § The seam), and
+putting the old and new bodies on the alert would have made the alerting service a reader of the
+clause store. So `GET /document-versions/{id}/diffs` was added to `regulation`, filtered by the
+alert's clause paths, and the page joins the two on the reader's behalf. The seam stays intact
+and the reader still gets the only thing they came for: *what does it say now?*
+
+Two properties of that endpoint are deliberate. Clause text is **bounded and the truncation is
+flagged** — a single 별표 clause in the corpus runs to 340 KB, and a shortened clause shown as if
+whole is worse than no clause, because a reader draws a conclusion from text that was cut away.
+And `match_basis` / `similarity` / `needs_review` travel with every row, so a move the authority
+*stated* in 조문이동이전/이후 never renders identically to one inferred from text similarity.
+
+**15. The subscription form is the one page that picks cells.** Everywhere else the ScopeBar decides
+(frontend-page skill: no per-page cell pickers), and that rule is load-bearing — it is what keeps
+a cosmetic question from being answered out of device regulation. But the subscription page does
+not *show* a cell, it manages a standing list of them, and forcing a reader to switch scope four
+times to subscribe to four cells would serve the rule rather than the reader. Nothing on that
+page reads scoped data, so the property the rule protects is not in play.

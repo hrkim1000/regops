@@ -67,10 +67,11 @@ Extraction agent. `assistant` now answers: pgvector index over 조-level passage
 BM25 + vector retrieval, citation-enforced generation, and an evidence-verification pass that can
 fail an answer. `monitoring` routes: cell subscriptions, one alert per amendment with its clause
 list, impact grading, delivery with per-attempt retry, a briefing composed on read, and the coverage
-and latency metrics the two gates are measured with. The `frontend` has its 1.5 foundation, a
-read-only regulation browser, the IR review + lock surface, a submission-document view derived from
-the clause tree, and the Q&A workbench — ask, cited answer, and the superseded-citation queue. Only
-the monitoring dashboard is still missing; 1.4 has unblocked it.
+and latency metrics the two gates are measured with. The `frontend` carries **both pillar surfaces**:
+a read-only regulation browser, the IR review + lock surface, a submission-document view derived from
+the clause tree, the Q&A workbench (ask, cited answer, superseded-citation queue), and the monitoring
+dashboard (change feed, clause-level old-vs-new diffs, owner assignment, subscriptions, and the two
+gate metrics). Playwright E2E is the remaining 1.5 gap; evaluation (1.6) has not started.
 Architecture is settled through [ADR-0001 – ADR-0017](docs/design/); anything below still marked
 *target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 

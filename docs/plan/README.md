@@ -17,13 +17,13 @@ starts at the first connector and assumes a stack already exists. It does not.
 
 | Phase | File | Roadmap | Weeks | Status |
 |---|---|---|---|---|
-| 0 | [phase0_foundation.md](phase0_foundation.md) | pre-M1 | W0–W2 | 🟢 done (4 items deferred to 1.5 / CI) |
+| 0 | [phase0_foundation.md](phase0_foundation.md) | pre-M1 | W0–W2 | 🟢 done — the 4 deferred items all closed in 1.5 |
 | 1.0 | [phase1.0_ingestion.md](phase1.0_ingestion.md) | Phase 1 · M0–4 | W1–W4 | 🟢 done (2026-08-05) — 8/8 acceptance, W3 recon complete |
 | 1.1 | [phase1.1_normalization.md](phase1.1_normalization.md) | Phase 1 | W3–W6 | 🟢 done (2026-08-06) — 9/9 acceptance, both falsifiers not triggered |
 | 1.2 | [phase1.2_ir_extraction.md](phase1.2_ir_extraction.md) | Phase 1 | W3–W8 | 🟢 done (2026-08-07) — 7/7 acceptance |
 | 1.3 | [phase1.3_retrieval_qa.md](phase1.3_retrieval_qa.md) | Phase 1 | W5–W10 | 🟢 done (2026-08-11) — 9/9 acceptance |
 | 1.4 | [phase1.4_monitoring.md](phase1.4_monitoring.md) | Phase 1 | W7–W10 | 🟢 done (2026-08-11) — 6/6 acceptance, 100% detection coverage on both gated cells |
-| 1.5 | [phase1.5_frontend.md](phase1.5_frontend.md) | Phase 1 | W7–W12 | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench (2026-08-11); dashboard unblocked by 1.4, not yet built |
+| 1.5 | [phase1.5_frontend.md](phase1.5_frontend.md) | Phase 1 | W7–W12 | 🟡 regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench · **monitoring dashboard (2026-08-13)**; Playwright E2E is the remaining gap |
 | 1.6 | [phase1.6_evaluation.md](phase1.6_evaluation.md) | Phase 1 | W2–W16 | ⬜ planned |
 | 2.0 | [phase2.0_tier_c_scale.md](phase2.0_tier_c_scale.md) | Phase 2 · M5–12 | — | ⬜ planned |
 | 2.1 | [phase2.1_semantic_graph.md](phase2.1_semantic_graph.md) | Phase 2 | — | ⬜ planned |

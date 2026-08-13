@@ -245,3 +245,124 @@ export const ANSWER_CONFIDENCE_THRESHOLD = 0.7;
 
 /** Answers per page. The API defaults to 50 and caps the parameter at 200. */
 export const ANSWER_PAGE_SIZE = 25;
+
+/**
+ * Impact grade (phase 1.4). **Cell-level, and the copy has to keep saying so** — until the Product
+ * context exists an IR applies to a cell (ADR-0007), so "높음" means *a lot changed in your cell*,
+ * never *your product is affected*. The server states the limitation in every alert body; these
+ * labels must not quietly promise more than it does.
+ */
+export const ALERT_SEVERITY_LABEL: Record<string, string> = {
+  high: '높음',
+  medium: '보통',
+  low: '낮음',
+};
+
+export const ALERT_SEVERITY_STYLE: Record<string, string> = {
+  high: 'border-red-800 bg-red-950/50 text-red-300',
+  medium: 'border-amber-700 bg-amber-950/50 text-amber-300',
+  low: 'border-surface-border text-slate-500',
+};
+
+/** Worst first. A feed ordered only by time buries the one high alert under a morning's routine. */
+export const ALERT_SEVERITY_ORDER = ['high', 'medium', 'low'] as const;
+
+/**
+ * Why an alert got the grade it did — mirrors the closed inventory in `app/grade.py`.
+ * Rendered as a hint rather than a badge: the grade is the headline, the basis is the reason.
+ */
+export const ALERT_SEVERITY_HINT: Record<string, string> = {
+  high: '확정(lock)된 요구사항이 근거로 삼던 조문이 변경되었습니다 — 사람이 승인한 의무의 근거가 움직였다는 뜻입니다.',
+  medium: '삭제된 조문이 있거나 변경 조문 수가 많습니다.',
+  low: '일반 개정입니다.',
+};
+
+/**
+ * Delivery state of an alert, derived from its attempt log. `pending` means *delivery work is
+ * outstanding* — an alert with no eligible subscriber is `delivered` with zero attempts, and the
+ * attempt count beside it is what keeps "전달 대상 없음" legible.
+ */
+export const ALERT_STATUS_LABEL: Record<string, string> = {
+  pending: '전달 대기',
+  delivered: '전달됨',
+  failed: '전달 실패',
+};
+
+export const ALERT_STATUS_STYLE: Record<string, string> = {
+  pending: 'border-sky-800 bg-sky-950/50 text-sky-300',
+  delivered: 'border-emerald-800 bg-emerald-950/50 text-emerald-300',
+  failed: 'border-red-800 bg-red-950/50 text-red-300',
+};
+
+export const DELIVERY_STATUS_LABEL: Record<string, string> = {
+  pending: '시도 중',
+  sent: '전달',
+  failed: '실패',
+};
+
+export const DELIVERY_STATUS_STYLE: Record<string, string> = {
+  pending: 'border-sky-800 bg-sky-950/50 text-sky-300',
+  sent: 'border-emerald-800 bg-emerald-950/50 text-emerald-300',
+  failed: 'border-red-800 bg-red-950/50 text-red-300',
+};
+
+/** `email` is declared and unimplemented in Phase 1 — the label says so rather than offering it. */
+export const ALERT_CHANNEL_LABEL: Record<string, string> = {
+  in_app: '앱 내',
+  webhook: '웹훅',
+  email: '이메일 (미구현)',
+};
+
+/** The channels a subscriber may actually pick today. `email` has no relay behind it. */
+export const ALERT_CHANNEL_CHOICES = ['in_app', 'webhook'] as const;
+
+/**
+ * How a clause changed (ADR-0002 decision 7). **`renumbered` and `moved` are not edits** — they
+ * move an address, not an obligation, and an amendment made only of them raises no alert at all.
+ * They appear here because a *mixed* amendment still lists them beside its real edits.
+ */
+export const CHANGE_KIND_LABEL: Record<string, string> = {
+  added: '신설',
+  removed: '삭제',
+  modified: '개정',
+  renumbered: '조번호 변경',
+  moved: '위치 이동',
+};
+
+export const CHANGE_KIND_STYLE: Record<string, string> = {
+  added: 'border-emerald-800 bg-emerald-950/50 text-emerald-300',
+  removed: 'border-red-800 bg-red-950/50 text-red-300',
+  modified: 'border-amber-700 bg-amber-950/50 text-amber-300',
+  renumbered: 'border-surface-border text-slate-500',
+  moved: 'border-surface-border text-slate-500',
+};
+
+/** Change kinds that move an address rather than an obligation — rendered muted, never as an edit. */
+export const NON_SUBSTANTIVE_CHANGE_KINDS = ['renumbered', 'moved'] as const;
+
+/**
+ * How the diff stage paired the two sides. A move the authority *stated* in 조문이동이전/이후 and
+ * one we inferred from text similarity carry very different confidence, and showing them alike
+ * would present a guess as a fact.
+ */
+export const MATCH_BASIS_LABEL: Record<string, string> = {
+  authority: '기관이 명시한 이동',
+  path: '동일 조번호',
+  content_hash: '본문 동일',
+  similarity: '유사도 추정',
+};
+
+/** Mirror of `DETECTION_LATENCY_TARGET_HOURS`. The Go/No-Go ceiling, publication → alert. */
+export const DETECTION_LATENCY_TARGET_HOURS = 24;
+
+/** Mirror of the Go/No-Go detection-coverage floor. */
+export const DETECTION_COVERAGE_TARGET = 0.95;
+
+/** Alerts per page. The API defaults to 50 and caps the parameter at 200. */
+export const ALERT_PAGE_SIZE = 25;
+
+/** Clause diffs fetched per alert. The API caps the parameter at 500. */
+export const DIFF_PAGE_SIZE = 200;
+
+/** Window the briefing covers, in hours. Rolling, not a calendar day — see phase1.4 deviation 8. */
+export const BRIEFING_WINDOW_HOURS = 24;

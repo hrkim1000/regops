@@ -32,9 +32,9 @@ and `assistant` are scaffolded as health-check-only services; their content is p
 - [x] `docker-compose.yml` — postgres, redis, minio, pgadmin, flower + `app` and `local-llm` profiles
 - [x] Assign and record service host ports (CLAUDE.md § Service Architecture leaves them open)
 - [x] `.env.example` refreshed to match; `.env.dev` loads per `STAGE`
-- [ ] `.env.test` — not created; arrives with the first integration suite that needs a separate DB
+- [x] `.env.test` — created with the first integration suite that needed a separate DB; gitignored, and `STAGE=test REGOPS_DB_NAME=regops_test` is the documented way in
 - [x] `GET /health` on every service
-- [ ] `frontend.depends_on` gates on it — **no frontend yet** (phase 1.5)
+- [x] `frontend.depends_on` gates on it — done in [phase1.5](phase1.5_frontend.md) once the frontend existed
 
 ### Shared library
 
@@ -62,7 +62,7 @@ and `assistant` are scaffolded as health-check-only services; their content is p
 ### CI & guards
 
 - [x] Lint/typecheck: `ruff` (clean), `mypy` (16 files, no issues)
-- [ ] `tsc --noEmit` — **no frontend yet** (phase 1.5)
+- [x] `tsc --noEmit` — wired into CI in [phase1.5](phase1.5_frontend.md) once the frontend existed
 - [x] pytest wired with `tests/unit` · `tests/integration` split; suites exist for `shared` and `platform-core` (the stub services have the dirs but no tests yet)
 - [x] **Tier D archive scan** — CI fails on known standard identifiers (ISO 13485, IEC 62304, …) appearing in archive or fixture paths (risk 5, development-plan.md § 9)
 - [x] Secret scan: no `.env*` beyond `.env.example`, no real tokens in fixtures
