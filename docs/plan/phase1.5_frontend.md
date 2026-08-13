@@ -272,3 +272,28 @@ a cosmetic question from being answered out of device regulation. But the subscr
 not *show* a cell, it manages a standing list of them, and forcing a reader to switch scope four
 times to subscribe to four cells would serve the rule rather than the reader. Nothing on that
 page reads scoped data, so the property the rule protects is not in play.
+
+**16. The lockfile is tracked, the image installs with `npm ci`, and two transitive deps are
+overridden.** `package.json` had been tracked since the frontend was scaffolded and its lockfile
+never was, so every machine and every CI run resolved a fresh dependency tree — under release gates
+(`npm run typecheck && npm run lint`) that can go red on a transitive release nobody chose. The
+Dockerfile compounded it by running `npm install` over a lockfile it had copied but did not have to
+honour; it now runs `npm ci`, which installs exactly the pinned tree and fails if the two disagree.
+
+The overrides are the part that will go stale, so they are written down here. `npm audit` reported
+**3 high-severity findings, all inside `next@15.5.23`**: its exact pin of `postcss@8.4.31` (XSS via
+unescaped `</style>`, and three sourceMappingURL path-traversal advisories) and its optional
+`sharp@^0.34.3` (inherited libvips CVEs). `next@15.5.23` is the **latest 15.x** — the fixes are not
+backported, which is why `npm audit fix --force` proposes `next@16.3.0`, a major upgrade.
+
+Neither was exploitable here, and that is worth stating rather than implying: postcss runs at build
+time over CSS we author ourselves, and the sharp CVEs need attacker-supplied images, while this app
+renders **no `next/image` at all** and configures no `images.remotePatterns`. A major framework
+upgrade to close two findings with no reachable path would have been the expensive way round. So
+`overrides` pins `postcss` to the root's own `$postcss` (`^8.5.26` — one source of truth rather than
+a second version literal to drift) and `sharp` to `^0.35.3`. **0 vulnerabilities**, `next` unmoved,
+and a full `next build` green across every route, which is the only real test that overriding a
+framework's own pinned CSS toolchain did no harm.
+
+**Revisit when Next 16 is adopted**, or if Next backports: an override that outlives its reason
+silently holds a dependency back.
