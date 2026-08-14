@@ -24,7 +24,21 @@ ground_truth/
 worksheets/                the blind assessment sheets, and the RA's filled versions
 runs/                      run artifacts, resumable and gitignored
 go-no-go.<date>.md         a dated report snapshot — never "the" report until W16
+reviewer-packet.md         what the second reviewer does, in the order it has to be done
+pilot-runbook.md           the four weeks, and the two things that cannot be repaired afterwards
 ```
+
+Two of the files above are procedures rather than data, and they exist because the templates each
+explain themselves while nothing said what order to fill them in:
+
+- **[reviewer-packet.md](reviewer-packet.md)** — for the RA who did not build this system. Five
+  tasks: sign the golden sets, mark the IR ground truth, mark the submission sample, assess answers
+  blind, write the amendment ledger. The ordering is load-bearing: the two markup tasks must finish
+  **before** the reviewer sees extractor output, and blindness is not recoverable once lost.
+- **[pilot-runbook.md](pilot-runbook.md)** — freeze, fix the cohort, capture the baseline, onboard,
+  four uncompressible weeks, measure. Its first section is the two constraints that cannot be
+  repaired after the fact: the baseline is captured **before** access, and the cohort is fixed
+  **before** week 1.
 
 A `.template.json` is not read by anything. Fill it, drop the `.template`, and the harness picks it
 up — so a half-finished template can never be mistaken for evidence.
@@ -126,6 +140,10 @@ artifact, not the process, is the run.
   obligations a clause yields, not which ones, so an extractor finding the right *number* of the
   wrong obligations scores perfectly. The harness names them `clause_level_precision` /
   `clause_level_recall` for that reason.
-- **Atomicity agreement is test–retest, not inter-rater**, until a second RA is funded
-  ([phase1.2](../plan/phase1.2_ir_extraction.md) deviation 3). A consistent private misreading
-  scores as perfect agreement, so a passing score there is necessary and never sufficient.
+- **Atomicity agreement becomes inter-rater with the second reviewer** (2026-08-14). It was
+  test–retest while one RA held every role ([phase1.2](../plan/phase1.2_ir_extraction.md)
+  deviation 3), and that mode cannot detect a rater's consistent private misreading — the same wrong
+  reading returns both times and scores as perfect agreement. `ir_agreement.py` switches on its own:
+  it reports `inter-rater` whenever the two files carry different `rater` names. Nothing needs
+  configuring; what it needs is two people marking the same fixed sample **without conferring**, per
+  [reviewer-packet.md](reviewer-packet.md) § 2.

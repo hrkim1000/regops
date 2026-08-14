@@ -84,6 +84,22 @@ class OllamaClient(LLMClient):
 
 
 class ClaudeClient(LLMClient):
+    """The Anthropic arm of the seam. **Known defect: it does not run as written.**
+
+    ``complete()`` sends ``temperature`` whenever the caller passes one, and both callers do —
+    extraction and generation are pinned to ``0.0`` by ADR-0017 decision 1. Current Opus- and
+    Sonnet-tier models **reject ``temperature`` with a 400**, so ``LLM_PROVIDER=claude`` fails on
+    its first generation call. The pinned model in ``.env.dev`` is one of them.
+
+    Recorded rather than fixed on 2026-08-14 (phase1.6 deviation 13): the pinned regime is
+    ``ollama``/``gemma3:4b``, so nothing currently measured is affected, and a phase being closed is
+    the wrong moment to add an unexercised code path. It becomes blocking the moment anyone runs the
+    Anthropic provider as the comparison regime phase1.6 recommends — which is when it would
+    otherwise be found, mid-run, as a 400 per item. The fix is to drop ``temperature`` for models
+    that reject it and to update the pinned model id; determinism then comes from the prompt and the
+    recorded regime rather than from a sampling parameter that no longer exists.
+    """
+
     provider = "claude"
 
     def __init__(self, settings: Settings) -> None:

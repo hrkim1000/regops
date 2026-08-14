@@ -1,6 +1,6 @@
 # Phase 1.6 — Evaluation & pilot
 
-- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W2–W16 (golden set starts W2; the rest is W7–W16) · **Status:** 🟡 harness built and the machine-measurable half measured (2026-08-13); the four gates that need a person or a pilot are **미측정**, and the Go/No-Go report says so rather than guessing
+- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W2–W16 (golden set starts W2; the rest is W7–W16) · **Status:** 🟡 harness built and the machine-measurable half measured (2026-08-13); **the human and pilot halves are now prepared to the start line (2026-08-14)** — a second reviewer is available and has a packet, and the pilot has a runbook — but neither has run, so the four gates that need a person or a pilot are still **미측정** and the report still recommends `INCOMPLETE` rather than guessing
 - **Governed by:** [ADR-0004](../design/ADR-0004-ir-extraction-and-domain-branching.md) decision 7, [ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md), [development-plan.md](../development-plan.md) § 5
 - **Depends on:** all of 1.0–1.5
 - **Owner:** Regulatory domain (RA/QA), with AI/ML for the harness
@@ -55,13 +55,20 @@ Go/No-Go report.
 
 ### Pilot (W11–16)
 
-*Instrumented, not run. Every measurement below exists and is tested; none has a pilot to measure.*
+*Instrumented and **operationalised**, not run. Every measurement below exists and is tested, and
+[docs/eval/pilot-runbook.md](../eval/pilot-runbook.md) (2026-08-14) turns them into a start date;
+no users have been onboarded — see deviation 12.*
 
-- [ ] Freeze build at W11–12; onboard 20–30 users in one business unit; capture baseline
+- [ ] Freeze build at W11–12; onboard 20–30 users in one business unit; capture baseline —
+      **procedure written, not executed.** The runbook leads with the two constraints that cannot be
+      repaired afterwards: the baseline is captured *before* access, and the cohort is fixed *before*
+      week 1
 - [ ] **Four consecutive weeks of real usage — the retention gate cannot be compressed**
 - [x] **Retention is computed from `queries.asked_by`, not from logins** — voluntary use means a question asked, and a session opened is not use. `score_retention` intersects across *every* week in the window rather than counting active weeks, so a user active in weeks 1, 2 and 4 does not clear a four-consecutive-week bar
 - [x] **The cohort must be fixed before the four weeks start** — `pilot_cohort.template.json`. A cohort assembled afterwards from whoever kept using it scores 100% every time, and dropping a non-returner is the single easiest way to manufacture a passing number
-- [ ] Blind accuracy assessment by RA staff against both golden sets
+- [ ] Blind accuracy assessment by RA staff against both golden sets — **the packet is written**
+      ([docs/eval/reviewer-packet.md](../eval/reviewer-packet.md)) and a second reviewer is available
+      (deviation 11), so this is now scheduling rather than an open question of who
 - [x] **The blind worksheet is built** — one row per (answer, citation) with the claim and the cited clause text, and deliberately *without* the expected answer, the expected paths, the confidence or the verification verdicts. Rows are shuffled by a **recorded** seed, because run order groups items by axis and the thirty-first identifier lookup is not read the way the first was. A blank `supports` cell raises rather than defaulting either way
 - [ ] Research-time-savings measurement against the existing manual process for matched query types
 - [x] **The baseline template states both halves of the gate** — captured *before* access, and *for the same query type*. It also states that the measurement is the analyst's time to a usable answer, which includes reading the citations, not the harness's `elapsed_seconds`
@@ -134,7 +141,17 @@ The corpus and its authoring rules are [docs/eval/README.md](../eval/README.md).
 
 ## Risks & open questions
 
-- **Risk 7 — key-person dependency (development-plan.md § 9).** One RA is simultaneously golden-set designer, ground-truth marker, blind assessor, IR locker, and final signoff. That overlap makes both "blind" exercises non-blind in practice. At 1 FTE this risk is **accepted, not mitigated** — state it at kickoff rather than discovering it at M4. Budget a second RA reviewer, even part-time, to separate authorship from assessment.
+- **Risk 7 — key-person dependency (development-plan.md § 9). Partly mitigated 2026-08-14: a second
+  reviewer is available.** The risk as written was one RA holding every role — golden-set designer,
+  ground-truth marker, blind assessor, IR locker and final signoff — which made both "blind"
+  exercises non-blind in practice, and it was **accepted rather than mitigated** at 1 FTE. The
+  mitigation the entry itself asked for (*"budget a second RA reviewer, even part-time, to separate
+  authorship from assessment"*) is now available, and
+  [docs/eval/reviewer-packet.md](../eval/reviewer-packet.md) is what it is handed. Two consequences:
+  the blind assessment is genuinely blind, and atomicity agreement becomes **inter-rater** rather
+  than test–retest (deviation 11). What remains is that the *authoring* was still done by the
+  system's own authors — the second reviewer reviews and signs, which is the separation that
+  matters, but it is not the same as an independently authored set.
 - **Retention needs 4 uncompressible weeks.** Any slip upstream eats the measurement window, not the build. Protect W13–16.
 - **Research-time-savings needs a baseline** captured before the pilot starts, or the 30% is unfalsifiable.
 - **Retrieval has no relevance floor, and there is now a measurement to tune one against.** Asked
@@ -165,6 +182,14 @@ The corpus and its authoring rules are [docs/eval/README.md](../eval/README.md).
   scored run at this regime measures the hardware. Run the Anthropic provider behind the same seam
   as a comparison before W9 — and record it as a *different regime*, not as an improvement to this
   one.
+
+  **Staying at the pinned regime was reaffirmed on 2026-08-14**, which keeps every number already
+  measured comparable and is the reason this entry is a risk rather than a task. Two consequences
+  follow and are recorded where they will be read: **retention is a UX outcome**, so a participant
+  who waits three minutes for 확인 필요 learns not to return and the gate faithfully records that as
+  a fact about the hardware ([pilot-runbook.md](../eval/pilot-runbook.md) § the caveat this pilot
+  carries); and the comparison run this entry recommends **cannot currently be executed at all**,
+  because the Anthropic arm of the seam 400s on `temperature` (deviation 13).
 - **A mis-citation trap was answered from neighbouring clauses on the first bounded run**
   (deviation 7). Both citations resolved, so neither the mechanical citation check nor the
   verification agent caught it. One observation is not a rate; the full mis-citation axis is 30
@@ -312,7 +337,65 @@ session across the model-bound part at all. The true numbers for that run were 1
 number it exists to prevent, in a file whose own docstring says a bug there produces a passing gate
 nobody investigates. It produced a *failing* one instead, which is the only reason it was noticed.
 
-**11. Scoring counts three buckets, not two.** A bounded run leaves most of the set unasked, and
+**11. A second reviewer is available, which upgrades one measurement and makes one word true.**
+Recorded 2026-08-14. Two things follow, and only the first needed anything built:
+
+**Atomicity agreement becomes inter-rater.** [phase1.2](phase1.2_ir_extraction.md) deviation 3
+degraded the criterion to same-rater test–retest at ≥ 2 weeks' separation, because inter-rater is not
+runnable with one rater. Test–retest detects an unstable rule and an unstable reader, but **not a
+reader's consistent private misreading** — the same wrong reading returns both times and scores as
+perfect agreement, which is why the script prints that caveat with the number. `ir_agreement.py`
+needed no change: it already reports `inter-rater` whenever the two markup files carry different
+`rater` names. What it needed was a procedure, and that is
+[docs/eval/reviewer-packet.md](../eval/reviewer-packet.md) § 2 — the same fixed sample, marked
+independently, **without conferring**, because two people who conferred are one rater with extra
+steps.
+
+**"Blind" stops being aspirational.** The blind worksheet already withheld the expected answer, the
+expected paths, the confidence and the verdicts, but an assessor who *wrote the questions* is
+checking their own work whatever the sheet withholds. That is the half of risk 7 the second reviewer
+actually closes. The half it does not close is authorship: the sets were still proposed by the
+system's own authors, and the reviewer signs rather than writes. Recorded here so the Go/No-Go report
+claims the separation it has and not the one it doesn't.
+
+**12. The pilot is prepared to the start line and deliberately not started.** Recorded 2026-08-14 as
+a decision, not a slip: no cohort has been fielded, so **pilot retention and research-time savings
+stay 미측정** and the recommendation stays `INCOMPLETE`.
+
+What was missing was never instrumentation — `score_retention` intersects across every week rather
+than counting active ones, the cohort and baseline templates each state their own trap, and both are
+unit-tested. What was missing was the *order*: the templates explain themselves individually while
+nothing said which one has to be filled first.
+[docs/eval/pilot-runbook.md](../eval/pilot-runbook.md) is that, and it leads with the two constraints
+that cannot be repaired after the fact rather than burying them in a checklist:
+
+- **The baseline is captured before anyone gets access.** Once an analyst has used the workbench,
+  their "manual" time is contaminated — they now know where the answer is — and the 30% becomes
+  unfalsifiable.
+- **The cohort is fixed before week 1.** A cohort assembled afterwards out of whoever kept using it
+  scores 100% every time, and dropping one non-returner is invisible in the result.
+
+A third constraint is expensive rather than fatal and is stated as such: the four weeks cannot be
+compressed, so any upstream slip eats the measurement window rather than the build.
+
+**13. The Claude arm of the LLM seam does not run, and is recorded rather than fixed.**
+`shared/regops_shared/llm/__init__.py:108` sends `temperature` on every Anthropic request, and both
+`EXTRACTION_TEMPERATURE` and `GENERATION_TEMPERATURE` are pinned to `0.0` by
+[ADR-0017](../design/ADR-0017-extraction-determinism-and-conditional-obligations.md) decision 1. On
+`claude-opus-4-7` — the id in `.env.dev` — and on every current Opus- and Sonnet-tier model,
+`temperature` is **rejected with a 400**. So `LLM_PROVIDER=claude` fails on its first generation
+call, and the pluggable seam [ADR-0005](../design/ADR-0005-service-architecture.md) decision 7
+promises is untested on one of its two sides.
+
+Not fixed, on a recorded decision (2026-08-14): the pinned regime stays `ollama` / `gemma3:4b`, so
+the defect blocks nothing that is currently measured, and changing the seam while a phase is being
+closed would put an unexercised code path into the build the pilot is meant to freeze. **It becomes
+blocking the moment anyone acts on this file's own standing recommendation to compare the Anthropic
+provider as a second regime** — which is exactly when it would otherwise be discovered, mid-run, as a
+400 per item. The fix is small and known: drop `temperature` for models that reject it, and update
+the pinned model id.
+
+**14. Scoring counts three buckets, not two.** A bounded run leaves most of the set unasked, and
 the first version counted every unasked item as a harness error — a 12-item sample of a 162-item
 set reported *150 harness errors* and divided its accuracy by the whole set. **Scored**, **harness
 error** (asked, no answer came back) and **not attempted** (never asked) are now separate, and none
