@@ -74,6 +74,13 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Playwright: a signed-in browser state, a trace of a failed run, and a report. The auth state
+# holds a real JWT for a real user — it is a credential, and it is regenerated on every run.
+frontend/e2e/.auth/
+frontend/e2e/.artifacts/
+frontend/e2e/.report/
+playwright-report/
+
 # =============================================================================
 # Environment & secrets
 # =============================================================================
@@ -94,6 +101,11 @@ secrets/
 # Docker
 # =============================================================================
 .dockerignore
+# ...except the frontend's, which is part of the build definition rather than a local preference.
+# `COPY frontend/ ./` would otherwise carry the Playwright suite into the image — including
+# `e2e/.auth/*.json`, which holds a signed-in user's JWT. A credential in an image layer is not a
+# tidiness problem.
+!frontend/.dockerignore
 
 # =============================================================================
 # Data & storage (never commit local data volumes)

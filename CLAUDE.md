@@ -59,7 +59,7 @@ pillars on one shared knowledge layer:
 3. Compliance gap analysis & control mapping
 4. SaaS productization for external customers
 
-**Current state: phase 0, 1.0, 1.1, 1.2, 1.3 and 1.4 are done; 1.5 and 1.6 are partial.**
+**Current state: phase 0 and 1.0 – 1.5 are done; 1.6 is partial.**
 The compose stack, `regops_shared`, `platform-core` (auth · RBAC · audit chain) and the `regulation`
 L1–L2 pipeline exist and run — ingest → parse → diff → change events → IR, with a clause store of
 25,729 clauses over 526 documents of the gated corpus, and draft → locked IRs behind the Requirement
@@ -71,7 +71,10 @@ and latency metrics the two gates are measured with. The `frontend` carries **bo
 a read-only regulation browser, the IR review + lock surface, a submission-document view derived from
 the clause tree, the Q&A workbench (ask, cited answer, superseded-citation queue), and the monitoring
 dashboard (change feed, clause-level old-vs-new diffs, owner assignment, subscriptions, and the two
-gate metrics). Playwright E2E is the remaining 1.5 gap. `scripts/evaluation` is the 1.6 harness:
+gate metrics), and a Playwright E2E suite runs both journeys against the live stack and the real
+model — 10 tests, invariants rather than model wording, deliberately **not** a CI gate. The one
+1.5 acceptance row still open is the pilot usability review, which needs people. `scripts/evaluation`
+is the 1.6 harness:
 golden sets of 162 items per gated cell across six axes (seeded, **not yet RA-signed**), the blind
 markup denominators, a resumable scored run, and the Go/No-Go report. Two of the six gates are
 machine-measurable; **the other four are reported as 미측정 with their reasons** — they need a person
@@ -335,7 +338,16 @@ $E score && $E polls       # per-axis scores; scheduled polls versus polls that 
 $E gates --out /eval/go-no-go.md
 ```
 
-npm run typecheck && npm run lint     # from frontend/ — both wired into CI
+From `frontend/`:
+
+```bash
+npm run typecheck && npm run lint     # both wired into CI
+
+# E2E against the running stack and the real model. Not a CI gate: a live answer takes minutes and
+# is worded differently every run, so a red build would as often mean "the model was slow" as "the
+# product broke". Needs the two seeded principals — see frontend/e2e/README.md.
+REGOPS_E2E_RA_PASSWORD=… REGOPS_E2E_VIEWER_PASSWORD=… npm run e2e
+```
 
 ## Doc sync to `startup`
 

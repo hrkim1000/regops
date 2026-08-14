@@ -41,6 +41,7 @@ docker compose logs frontend --tail=30       # when a surface does not answer
 | Surface | Identity | Source of truth |
 |---|---|---|
 | **frontend login** | an application user in `users` | seeded by `scripts/seed_user.py` at any role, from `REGOPS_SEED_EMAIL` / `REGOPS_SEED_PASSWORD` / `REGOPS_SEED_ROLE` (`REGOPS_ADMIN_*` still works and implies `admin`). The four dev accounts (`admin`, two `ra`, `viewer`) are asserted by `services/platform-core/tests/integration/test_phase0_acceptance.py`, which is where their fixtures live |
+| **Playwright E2E** | `e2e-ra@example.com` (`ra`) + the existing `viewer` | seeded the same way, then exported as `REGOPS_E2E_RA_PASSWORD` / `REGOPS_E2E_VIEWER_PASSWORD` — the suite reads them from the environment and refuses to start without them, so **no password reaches the repository**. The `ra` half is the suite's own principal rather than a person's account, because assigning an alert owner is written to the audit chain and the chain should say an automated run did it ([frontend/e2e/README.md](../frontend/e2e/README.md)) |
 | **MinIO console** | root user | `docker-compose.yml` → `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`, with local defaults inline. The same two variables drive the **server** and every **service client**, so they cannot drift apart |
 | **pgAdmin** | login | `docker-compose.yml` → `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_PASSWORD` |
 | **PostgreSQL (owner)** | `regops` | `docker-compose.yml` → `POSTGRES_PASSWORD`. Migrations connect as this role |

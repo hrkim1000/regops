@@ -61,3 +61,8 @@ jobs:
       # asserts a clean typecheck, so the gate has to exist rather than just the command.
       - run: npm run typecheck
       - run: npm run lint
+      # `npm run e2e` is deliberately absent. Playwright drives the running compose stack against
+      # the real corpus and a live model: minutes per answer, worded differently every run, so a red
+      # build here would as often mean "the model was slow" as "the product broke". It runs where
+      # the integration suites run — locally and against a stage stack, before a phase is called
+      # done (phase1.5 deviation 17).

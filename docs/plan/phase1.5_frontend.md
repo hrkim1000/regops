@@ -1,6 +1,6 @@
 # Phase 1.5 — Frontend
 
-- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟡 foundation + regulation browser built early (2026-08-05), clause view added once [phase1.1](phase1.1_normalization.md) landed (2026-08-06), **IR review + lock and the submission-document view built 2026-08-10**, **Q&A workbench built 2026-08-11** on [phase1.3](phase1.3_retrieval_qa.md), **monitoring dashboard built 2026-08-13** on [phase1.4](phase1.4_monitoring.md); both pillar surfaces now exist and Playwright E2E is the remaining gap
+- **Roadmap:** Phase 1 (M0–4) · **Weeks:** W7–W12 · **Status:** 🟢 done (2026-08-14) — foundation + regulation browser built early (2026-08-05), clause view added once [phase1.1](phase1.1_normalization.md) landed (2026-08-06), **IR review + lock and the submission-document view built 2026-08-10**, **Q&A workbench built 2026-08-11** on [phase1.3](phase1.3_retrieval_qa.md), **monitoring dashboard built 2026-08-13** on [phase1.4](phase1.4_monitoring.md), **Playwright E2E built and green 2026-08-14** — 10 tests over both journeys against the live stack and the real model. The usability review is the one acceptance row left, and it is **미측정**: it needs pilot users, not code
 - **Governed by:** [.claude/skills/frontend-page](../../.claude/skills/frontend-page/SKILL.md), [ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md)
 - **Depends on:** [phase1.3](phase1.3_retrieval_qa.md), [phase1.4](phase1.4_monitoring.md)
 - **Service:** `frontend`
@@ -30,9 +30,23 @@ for 4 consecutive weeks) is a UX outcome, so "absorbs slack" is not "can be skip
 - [x] Prefer Server Components; the only client components are ScopeBar and the login/sign-out forms
 - [x] **`tsc --noEmit` wired into CI** — the phase 0 deferral, now that there is a frontend
 - [x] **`frontend.depends_on` gates on `platform-core` health** — the other phase 0 deferral
-- [ ] Client-island axios instances (`api<Svc>`) with 401 refresh — nothing needs one yet; every current read is a Server Component
-- [ ] Zustand · react-hook-form + zod · react-toastify — deliberately **not** introduced until a page needs them. The skill says use these rather than alternatives, not that an unused dependency is progress
-- [ ] Playwright E2E
+- [x] **Playwright E2E** (2026-08-14) — `frontend/e2e/`, 10 tests over the two journeys, run against
+      the compose stack with the real corpus and the real model. `npm run e2e`; see deviations 17–20
+      and [frontend/e2e/README.md](../../frontend/e2e/README.md)
+
+### Deliberately not built
+
+Both were listed as tasks and neither is a gap. Recorded here rather than left as open boxes, so the
+phase does not read as unfinished for the absence of things it decided against:
+
+- **Client-island axios instances (`api<Svc>`) with 401 refresh.** Nothing needs one. Every read is
+  a Server Component, and the five client islands that write (ScopeBar, AskBox, AssignBox, the
+  login and sign-out forms) each make a single `fetch` and handle their own failure in place. A
+  shared instance would be an abstraction with one caller per method.
+- **Zustand · react-hook-form + zod · react-toastify.** The frontend-page skill names these as the
+  libraries to reach for rather than alternatives — not as a checklist. No page has cross-component
+  state, and no form has more than three fields. An unused dependency is not progress; it is a
+  transitive advisory waiting to go red under a release gate (deviation 16).
 
 ### Scoping
 
@@ -114,11 +128,19 @@ envelope (deviation 12). Both were silent in the API and in every test.
 ## Acceptance criteria
 
 - [x] `npm run typecheck && npm run lint` clean — both green on the host after `npm install` (2026-08-13); before that the toolchain existed only in the container image
-- [ ] Playwright E2E: change detection → alert, and question → retrieval → cited answer
-- [ ] Playwright E2E covers the **"needs verification"** path and a superseded-citation re-verification
+- [x] Playwright E2E: change detection → alert, and question → retrieval → cited answer — green
+      2026-08-14, 10 tests in 59s against the live stack
+- [x] Playwright E2E covers the **"needs verification"** path and a superseded-citation
+      re-verification — the refusal forced by a cell with no index rather than by a stub, the
+      supersede by the real `assistant.supersede_answer_citations` task
 - [x] A `viewer` sees no lock button and is 403'd if the call is forged — verified live 2026-08-10 through the `/api/regulation/*` rewrite (403 viewer · 200 ra · 409 re-lock)
 - [x] Switching cells in the ScopeBar does not alter any rendered citation — every citation link is built from its own pinned `document_id` / `document_version_id`, and no page resolves one through the scope cookie
-- [ ] Pilot users complete both core journeys unaided in usability review
+- [ ] **미측정** — Pilot users complete both core journeys unaided in usability review. This needs
+      20–30 pilot users and a person watching them; nothing in the repository can produce it, and a
+      row ticked on the strength of a passing E2E suite would be ticked for the wrong reason. A
+      green suite says the journeys *work*; this row asks whether they work **unaided**, which is
+      the retention gate's actual question. Carried the way [phase1.6](phase1.6_evaluation.md)
+      carries its four unmeasured gates: named, with its reason, rather than defaulted
 
 ## Risks & open questions
 
@@ -297,3 +319,75 @@ framework's own pinned CSS toolchain did no harm.
 
 **Revisit when Next 16 is adopted**, or if Next backports: an override that outlives its reason
 silently holds a dependency back.
+
+**17. The E2E suite drives the live stack and the real model, and is deliberately not a CI gate.**
+There is no `webServer` block and nothing is mocked: the app under test is
+`docker compose --profile app up -d` — four services, pgvector, MinIO, two Celery workers and
+host-native Ollama — reading the real 526-document corpus. A suite that could pass with every
+service down would be worse than no suite, so `global-setup.ts` checks the world first and fails
+with the command that fixes it rather than with a timeout.
+
+The cost of that choice is determinism, and it is paid where it falls rather than hidden. **No
+assertion depends on what the model says.** A live `gemma3:4b` phrases the same question differently
+every run and may decline it, so the specs pin the invariant the product is built on — *no prose
+without evidence, every citation pinned to an immutable version* — and leave whether the answer is
+*right* to [phase1.6](phase1.6_evaluation.md), where it is scored against golden sets per domain
+rather than off one ad-hoc question.
+
+Three properties make that honest rather than lax:
+
+- **The refusal path is deterministic without a stub.** `fda_samd` is one of the six cells with no
+  connector, so it holds no clauses and no embeddings, and retrieval returns nothing on every run —
+  `no_retrieval`, before the model is asked to generate anything. Deterministic *because of* how the
+  product behaves.
+- **An unreachable model fails the run.** `model_unavailable` is rejected explicitly, so a run with
+  Ollama switched off goes red instead of scoring a green "it refused, as designed".
+- **`retries: 0`.** A retried live-model run turns a flaky product into a green report.
+
+It stays out of CI because a live answer takes minutes and a red build would as often mean *the
+model was slow* as *the product broke* — a gate that cries wolf is a gate people learn to ignore. It
+runs where the integration suites run: locally and against a stage stack, before a phase is called
+done. CI keeps `typecheck` and `lint`, which are deterministic, and `next lint` now covers `e2e/`
+too.
+
+**18. One journey needed a seeded row, and only one.** Three of the four run on ingested data.
+The fourth cannot: a superseded citation needs an answer that cites a clause a later amendment
+moved, and **no answer in the corpus does** — the two answers pinned to a version that was amended
+cite 제6장/제36조, while that amendment moved 제1장/제2조 and 제2장/제7조. The sweep therefore
+correctly flags nothing, and the acceptance row would have been unprovable.
+
+The alternatives were re-diffing a live version, or asking the model and hoping it cited the one
+amended clause; both replace a deterministic check with a coin flip. So `scripts/e2e_fixture.py`
+seeds **one answer**, pinned to a clause a real `clause_diff` really moved — and the sweep itself is
+the real `assistant.supersede_answer_citations` task, sent by name on the real queue exactly as the
+diff stage sends it. No model is involved on that path at all; superseding is deterministic SQL over
+`clause_diffs`. The seeded rows carry a marker and are removed in `afterAll`, verified empty after
+the run. What it asserts is ADR-0002 decision 4: same version, same path, same row, **plus** a flag
+— the citation is flagged, never rewritten.
+
+**19. The suite signs in as its own principal, because assignment is audited.** Owner assignment
+writes to the hash chain, so a suite acting as `ra@example.com` would put automated rows under a
+person's name and make the chain say something untrue about who did what. It uses
+`e2e-ra@example.com` at role `ra`; the `viewer` half writes nothing and reuses the account phase 0's
+acceptance suite already signs in as. **No password is in the repository** — both come from the
+environment and the run stops before opening a browser if either is missing.
+
+That also closed a hole this slice opened: `frontend/.dockerignore` was untracked (the root
+`.gitignore` ignores `.dockerignore` wholesale), and `COPY frontend/ ./` would have carried
+`e2e/.auth/*.json` — a signed-in user's JWT — into an image layer. The file is now tracked by
+exception and excludes the suite from the image.
+
+**20. Found by running it: the model fabricated a citation, and the pipeline threw the answer
+away.** The first live run of *"화장품책임판매업자는 안전성 정보를 언제까지 보고해야 하나요?"* came
+back `needs_verification / fabricated_citation` — `gemma3:4b` cited a 조문 number that retrieval had
+never returned. That is the guardrail firing, not failing: nothing unsourced reached the reader, and
+the refusal carried its reason. It is consistent with the corpus at large, where 11 of 32 answers
+sit at `fabricated_citation`.
+
+It did, however, falsify the spec's first draft, which required any refusal to be an "expected"-tone
+one and so treated the guardrail working as a test failure. The assertion now separates the two
+questions the tone map exists to separate: **the pipeline must reject a fabricated citation**
+(asserted here, on every run), and **how often a model fabricates one** is model quality — measured
+against the 1.6 golden sets per domain and per gated cell, which is the only place a rate means
+anything. An E2E suite that failed on model quality would be a golden-set run with one question in
+it.

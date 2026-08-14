@@ -1,0 +1,6 @@
+node_modules
+.next
+# The E2E suite drives the running app from outside it. Shipping the specs, the Playwright config
+# and a signed-in browser state into the image would put a credential in a layer for nothing.
+e2e
+playwright.config.ts

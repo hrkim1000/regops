@@ -5,7 +5,10 @@ description: Use when writing or running tests — the testing pyramid, per-laye
 
 # Testing Strategy
 
-> **Target conventions — no code or compose stack exists yet** (greenfield, [ADR-0001](../../../docs/design/ADR-0001-platform-foundation.md)).
+> All three layers now exist and run: unit and integration suites per service, and a Playwright E2E
+> suite in `frontend/e2e/` (phase 1.5, 2026-08-14). **E2E is not a CI gate** — it drives the running
+> compose stack against the real corpus and a live model, so it runs locally and against a stage
+> stack, the way the integration suites do.
 
 ## Pyramid & targets
 
@@ -57,7 +60,9 @@ STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm <svc> \
 
 # frontend (from frontend/)
 npm run typecheck && npm run lint
-npm run e2e            # Playwright (e2e:ui for the interactive runner)
+# E2E needs the stack up and the two seeded principals; it refuses to start otherwise rather than
+# timing out. Details and env vars: frontend/e2e/README.md
+REGOPS_E2E_RA_PASSWORD=… REGOPS_E2E_VIEWER_PASSWORD=… npm run e2e   # e2e:ui for the runner
 ```
 
 ## Quality gates
