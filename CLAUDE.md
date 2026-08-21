@@ -35,8 +35,11 @@ finished, commit it and push to `origin` without asking** (2026-08-11). Every ga
 the phase file, `docs/plan/README.md` and the root `README.md` status rows move in the same commit —
 a commit whose docs claim a phase is done while its code is in the next one makes the history lie.
 
-The `startup` docs sync stays a per-occasion ask. It is a repository owned by another account, which
-is a different kind of action from pushing to your own.
+**The `startup` sync follows every `origin` push** (2026-08-21) — same content, whole repository, and
+onto the `hrkim` branch only. It used to be a per-occasion ask on the grounds that another account's
+repository is a different kind of action from pushing to your own; that is still true of the
+*target*, which is why the branch rule and the no-`--force` rule below did not move with it. See
+[Repo sync to `startup`](#repo-sync-to-startup).
 
 ## Plan Documentation
 
@@ -349,42 +352,47 @@ npm run typecheck && npm run lint     # both wired into CI
 REGOPS_E2E_RA_PASSWORD=… REGOPS_E2E_VIEWER_PASSWORD=… npm run e2e
 ```
 
-## Doc sync to `startup`
+## Repo sync to `startup`
 
 Two remotes: `origin` (github.com/hrkim1000/regops — the real repo) and `startup`
-(github.com/kimhwangdata/startup-doc — a shared doc repo owned by another account).
+(github.com/kimhwangdata/startup-doc — a shared repo owned by another account).
+
+**Standing since 2026-08-21: every commit to `origin/main` is followed by a `startup` sync, and the
+sync publishes the whole repository** — code, `.claude/`, this file, and `docs/` in full. That
+replaces both the docs-only filter and the per-occasion ask. What did **not** change:
 
 - **`startup` pushes go to the `hrkim` branch only. Never to `startup/main`.**
-- Only `README.md` and `docs/**` are published, **excluding `docs/data/`** (raw source research)
-  and **`docs/memo/`** (superseded drafts — they contradict the current rules, so they must not
-  reach a shared repo).
-- `.claude/`, `CLAUDE.md`, `.gitignore` and any future code stay out of `startup` entirely.
-- `git subtree` is wrong here — `startup` keeps docs under `docs/`, and a subtree split would
-  hoist them to the repo root. Publish a filtered snapshot at the same paths instead:
+- **Never `--force`.** It is another account's repository; a rejected push is a signal to look at
+  why, not something to overpower.
+- **`.env*` is untracked and stays untracked.** The path filter used to be a second thing keeping
+  credentials out of a shared repo. It is gone, so `.gitignore` is now the only one.
+- `git subtree` is still wrong: it would rewrite the paths, and `startup` mirrors this repo's
+  layout as it is.
+
+Publish `main`'s committed tree as a snapshot commit parented on the startup tip:
 
 ```bash
 set -e
 git fetch startup hrkim
 BASE=$(git rev-parse FETCH_HEAD)          # pin it NOW — see the warning below
 
-export GIT_INDEX_FILE=.git/publish-index
-git read-tree --empty
-git add README.md docs ':!docs/data' ':!docs/memo' || true   # exits 1 on the ignored-path hint
-TREE=$(git write-tree)
-unset GIT_INDEX_FILE
-
-COMMIT=$(git commit-tree "$TREE" -p "$BASE" -m "docs: sync RegOps documentation")
+COMMIT=$(git commit-tree 'main^{tree}' -p "$BASE" -m "chore: sync RegOps repository")
 
 # Verify before pushing: right parent, and a genuine fast-forward. The `&&` is deliberate —
 # the safety check must gate the push even if someone drops the `set -e`.
 git rev-parse --short "$COMMIT" "${COMMIT}^"
 git merge-base --is-ancestor "$BASE" "$COMMIT" && git push startup "$COMMIT":hrkim
-rm -f .git/publish-index
 ```
 
-This publishes the **working tree**, not committed state — commit to `origin` first so the two
-never diverge. Parenting on the startup tip keeps the push a fast-forward; never `--force` a repo
-owned by another account.
+It publishes **committed** state, so "commit to `origin` first" is now structural rather than a rule
+to remember. `git push startup main:hrkim` is not an equivalent shortcut and does not work: `hrkim`
+carries its own snapshot lineage, so pushing `main` onto it is a non-fast-forward and would need the
+`--force` that is forbidden. Parenting on the startup tip is what keeps the push a fast-forward.
+
+Two exclusions went away with the filter, and the reasons they existed did not. **`docs/data/`**
+(raw source research) and **`docs/memo/`** (superseded drafts that contradict the current rules) now
+reach the shared repo, where a reader has none of the context this file gives. They are still
+authoritative for nothing — the live statement is in `RegOps.md`, `import-source-map.md`, or an ADR.
 
 > **`FETCH_HEAD` is a session-global symbol and any other `git fetch` overwrites it.** Capture it
 > into `BASE` immediately, and never read it again later in the procedure. This bit twice on
@@ -394,9 +402,9 @@ owned by another account.
 > on the remote one — producing a confident, entirely false claim that code had been published to a
 > third-party repository. Pin the SHA, and verify the parent before pushing rather than after.
 >
-> The `|| true` is also load-bearing: `docs/data` is gitignored, so `git add` prints an
-> ignored-path hint and **exits 1** even though the exclusion pathspec did its job. In the old
-> `&&` chain that silently skipped `git write-tree`, leaving an empty `$tree`.
+> That warning outlived the procedure it was written for: the temporary index and its `git add` are
+> gone with the path filter, but `FETCH_HEAD` is still what the parent is read from, and the audit
+> that reported on the wrong repository was a `git ls-tree`, not a `git add`.
 
 ## Terminology Conventions
 
