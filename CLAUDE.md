@@ -378,9 +378,9 @@ BASE=$(git rev-parse FETCH_HEAD)          # pin it NOW — see the warning below
 
 COMMIT=$(git commit-tree 'main^{tree}' -p "$BASE" -m "chore: sync RegOps repository")
 
-# Verify before pushing: right parent, and a genuine fast-forward. The `&&` is deliberate —
-# the safety check must gate the push even if someone drops the `set -e`.
-git rev-parse --short "$COMMIT" "${COMMIT}^"
+# Verify before pushing: right parent, and a genuine fast-forward. The `&&` is the actual gate —
+# `set -e` does NOT reliably abort this script when it runs through the agent's shell wrapper.
+git log -1 --format='snapshot %h  parent %p' "$COMMIT"   # rev-parse --short takes ONE revision
 git merge-base --is-ancestor "$BASE" "$COMMIT" && git push startup "$COMMIT":hrkim
 ```
 
