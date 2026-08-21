@@ -13,6 +13,11 @@ development-plan.md, in every ADR, and here. There is no second numbering scheme
 `phase0` is the exception: it precedes M1 and appears in no roadmap document, because RegOps.md
 starts at the first connector and assumes a stack already exists. It does not.
 
+**A letter suffix is a slice of the slice above it** — `phase2.0a` is part of `phase2.0`, not a
+phase between 2.0 and 2.1. It exists so that a slice can be decomposed after the fact without
+renumbering everything after it: 2.1 and 2.2 are cited from ADRs and from the root README, and
+shifting them to make room would break links to buy nothing.
+
 ## Phase map
 
 | Phase | File | Roadmap | Weeks | Status |
@@ -25,7 +30,8 @@ starts at the first connector and assumes a stack already exists. It does not.
 | 1.4 | [phase1.4_monitoring.md](phase1.4_monitoring.md) | Phase 1 | W7–W10 | 🟢 done (2026-08-11) — 6/6 acceptance, 100% detection coverage on both gated cells |
 | 1.5 | [phase1.5_frontend.md](phase1.5_frontend.md) | Phase 1 | W7–W12 | 🟢 done (2026-08-14) — regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench · monitoring dashboard · **Playwright E2E, 10 tests green against the live stack and the real model**; the usability review is **미측정** (needs pilot users) |
 | 1.6 | [phase1.6_evaluation.md](phase1.6_evaluation.md) | Phase 1 | W2–W16 | 🟡 harness + golden sets built (2026-08-13); **reviewer packet + pilot runbook written (2026-08-14)** and a second reviewer available — so the human and pilot halves are prepared to the start line but not run. 4 of 6 gates still **미측정**; report recommends `INCOMPLETE` |
-| 2.0 | [phase2.0_tier_c_scale.md](phase2.0_tier_c_scale.md) | Phase 2 · M5–12 | — | ⬜ planned |
+| 2.0 | [phase2.0_tier_c_scale.md](phase2.0_tier_c_scale.md) | Phase 2 · M5–12 | — | ⬜ planned — **umbrella**: keeps Tier C and multilingual; the six cells decompose into 2.0a–c (deviation 1) |
+| 2.0a | [phase2.0a_fda.md](phase2.0a_fda.md) | Phase 2 · M5–12 | — | ⬜ planned — `fda_samd` + `fda_cosmetic`, both together. Blocked on a source-reconnaissance spike and three ADRs |
 | 2.1 | [phase2.1_semantic_graph.md](phase2.1_semantic_graph.md) | Phase 2 | — | ⬜ planned |
 | 2.2 | [phase2.2_compliance.md](phase2.2_compliance.md) | Phase 2 | — | ⬜ planned |
 | 3.0 | [phase3.0_saas.md](phase3.0_saas.md) | Phase 3 · M13–24 | — | ⬜ planned |
@@ -58,6 +64,8 @@ neither triggered** — see [phase1.1](phase1.1_normalization.md) § Falsifiers:
 
 A decision left unmade is taken by whatever gets built first. These have deadlines, not owners' preferences:
 
+### Closed — Phase 1
+
 | Decision | Due | Closes because |
 |---|---|---|
 | ~~Four services, or fold `monitoring` into `regulation`?~~ | **taken 2026-08-11** | **Four — `monitoring` stays its own service.** [ADR-0009](../design/ADR-0009-service-boundaries-per-pillar.md) open question 2; reasoning in the [brief](../design/decision-2026-08-05-lapsed-service-boundaries.md). Taken at the W7 deadline, before [phase1.4](phase1.4_monitoring.md) built into the boundary |
@@ -80,8 +88,19 @@ the whole condition — once 1.4 builds subscription matching and delivery insid
 stops being three tables and one seam, and the reversal stops being cheap whether or not anyone
 noticed.
 
-**Every decision in this table is now closed.** A new one goes in with its deadline the moment it is
-identified, not when it becomes urgent — that is what the two silent lapses cost.
+**Every Phase 1 decision is now closed.** A new one goes in with its deadline the moment it is
+identified, not when it becomes urgent — that is what the two silent lapses cost. Which is why the
+next five are already below, before anyone has started the slice they belong to.
+
+### Open — [phase2.0a](phase2.0a_fda.md), the FDA cells
+
+| Decision | Due | Closes because |
+|---|---|---|
+| Does 2.0a start before Phase 1 Go is called? | before the FDA reconnaissance spike | [phase2.0](phase2.0_tier_c_scale.md) says *Depends on: Phase 1 Go* and [1.6](phase1.6_evaluation.md) reports `INCOMPLETE`. Starting is defensible; starting **without amending the dependency** is how a decision gets taken by whatever is built first |
+| EU SaMD spike — run it, or drop it | same | Carried from [1.0](phase1.0_ingestion.md) to [1.6](phase1.6_evaluation.md) untouched. Its purpose was to meet a second authority *before* one was gated, and FDA going first spends that purpose |
+| FDA `canonical_key` | after the spike, before the first CFR document is parsed | [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) open question 3. Every citation, diff and supersede path keys on it, so it stops being cheap the moment a corpus exists |
+| eCFR and Federal Register — one Document or two? | same | The amendment lands in the Federal Register and the text lives in the eCFR, so the latency gate and the citation gate read different surfaces. It decides version identity, which cannot be retrofitted onto `document_versions` |
+| Is FDA guidance extracted, or citable-only? | same | Guidance is nonbinding and the English modal inventory has no `should`, so extraction yields zero IRs either way — the difference is whether that is a stated rule or an unexplained coverage hole |
 
 ## Working with these files
 

@@ -21,15 +21,38 @@ and EU-language normalization.
 **Out:** the knowledge graph (2.1) and gap analysis (2.2), which run in parallel but are tracked
 separately.
 
+## Slices — this file is the umbrella
+
+Six cells, two new capabilities and two new source languages do not fit in one task list with no
+observation point before M8. **The cells are decomposed by authority group; the capabilities stay
+here**, because Tier C and multilingual normalization are cross-cell and each lands in exactly one
+group.
+
+| Slice | Cells | What it carries that the others do not | Status |
+|---|---|---|---|
+| [2.0a](phase2.0a_fda.md) | `fda_samd`, `fda_cosmetic` | second authority, second legal hierarchy, English extraction and retrieval — and **no** Tier C or multilingual work | ⬜ planned |
+| 2.0b | `eu_samd`, `eu_cosmetic` | multilingual normalization, `version_group_id`, ELI keys | ⬜ file written when the slice starts |
+| 2.0c | `nmpa_samd`, `nmpa_cosmetic` | Tier C scraping at full weight, Chinese, curated `canonical_key` | ⬜ file written when the slice starts |
+
+**FDA goes first** because it is the only group that isolates *second authority* from *scraping* and
+*second language*. If [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) decision 3 —
+profiles keyed on shape, never on who wrote the instrument — is going to fail, it fails there, on
+the cheapest sources in the remaining six, and it fails legibly instead of tangled with two other
+new capabilities.
+
+**2.0b and 2.0c are deliberately not written yet.** What a second-authority build actually costs is
+unknown until 2.0a has run one; a task list written now would be this file's six checkbox rows again,
+one indent deeper. Each is written at its start, from what the slice before it measured.
+
 ## Tasks
 
 ### Remaining six cells
 
-- [ ] `fda_samd`, `fda_cosmetic` — openFDA, Federal Register API, Regulations.gov (Tier A)
-- [ ] `eu_samd`, `eu_cosmetic` — EUR-Lex, EC cosmetics portal, CosIng, EU Safety Gate (Tier B)
-- [ ] `nmpa_samd`, `nmpa_cosmetic` — NMPA notices, CSAR documents, IECIC (Tier C)
+- [ ] **FDA** — see [phase2.0a](phase2.0a_fda.md)
+- [ ] **EU** — EUR-Lex, EC cosmetics portal, CosIng, EU Safety Gate (Tier B); slice file at start
+- [ ] **NMPA** — NMPA notices, CSAR documents, IECIC (Tier C); slice file at start
 - [ ] Per-cell parser profiles; **no domain-specific column on `Clause`** — the ADR-0002 bet must still hold at eight cells
-- [ ] `document_cells` M:N exercised for real: the FD&C Act ingested once, claimed by both FDA cells
+- [ ] `document_cells` M:N exercised for real: the FD&C Act ingested once, claimed by both FDA cells ([2.0a](phase2.0a_fda.md))
 
 ### Tier C scraping
 
@@ -83,4 +106,11 @@ closes.
 
 ## Deviations & decisions
 
-_None yet._
+**1. Decomposed by authority group (2026-08-21).** This file priced six cells as six checkbox rows
+while carrying Tier C scraping and two new source languages, so between the Phase 1 Go and the M8
+checkpoint there was nothing to observe — and the FDA row named openFDA and Regulations.gov as the
+sources while [import-source-map.md](../import-source-map.md) names eCFR and govinfo, which is the
+kind of error a one-line task cannot surface. The cells now decompose into 2.0a / 2.0b / 2.0c and
+the cross-cell capabilities stay here. [phase2.0a](phase2.0a_fda.md) is written; the other two are
+written at their start rather than now, on the ground that the cost of a second-authority build is
+unknown until one has been run — recorded here so that it reads as a decision and not as an omission.
