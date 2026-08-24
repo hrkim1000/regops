@@ -73,11 +73,18 @@ no users have been onboarded — see deviation 12.*
 - [ ] Research-time-savings measurement against the existing manual process for matched query types
 - [x] **The baseline template states both halves of the gate** — captured *before* access, and *for the same query type*. It also states that the measurement is the analyst's time to a usable answer, which includes reading the citations, not the harness's `elapsed_seconds`
 
-### EU spike close-out (W12)
+### ~~EU spike close-out (W12)~~ — moved to Phase 4, 2026-08-24
 
-- [ ] **EUR-Lex fetch for MDR (EU) 2017/745 at reduced depth** — transferred from [phase1.0](phase1.0_ingestion.md). Non-gated and scheduled W3→W12, so it never fit inside 1.0's W1–W4 window; the findings memo lands here regardless. **Explicitly carried, not dropped** (2026-08-13): it counts toward no exit criterion and needs a connector plus a parser profile, which is build work in a slice that is otherwise about measurement
-- [ ] Findings memo: multilingual normalization and Tier C effort estimate for Phase 2
-- [ ] Does not count toward exit criteria
+**Carried twice, then moved rather than carried a third time.** On 2026-08-13 this was *"explicitly
+carried, not dropped"*; on 2026-08-24 the whole EU group (`eu_samd` + `eu_cosmetic`) moved beyond
+Phase 3 and the spike went with it ([plan README](README.md) § decisions). It was never run. Its
+purpose — meet a second authority cheaply before one is gated — was spent by the FDA reconnaissance
+([spike-2026-08-24](../design/spike-2026-08-24-fda-source-recon.md)) instead.
+
+- ⛔ ~~EUR-Lex fetch for MDR (EU) 2017/745 at reduced depth~~ — Phase 4
+- ⛔ ~~Findings memo: multilingual normalization and Tier C effort estimate for Phase 2~~ — the Phase 2
+  estimate it fed no longer includes EU; multilingual arrives with NMPA in 2.0c
+- It counted toward no exit criterion, so **1.6's gates and recommendation are unchanged** by this
 
 ### Go/No-Go report (W16)
 
@@ -321,6 +328,12 @@ and the list of fields deliberately withheld.
 and a parser profile — build work, in a slice that is otherwise about measurement — and it counts
 toward no exit criterion. Recorded here as outstanding rather than quietly dropped, which is the
 failure mode this table exists to prevent.
+
+> **Resolved 2026-08-24 — moved, not dropped.** The whole EU group left for Phase 4, and the spike
+> went with it, still never run ([plan README](README.md) § decisions). Recording it here twice was
+> what kept it from being lost: the disposition became a named prerequisite of
+> [2.0a](phase2.0a_fda.md) precisely because this row said it was outstanding. **1.6's gates and
+> `INCOMPLETE` recommendation are unaffected** — it counted toward no exit criterion.
 
 **10. The harness nearly reported a 100% hallucination rate it had invented.** The first full run
 died at its last step — one database session held open across 40 minutes of model-bound waiting,

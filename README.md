@@ -30,10 +30,10 @@ not "later," but not modeled at all until the scope decision is revisited.
 
 | Domain | MFDS (Korea) | FDA (US) | EU (EC) | NMPA (China) |
 |---|---|---|---|---|
-| **SaMD** | ● gated PoC | Phase 2 | ○ spike | Phase 2 |
-| **Cosmetic** | ● gated PoC | Phase 2 | Phase 2 | Phase 2 |
+| **SaMD** | ● gated PoC | Phase 2 | Phase 4 | Phase 2 |
+| **Cosmetic** | ● gated PoC | Phase 2 | Phase 4 | Phase 2 |
 
-● gated PoC cell · ○ non-gated spike
+● gated PoC cell. The EU cells moved to Phase 4 on 2026-08-24 — scope is still 8 cells, only the timing changed.
 
 Out of scope: pharmaceuticals and biologics, hardware-only devices, food and supplements; every
 authority outside the four above (PMDA, Health Canada, MHRA, TGA, ASEAN ACD, EMA drug procedures).
@@ -167,6 +167,7 @@ STAGE=dev docker compose --profile local-llm up -d
 | [ADR-0015](docs/design/ADR-0015-diff-stage-boundary.md) | Diff is its own stage, dispatched by task name |
 | [ADR-0016](docs/design/ADR-0016-pending-effect-versions.md) | 시행예정 versions: MST is the version, staged dates are not clause-level |
 | [ADR-0017](docs/design/ADR-0017-extraction-determinism-and-conditional-obligations.md) | Extraction determinism, and conditional obligations stay one IR |
+| [ADR-0018](docs/design/ADR-0018-fda-source-model.md) | FDA sources — the eCFR is the text and the version spine, the Federal Register is the effective date |
 
 ---
 
@@ -223,8 +224,9 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Scope, data tiers, roadmap | [docs/RegOps.md](docs/RegOps.md) | 🟢 settled |
 | Source catalog — 8 cells | [docs/import-source-map.md](docs/import-source-map.md) | 🟢 settled |
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
+| FDA source reconnaissance | [spike-2026-08-24](docs/design/spike-2026-08-24-fda-source-recon.md) | 🟡 done for the ADR — eCFR and Federal Register verified live; govinfo, accessdata and rate limits partial |
 | Service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🟢 both taken — `assistant` split retained (2026-08-05); `monitoring` stays its own service (2026-08-11, at the W7 deadline) |
-| Architecture decisions | [ADR-0001 – ADR-0017](docs/design/) | 🟢 complete for Phase 1 — 0001, 0004, 0006 and 0012–0017 accepted; the rest proposed |
+| Architecture decisions | [ADR-0001 – ADR-0018](docs/design/) | 🟢 complete for Phase 1 — 0001, 0004, 0006 and 0012–0018 accepted; the rest proposed. 0018 is the first Phase 2 decision |
 | Phase plan — 14 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
 | Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
 | Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | 🟢 done (2026-08-05) — 20 sources live, 8/8 acceptance |
@@ -234,8 +236,8 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | Monitoring + alert routing | [phase1.4](docs/plan/phase1.4_monitoring.md) | 🟢 done (2026-08-11) — 6/6 acceptance; 109 change events → 7 alerts, 100% detection coverage on both gated cells |
 | Frontend — dashboard, Q&A workbench | [phase1.5](docs/plan/phase1.5_frontend.md) | 🟢 done (2026-08-14) — regulation browser · clause view · IR review + lock · 제출 서류 · Q&A workbench · monitoring dashboard · **Playwright E2E, 10 tests green against the live stack and the real model**; the usability review is **미측정**, it needs pilot users |
 | Evaluation + pilot — the 6 gates | [phase1.6](docs/plan/phase1.6_evaluation.md) | 🟡 harness + golden sets built (2026-08-13) — 162 items per gated cell over six axes, seeded and **not yet RA-signed**. **Reviewer packet + pilot runbook written (2026-08-14)** and a second reviewer available, so the human and pilot halves are prepared to the start line and not run; 4 of 6 gates still **미측정** and the report recommends `INCOMPLETE` |
-| Tier C + remaining 6 cells | [phase2.0](docs/plan/phase2.0_tier_c_scale.md) | ⬜ Phase 2 — umbrella; the cells decompose by authority group |
-| FDA cells — `fda_samd` + `fda_cosmetic` | [phase2.0a](docs/plan/phase2.0a_fda.md) | ⬜ Phase 2 — first non-MFDS authority. Blocked on a source-reconnaissance spike and three ADRs |
+| Tier C + 4 more cells (FDA, NMPA) | [phase2.0](docs/plan/phase2.0_tier_c_scale.md) | ⬜ Phase 2 — umbrella; the cells decompose by authority group |
+| FDA cells — `fda_samd` + `fda_cosmetic` | [phase2.0a](docs/plan/phase2.0a_fda.md) | ⬜ Phase 2 — first non-MFDS authority. Recon, the ADRs, the Phase 1 Go dependency and the EU spike all resolved (2026-08-24); blocked now only on an FDA-side `ra` |
 | Semantic enrichment + graph | [phase2.1](docs/plan/phase2.1_semantic_graph.md) | ⬜ Phase 2 |
 | Compliance — applicability, gap analysis | [phase2.2](docs/plan/phase2.2_compliance.md) | ⬜ Phase 2 |
 | External SaaS — tenancy, validation | [phase3.0](docs/plan/phase3.0_saas.md) | ⬜ Phase 3 |

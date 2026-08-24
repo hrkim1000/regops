@@ -76,10 +76,11 @@ RegOps covers **two product domains** (SaMD, Cosmetic) across **four regulatory 
         ┌────────────┬──────────┬──────────┬──────────┬──────────┐
         │            │   MFDS   │   FDA    │    EU    │   NMPA   │
         ├────────────┼──────────┼──────────┼──────────┼──────────┤
-        │  SaMD      │  ● P1    │    P2    │  ○ spike │    P2    │
-        │  Cosmetic  │  ● P1    │    P2    │    P2    │    P2    │
+        │  SaMD      │  ● P1    │    P2    │    P4    │    P2    │
+        │  Cosmetic  │  ● P1    │    P2    │    P4    │    P2    │
         └────────────┴──────────┴──────────┴──────────┴──────────┘
-          ● gated PoC cell   ○ non-gated spike   P2 · P3 = later phase
+          ● gated PoC cell   P2 · P4 = later phase
+          EU moved to P4 on 2026-08-24 — still 8 cells, only the timing changed
           Per-cell laws, guidance, and source URLs → import-source-map.md
           (the only source catalog — never restate it elsewhere)
 
@@ -171,13 +172,17 @@ RegOps covers **two product domains** (SaMD, Cosmetic) across **four regulatory 
 
 ---
 
-## Roadmap — three stages: validate narrowly, expand broadly, then sell outward
+## Roadmap — four stages: validate narrowly, expand broadly, sell outward, then complete the matrix
+
+> **Amended 2026-08-24 — the EU cells moved to Phase 4.** The roadmap ran to three stages; the two
+> EU cells now sit beyond Phase 3. **Scope is still 8 cells** — this changes *when*, never *what*.
+> Reason and cost in [plan/README](plan/README.md) § decisions.
 
 ### Phase 1 · months 0–4 — PoC
 **Narrow the scope to validate the technical and value hypotheses**
 
-- Gated target: two of the eight scope cells — MFDS SaMD + MFDS Cosmetic (one regulator, both domains — this is what tests the shared-pipeline architecture before Phase 2 builds six more cells on it)
-- Non-gated spike: EU SaMD at reduced depth, to expose multilingual normalization and the first Tier C source early
+- Gated target: two of the eight scope cells — MFDS SaMD + MFDS Cosmetic (one regulator, both domains — this is what tests the shared-pipeline architecture before Phase 2 builds more cells on it)
+- ~~Non-gated spike: EU SaMD at reduced depth~~ — **deferred to Phase 4 (2026-08-24).** Its purpose was to meet a second authority cheaply before one was gated; FDA reconnaissance spent that purpose instead ([spike-2026-08-24](design/spike-2026-08-24-fda-source-recon.md))
 - Ingest Tier A/B sources only (API · RSS)
 - Implement only two features: monitoring + Q&A
 - Pilot users: 20–30 people in one business unit
@@ -186,8 +191,9 @@ RegOps covers **two product domains** (SaMD, Cosmetic) across **four regulatory 
 ### Phase 2 · months 5–12 — internal expansion
 **Company-wide rollout + gap analysis capability**
 
-- Complete the scope matrix: add FDA and NMPA, and add the Cosmetic domain across all four regions
+- Add **FDA and NMPA**, both domains — four of the six remaining cells. The two EU cells are Phase 4 (amended 2026-08-24), so the matrix is *not* completed here
 - Build the Tier C scraping pipeline
+- **Multilingual normalization now arrives with NMPA**, not EU. EU was the cheaper first exercise — Tier A/B sources, stable ELI keys — so with it deferred, Chinese, full-weight Tier C scraping and a curated `canonical_key` land together in one slice. That concentration is the cost of the deferral and is carried as a risk in [plan/README](plan/README.md)
 - Implement the knowledge graph + control mapping
 - Integrate internal SOPs and technical documents
 - Outcome: adoption as a company-wide standard tool, measured ROI
@@ -200,6 +206,15 @@ RegOps covers **two product domains** (SaMD, Cosmetic) across **four regulatory 
 - Secure pilot customers among domestic pharma and medical device companies
 - Build partner (CRO · consulting) channels
 - Outcome: paying customers and ARR
+
+### Phase 4 · after month 24 — the EU cells
+**Complete the 8-cell scope matrix**
+
+- `eu_samd` and `eu_cosmetic` — MDR (EU) 2017/745 · IVDR (EU) 2017/746 · MDCG guidance, and Regulation (EC) No 1223/2009 with its Annexes II–VI
+- Carries what 2.0b was scoped for: `version_group_id` and ELI keys as the `canonical_key` derivation for this authority ([ADR-0002](design/ADR-0002-canonical-regulation-model.md) open question 3)
+- Multilingual normalization will already exist by then, built for NMPA in Phase 2 — this slice tests whether it generalizes to 24 official languages rather than being its first exercise
+- **Login-gated portals stay out**: EUDAMED and CPNP are reference-only and get no connector, unchanged
+- Outcome: all 8 cells live
 
 > At the end of each stage, quantitative gates must be cleared before the next stage's budget is released — **a stage-gated approval structure.**
 
@@ -293,7 +308,7 @@ RegOps covers **two product domains** (SaMD, Cosmetic) across **four regulatory 
 ## Decision Request — decisions requested today
 
 **01. Approve Phase 1 PoC kickoff and a KRW 450M budget**
-4 months, gating two of the eight scope cells: MFDS SaMD + MFDS Cosmetic (plus a non-gated EU SaMD spike)
+4 months, gating two of the eight scope cells: MFDS SaMD + MFDS Cosmetic (the non-gated EU SaMD spike was deferred to Phase 4 on 2026-08-24 and never run)
 
 **02. Assign one full-time domain expert from the RA organization**
 Requirement structuring and accuracy evaluation are impossible without a regulatory expert

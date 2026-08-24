@@ -265,8 +265,12 @@ All nine are covered by `tests/integration/test_phase1_1_acceptance.py`, one tes
   `jsonb`, no `annex_rows` table.
 - ~~**Diff synchronously or async?**~~ — **closed by
   [ADR-0015](../design/ADR-0015-diff-stage-boundary.md)**: its own task, dispatched by name.
-- **Multilingual is modelled, not built.** First real exercise is the EU spike. Do not let
-  Korean-only assumptions leak into the schema.
+- **Multilingual is modelled, not built.** ~~First real exercise is the EU spike.~~ **The first real
+  exercise is now NMPA in 2.0c** — the EU group moved to Phase 4 on 2026-08-24 and took the spike
+  with it. This matters more than a pointer change: EU would have met a second language on Tier A/B
+  sources with stable ELI keys, while NMPA meets it alongside full-weight Tier C scraping and a
+  curated `canonical_key`. Do not let Korean-only assumptions leak into the schema — there is now no
+  cheap rehearsal before that.
 - ~~**Detection latency stays unmeasurable for the 법령 sources until 시행예정 ships.**~~ — **the
   connector ships in this phase.** Latency becomes measurable once the sources have run on cadence;
   1.6 scores it. Report it as unmeasured rather than zero until then.

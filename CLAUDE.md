@@ -82,11 +82,13 @@ golden sets of 162 items per gated cell across six axes (seeded, **not yet RA-si
 markup denominators, a resumable scored run, and the Go/No-Go report. Two of the six gates are
 machine-measurable; **the other four are reported as 미측정 with their reasons** — they need a person
 or a pilot, and a defaulted gate would move the decision rather than the number.
-Architecture is settled through [ADR-0001 – ADR-0017](docs/design/); anything below still marked
+Architecture is settled through [ADR-0001 – ADR-0018](docs/design/); anything below still marked
 *target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 
-Phase 1 (PoC, 4 months) gates two of the eight cells — MFDS SaMD + MFDS Cosmetic — with a
-non-gated EU SaMD spike, and ships pillars 1 and 2 only.
+Phase 1 (PoC, 4 months) gates two of the eight cells — MFDS SaMD + MFDS Cosmetic — and ships
+pillars 1 and 2 only. The non-gated EU SaMD spike **was deferred to Phase 4 on 2026-08-24**, never
+run: its purpose was to meet a second authority cheaply before one was gated, and the FDA
+reconnaissance spent that purpose instead.
 
 ## Repo Map
 
@@ -126,8 +128,11 @@ docs/                     # product/strategy docs — the working set
 
   | Domain | MFDS (Korea) | FDA (US) | EU (EC) | NMPA (China) |
   |---|---|---|---|---|
-  | **SaMD** | gated PoC | Phase 2 | spike (non-gated) | Phase 2 |
-  | **Cosmetic** | gated PoC | Phase 2 | Phase 2 | Phase 2 |
+  | **SaMD** | gated PoC | Phase 2 | **Phase 4** | Phase 2 |
+  | **Cosmetic** | gated PoC | Phase 2 | **Phase 4** | Phase 2 |
+
+  **The EU cells moved to Phase 4 on 2026-08-24** — scope is still 8 cells, only the timing changed.
+  The non-gated EU SaMD spike went with them; FDA reconnaissance spent its purpose instead.
 
 - **`docs/import-source-map.md` is the only source catalog.** Never create a second list of
   sources in another doc — copy it and one copy silently goes stale. Reference it instead.
@@ -330,7 +335,7 @@ STAGE=test REGOPS_DB_NAME=regops_test docker compose run --rm <svc> \
 
 # host-side gates
 ruff check . && ruff format --check . && mypy shared/regops_shared --ignore-missing-imports
-python -m pytest shared/tests services/*/tests/unit scripts/evaluation/tests -q
+python -m pytest shared/tests services/*/tests/unit scripts/evaluation/tests scripts/fda_lag/tests -q
 python scripts/tier_d_scan.py
 
 # phase 1.6 evaluation harness — runs inside the stack; docs/eval is mounted at /eval
@@ -339,7 +344,17 @@ $E validate                # golden-set composition + every expected clause path
 $E run --per-axis 3        # a bounded scored pass that spreads across axes; resumable
 $E score && $E polls       # per-axis scores; scheduled polls versus polls that ran
 $E gates --out /eval/go-no-go.md
+
+# phase 2.0a measurement — how far the eCFR trails the Federal Register (ADR-0018 open question 1).
+# Runs daily for a fortnight; stdout is the data, stderr the progress. Append, never overwrite.
+L="docker compose exec -T -w /scripts regulation python -m fda_lag.cli"
+$L probe >> docs/design/fda-lag-observations.jsonl     # one observation, one JSON line
+$L report < docs/design/fda-lag-observations.jsonl     # exits 1 with UNDETERMINED until 10 days
 ```
+
+In Git Bash, prefix the `docker compose exec` calls with `MSYS_NO_PATHCONV=1` — MSYS rewrites
+`-w /scripts` into a Windows path and the daemon rejects it with *"Cwd must be an absolute path"*.
+(The same conversion is why `admrul_triage.py` is invoked as `python //scripts/...`.)
 
 From `frontend/`:
 

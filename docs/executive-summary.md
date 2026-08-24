@@ -29,8 +29,8 @@ RegOps is designed around verifiability: no answer without evidence, confidence-
 
 Phase 1 (Month 0-4): PoC validation
 - Scope: 2 gated cells (MFDS SaMD + MFDS Cosmetic), Tier A/B sources, monitoring + Q&A
-- One regulator, both domains: tests the shared-pipeline architecture before Phase 2 builds 6 cells on it
-- Plus a non-gated EU SaMD spike to de-risk multilingual and Tier C early
+- One regulator, both domains: tests the shared-pipeline architecture before Phase 2 builds 4 more cells on it (FDA + NMPA; the 2 EU cells are Phase 4)
+- ~~Plus a non-gated EU SaMD spike to de-risk multilingual and Tier C early~~ — **deferred to Phase 4 (2026-08-24), never run.** Multilingual and Tier C are now first met together in Phase 2's NMPA slice
 - Goal: prove technical trust and user value
 
 Phase 2 (Month 5-12): internal scale

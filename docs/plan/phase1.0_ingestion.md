@@ -82,10 +82,16 @@ at "bytes are archived and a version row exists."
 - [ ] Confirm 조문별 변경이력 granularity matches `ClauseDiff` — **transferred to [phase1.1](phase1.1_normalization.md)**, which owns `ClauseDiff` and is the only place the answer can be acted on
 - [x] **Source discovery sweep** — `regulation.discover_sources`, weekly on the beat, writing `source_discovery_runs`. Relevance-filtered per cell and title-normalized so 중점/spacing differences do not read as gaps. Ran live; result in Risks below
 
-### EU SaMD spike (non-gated, W3 → W12)
+### ~~EU SaMD spike (non-gated, W3 → W12)~~ — moved to Phase 4, 2026-08-24
 
-- [ ] EUR-Lex fetch for MDR (EU) 2017/745 at reduced depth — **non-gated, W3→W12**, so it never fit inside 1.0's W1–W4 window. Tracked in [phase1.6](phase1.6_evaluation.md), where its findings memo lands
-- [ ] Record multilingual and Tier C effort for the Phase 2 estimate — same item, same owner
+**Never run, and no longer carried.** The whole EU group (`eu_samd` + `eu_cosmetic`) moved beyond
+Phase 3 ([plan README](README.md) § decisions). The spike's purpose was to meet a second authority
+cheaply *before* one was gated; the FDA reconnaissance
+([spike-2026-08-24](../design/spike-2026-08-24-fda-source-recon.md)) spent that purpose instead.
+
+- ⛔ ~~EUR-Lex fetch for MDR (EU) 2017/745 at reduced depth~~ — Phase 4
+- ⛔ ~~Record multilingual and Tier C effort for the Phase 2 estimate~~ — the estimate it fed is gone
+  with the slice; multilingual now arrives with NMPA in 2.0c
 
 ## Acceptance criteria
 

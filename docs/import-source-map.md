@@ -189,6 +189,33 @@ remains outside.*
 
 # Region 2. United States (FDA)
 
+> **Endpoints confirmed live 2026-08-24** —
+> [spike-2026-08-24](design/spike-2026-08-24-fda-source-recon.md), modelled in
+> [ADR-0018](design/ADR-0018-fda-source-model.md). Applies to both FDA cells: they share the FD&C
+> Act, the eCFR, the Federal Register and the safety surfaces.
+>
+> | Purpose | Endpoint | Tier |
+> |---|---|---|
+> | Regulation text, point-in-time | `ecfr.gov/api/versioner/v1/full/{date}/title-21.xml?part=NNN` — `§`-addressable via `?section=NNN.MM` | A |
+> | Corpus enumeration (the coverage denominator) | `ecfr.gov/api/versioner/v1/structure/current/title-21.json` — 275 Parts, 8,408 Sections | A |
+> | **Change detection (primary)** | `ecfr.gov/api/versioner/v1/versions/title-21.json?part=NNN` — per-section `amendment_date` · `issue_date` · `removed` · `substantive`. Poll incrementally with `?issue_date[gte]=` | A |
+> | Title freshness ceiling | `ecfr.gov/api/versioner/v1/titles.json` — `up_to_date_as_of`, and `meta.import_in_progress` | A |
+> | Effective dates + pending amendments | `federalregister.gov/api/v1/documents.json` — filter `conditions[cfr][title]=21&conditions[cfr][part]=NNN`; **a `type` filter is mandatory** or Proposed Rules are returned too | A |
+> | FD&C Act (USC) | `api.govinfo.gov` — `USCODE` collection; **needs an API key** (settings, placeholder in the template) | A |
+> | Recognized Consensus Standards | `accessdata.fda.gov/scripts/cdrh/cfdocs/cfStandards/search.cfm` — server-rendered HTML, **column labels only** | **D** |
+>
+> Three corrections to what this file and the plan docs previously implied:
+>
+> - **openFDA is not a regulation-text source.** It carries 510(k), PMA, classification, recalls,
+>   MAUDE and UDI — regulatory *data*. It is listed under SaMD *Official Sources* below and stays
+>   there; it is not a `Primary Laws` or `Regulations` connector.
+> - **There is no per-Part eCFR RSS feed.** The `versions` endpoint replaces it and is better —
+>   structured and section-level. Do not attach an RSS connector.
+> - **The eCFR serves no future dates.** A request past `up_to_date_as_of` returns 404. Pending
+>   amendments are visible only on the Federal Register, and produce no `DocumentVersion`.
+>
+> `uscode.house.gov` was unreachable at probe time and is unverified as a govinfo alternative.
+
 ## Domain : Cosmetics
 
 ### Primary Laws

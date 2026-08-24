@@ -101,7 +101,13 @@ answers carrying them are queued for re-verification. That queue is a product fe
 ### 5. DocumentVersion is per (document, version, language)
 
 > **Not exercised in Phase 1.** Both gated cells are MFDS and Korean-only, so multilingual handling
-> is modelled here but not built. The EU spike is where it first gets touched, at reduced depth.
+> is modelled here but not built. ~~The EU spike is where it first gets touched, at reduced depth.~~
+>
+> **Schedule note, 2026-08-24 — the decision is unchanged; only when it is first exercised moved.**
+> The EU cells went to Phase 4 and the spike went with them, never run. **NMPA in Phase 2 (2.0c) is
+> now the first exercise** — and it is a harder one: EU would have met a second language on Tier A/B
+> sources with stable ELI keys, while NMPA meets it alongside full-weight Tier C scraping and a
+> curated `canonical_key`. Recorded in [plan/README](../plan/README.md) § decisions.
 
 EU acts publish in 24 languages; NMPA is Chinese-only; MFDS is Korean. Storing one version row with
 N text columns makes diffing language-dependent in a single row and blocks per-language parser

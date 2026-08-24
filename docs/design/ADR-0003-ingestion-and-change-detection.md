@@ -13,9 +13,14 @@
 
 References to EU, FDA and NMPA sources throughout this document are **commentary, not work items**.
 They are recorded so the contract is designed wide enough to accept those cells later, but no EU,
-FDA or NMPA connector, canonicalization profile or parser is in scope yet. EU SaMD is a non-gated
-Phase 1 spike (development-plan.md § 5) whose only deliverable is a findings memo; FDA and NMPA
+FDA or NMPA connector, canonicalization profile or parser is in scope yet. ~~EU SaMD is a non-gated
+Phase 1 spike (development-plan.md § 5) whose only deliverable is a findings memo;~~ FDA and NMPA
 arrive in Phase 2.
+
+**Schedule note, 2026-08-24:** the EU SaMD spike was deferred to **Phase 4** with both EU cells and
+never run. This changes nothing in this ADR — EU was already commentary rather than a work item —
+but the sentence above would otherwise read as a live Phase 1 deliverable. See
+[plan/README](../plan/README.md) § decisions.
 
 Where a decision below is driven by a non-MFDS example, treat the example as a design constraint to
 honour, not a component to build.

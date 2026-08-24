@@ -96,14 +96,14 @@ Out of scope until Phase 3 readiness:
 
 ### Phase 1 (Month 0-4): PoC Validation
 
-Gated cells: **MFDS SaMD + MFDS Cosmetic.** Holding the regulator constant and varying the domain is the only way to test the architecture's central claim — that Import → Normalization → Section Parsing is fully shared and only IR extraction branches by domain (see import-agent.md). If that claim is wrong, Phase 2 builds six cells on a broken assumption. Both cells are also Tier A (국가법령정보 API, MFDS RSS), so ingestion is not on the critical path for a trust-metric PoC.
+Gated cells: **MFDS SaMD + MFDS Cosmetic.** Holding the regulator constant and varying the domain is the only way to test the architecture's central claim — that Import → Normalization → Section Parsing is fully shared and only IR extraction branches by domain (see import-agent.md). If that claim is wrong, Phase 2 builds four more cells on a broken assumption (FDA + NMPA; the 2 EU cells are Phase 4 from 2026-08-24). Both cells are also Tier A (국가법령정보 API, MFDS RSS), so ingestion is not on the critical path for a trust-metric PoC.
 
-Non-gated spike: **EU SaMD**, run in parallel at reduced depth to expose multilingual normalization and the first Tier C source (MDCG guidance) before Phase 2 commits to them. The spike does not count toward exit criteria and may use Tier C.
+~~Non-gated spike: **EU SaMD**, run in parallel at reduced depth to expose multilingual normalization and the first Tier C source (MDCG guidance) before Phase 2 commits to them.~~ **Deferred to Phase 4 on 2026-08-24 and never run** — the whole EU group moved beyond Phase 3, and the spike's purpose (meet a second authority cheaply before one is gated) was spent by the FDA reconnaissance instead. Consequence: multilingual normalization and full-weight Tier C are now first met **together**, in Phase 2's NMPA slice.
 
 Goals:
 - Validate technical feasibility and user value in 2 of the 8 scope cells, covering both product domains
 - Prove trust metrics around detection and citation quality
-- De-risk cross-jurisdiction normalization via the EU spike
+- ~~De-risk cross-jurisdiction normalization via the EU spike~~ — dropped with the spike (2026-08-24); the risk moves into Phase 2's NMPA slice undiminished
 
 Deliverables:
 - Tier A/B ingestion connectors and source archive
@@ -113,7 +113,7 @@ Deliverables:
   clauses, **blind to extractor output** (ADR-0004 decision 7). Without it, extraction *recall* is
   unmeasurable and the gap-analysis pillar has no evidence base; marking up after seeing the
   extractor's results inflates recall and produces a number that cannot be defended
-- EU spike findings memo: multilingual and Tier C effort estimate for Phase 2
+- ~~EU spike findings memo: multilingual and Tier C effort estimate for Phase 2~~ — deferred with the spike (2026-08-24); the Phase 2 estimate no longer includes EU
 
 Exit criteria (6 gates — **No-Go if 4 or more fall short**):
 - Detection coverage >= 95%
@@ -128,7 +128,7 @@ Each gate is measured **per gated cell**. A cell that misses is not offset by th
 ### Phase 2 (Month 5-12): Internal Scale
 
 Goals:
-- Complete the scope matrix (remaining 6 cells) and drive operational adoption
+- Add FDA and NMPA (4 of the remaining 6 cells) and drive operational adoption. **The matrix is not completed here** — the 2 EU cells are Phase 4 from 2026-08-24
 - Add compliance gap analysis and IR mapping depth
 
 Deliverables:
@@ -202,7 +202,7 @@ Weeks 3-4:
 - **Annex representation test** — can a 화장품 안전기준 규정 limit-table row be expressed as a Clause
   with `path_segments`? This is the ADR-0004 falsifier and must be answered before the W5-6
   cross-domain check, not during it
-- Start EU SaMD spike (multilingual + Tier C exposure), runs in background through W12
+- ~~Start EU SaMD spike (multilingual + Tier C exposure), runs in background through W12~~ — never started; Phase 4 from 2026-08-24
 
 Weeks 5-6:
 - Build normalization pipeline and versioned clause store
@@ -226,7 +226,7 @@ Weeks 9-10:
 
 Weeks 11-12:
 - Freeze build; pilot onboarding (20-30 users) and baseline capture
-- EU spike findings memo: multilingual and Tier C effort estimate for Phase 2
+- ~~EU spike findings memo: multilingual and Tier C effort estimate for Phase 2~~ — deferred with the spike (2026-08-24); the Phase 2 estimate no longer includes EU
 
 Weeks 13-16 (M4 — pilot and evaluation):
 - Four weeks of real pilot usage — the retention gate requires 4 consecutive weeks of measurement

@@ -2,21 +2,32 @@
 
 - **Roadmap:** Phase 2 (M5–12) · **Status:** ⬜ planned
 - **Governed by:** [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md), [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) decision 5
-- **Depends on:** Phase 1 Go
+- **Depends on:** ~~Phase 1 Go~~ → **amended 2026-08-24.** A slice may **start** on the
+  machine-measurable half of Phase 1's gates; **Phase 1 Go is still required before any Phase 2 cell
+  is declared gated.** Reason: [1.6](phase1.6_evaluation.md) recommends `INCOMPLETE` because four of
+  six gates are `미측정`, and all four need a person or a pilot rather than engineering — the
+  reviewer packet and pilot runbook exist and a reviewer is available, so they are scheduling. The
+  build work in 2.0a–c does not depend on them. Blocking the whole of Phase 2 on a scheduling
+  dependency would idle the build without making a single gate measurable sooner. Recorded in
+  [README](README.md) § decisions; see [2.0a](phase2.0a_fda.md) *Deviations* 4 for what it does not
+  license
 - **Service:** `regulation`
 
 ---
 
 ## Goal
 
-Complete the scope matrix — the remaining six cells — and introduce the scraping tier Phase 1
-deliberately avoided. This is the phase where detection coverage and citation quality are most
-likely to degrade, because it adds two hard capabilities and two new source languages at once.
+Add **four** of the remaining six cells — FDA and NMPA, both domains — and introduce the scraping
+tier Phase 1 deliberately avoided. This is the phase where detection coverage and citation quality
+are most likely to degrade, because it adds two hard capabilities and a new source language.
+
+> **The scope matrix is no longer completed here.** The two EU cells moved to **Phase 4** on
+> 2026-08-24 ([README](README.md) § decisions). Scope is still 8 cells; only the timing changed.
 
 ## Scope
 
-**In:** FDA, EU and NMPA connectors across both domains; Tier C scraping with resilience; Chinese
-and EU-language normalization.
+**In:** FDA and NMPA connectors across both domains; Tier C scraping with resilience; Chinese
+normalization.
 
 **Out:** the knowledge graph (2.1) and gap analysis (2.2), which run in parallel but are tracked
 separately.
@@ -31,27 +42,38 @@ group.
 | Slice | Cells | What it carries that the others do not | Status |
 |---|---|---|---|
 | [2.0a](phase2.0a_fda.md) | `fda_samd`, `fda_cosmetic` | second authority, second legal hierarchy, English extraction and retrieval — and **no** Tier C or multilingual work | ⬜ planned |
-| 2.0b | `eu_samd`, `eu_cosmetic` | multilingual normalization, `version_group_id`, ELI keys | ⬜ file written when the slice starts |
+| ~~2.0b~~ | `eu_samd`, `eu_cosmetic` | multilingual normalization, `version_group_id`, ELI keys | ⛔ **moved to Phase 4, 2026-08-24** — no longer part of this phase |
 | 2.0c | `nmpa_samd`, `nmpa_cosmetic` | Tier C scraping at full weight, Chinese, curated `canonical_key` | ⬜ file written when the slice starts |
 
 **FDA goes first** because it is the only group that isolates *second authority* from *scraping* and
 *second language*. If [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) decision 3 —
 profiles keyed on shape, never on who wrote the instrument — is going to fail, it fails there, on
-the cheapest sources in the remaining six, and it fails legibly instead of tangled with two other
+the cheapest sources in the remaining cells, and it fails legibly instead of tangled with two other
 new capabilities.
 
-**2.0b and 2.0c are deliberately not written yet.** What a second-authority build actually costs is
-unknown until 2.0a has run one; a task list written now would be this file's six checkbox rows again,
-one indent deeper. Each is written at its start, from what the slice before it measured.
+**2.0c is deliberately not written yet.** What a second-authority build actually costs is unknown
+until 2.0a has run one; a task list written now would be this file's six checkbox rows again, one
+indent deeper. It is written at its start, from what the slice before it measured. (2.0b was the
+same, and is now Phase 4 rather than unwritten.)
+
+> **What the EU deferral costs 2.0c, and it is not small.** 2.0b was the *cheap* multilingual
+> exercise — EUR-Lex is Tier A/B with stable ELI keys, so it met a second language without meeting
+> scraping. With it gone, **2.0c is now the first encounter with multilingual normalization** and it
+> arrives together with full-weight Tier C scraping and a curated `canonical_key` for an authority
+> that publishes no stable identifier. Three new capabilities in one slice is precisely the
+> concentration the 2.0a/b/c decomposition was written to avoid — see *FDA goes first* above, which
+> argues the opposite case for FDA. When 2.0c is written, the first question is whether it should be
+> split again.
 
 ## Tasks
 
-### Remaining six cells
+### The four cells this phase adds
 
 - [ ] **FDA** — see [phase2.0a](phase2.0a_fda.md)
-- [ ] **EU** — EUR-Lex, EC cosmetics portal, CosIng, EU Safety Gate (Tier B); slice file at start
 - [ ] **NMPA** — NMPA notices, CSAR documents, IECIC (Tier C); slice file at start
-- [ ] Per-cell parser profiles; **no domain-specific column on `Clause`** — the ADR-0002 bet must still hold at eight cells
+- ⛔ ~~**EU** — EUR-Lex, EC cosmetics portal, CosIng, EU Safety Gate (Tier B)~~ — **Phase 4 from
+  2026-08-24.** Not a task here any more
+- [ ] Per-cell parser profiles; **no domain-specific column on `Clause`** — the ADR-0002 bet must still hold at eight cells, and this phase now tests it at six rather than eight
 - [ ] `document_cells` M:N exercised for real: the FD&C Act ingested once, claimed by both FDA cells ([2.0a](phase2.0a_fda.md))
 
 ### Tier C scraping
@@ -114,3 +136,19 @@ kind of error a one-line task cannot surface. The cells now decompose into 2.0a 
 the cross-cell capabilities stay here. [phase2.0a](phase2.0a_fda.md) is written; the other two are
 written at their start rather than now, on the ground that the cost of a second-authority build is
 unknown until one has been run — recorded here so that it reads as a decision and not as an omission.
+
+**2. The EU cells left this phase for Phase 4 (2026-08-24).** `eu_samd` and `eu_cosmetic` move
+beyond Phase 3; the roadmap gains a fourth stage ([RegOps.md](../RegOps.md) § Roadmap). **Scope is
+still 8 cells** — [CLAUDE.md](../../CLAUDE.md)'s architecture rule is unchanged and this decision
+touches only *when*. The non-gated EU SaMD spike went with them, never run: its purpose was to meet
+a second authority cheaply before one was gated, and the FDA reconnaissance
+([spike-2026-08-24](../design/spike-2026-08-24-fda-source-recon.md)) spent that purpose instead.
+
+Two consequences are recorded rather than discovered later:
+
+- **This phase no longer completes the scope matrix.** Its Goal said so and now does not. Four cells
+  here, two in Phase 4.
+- **2.0c inherits a concentration this decomposition exists to prevent** — see the callout under the
+  slice table. EU was the cheap multilingual rung; without it, Chinese, full-weight Tier C and a
+  curated `canonical_key` all land in one slice. The mitigation is not free and is not chosen here:
+  when 2.0c is written, the first question is whether it splits again.
