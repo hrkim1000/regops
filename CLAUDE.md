@@ -352,6 +352,19 @@ $L probe >> docs/design/fda-lag-observations.jsonl     # one observation, one JS
 $L report < docs/design/fda-lag-observations.jsonl     # exits 1 with UNDETERMINED until 10 days
 ```
 
+**Use the wrapper for the daily run** — `scripts/fda-lag-probe.ps1`, from PowerShell:
+
+```powershell
+.\scripts\fda-lag-probe.ps1        # -Force to record a second row on a day already logged
+```
+
+It exists because the raw redirect has three ways to lose the series, and it is run on ten
+consecutive mornings: `>` instead of `>>` wipes it; a stopped stack makes `docker compose exec`
+write *"OCI runtime exec failed"* to **stdout**, which a blind append files as an observation; and
+PowerShell's `>>` writes a BOM when it *creates* the file, costing the first line. The wrapper
+validates the output as one JSON object before touching the log, writes UTF-8 without a BOM, and
+treats a day already recorded as a no-op rather than a duplicate row.
+
 In Git Bash, prefix the `docker compose exec` calls with `MSYS_NO_PATHCONV=1` — MSYS rewrites
 `-w /scripts` into a Windows path and the daemon rejects it with *"Cwd must be an absolute path"*.
 (The same conversion is why `admrul_triage.py` is invoked as `python //scripts/...`.)
