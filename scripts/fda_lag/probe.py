@@ -316,11 +316,16 @@ def load_observations(lines: Iterable[str]) -> tuple[list[dict[str, Any]], list[
 
     A partially written line (the run was killed mid-redirect) must not discard a fortnight of
     good observations, so the loader reports it and continues.
+
+    A leading BOM is stripped rather than reported. PowerShell's ``>>`` writes ``EF BB BF`` when it
+    *creates* the target, so a log recreated on Windows would otherwise lose its first observation
+    to a ``JSONDecodeError`` — a silent one-day loss discovered at day ten, if at all. Appending to
+    an existing file adds no BOM, so this only bites after the file is deleted.
     """
     observations: list[dict[str, Any]] = []
     errors: list[str] = []
     for number, line in enumerate(lines, start=1):
-        text = line.strip()
+        text = line.lstrip("﻿").strip()
         if not text:
             continue
         try:

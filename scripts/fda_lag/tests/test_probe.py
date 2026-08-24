@@ -214,6 +214,13 @@ class TestLoadObservations:
         assert len(errors) == 1
         assert "line 2" in errors[0]
 
+    def test_a_leading_bom_is_stripped_not_reported(self) -> None:
+        # PowerShell's `>>` writes EF BB BF when it creates the file, so a log recreated on
+        # Windows would otherwise lose its first observation silently.
+        observations, errors = load_observations(['﻿{"observed_on": "2026-08-24"}'])
+        assert errors == []
+        assert observations == [{"observed_on": "2026-08-24"}]
+
     def test_a_non_object_line_is_an_error(self) -> None:
         observations, errors = load_observations(["[1, 2, 3]"])
         assert observations == []
