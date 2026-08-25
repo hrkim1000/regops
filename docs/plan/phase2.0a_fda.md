@@ -183,7 +183,9 @@ its open questions 6 and 7 — see *Deviations* 7.
 
 ### Connectors
 
-- [ ] eCFR connector — section-granular fetch, point-in-time where the API offers it
+- [ ] eCFR connector — section-granular fetch, point-in-time where the API offers it.
+      **Unblocked 2026-08-24**: [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 11 settles
+      the robots.txt question — documented API only, and **never** eCFR or Federal Register HTML
 - [ ] Federal Register connector — final rules by agency and affected CFR part, carrying the stated
       effective date in `meta` (it is a parse output, not a fetch output —
       [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 5)

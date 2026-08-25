@@ -454,3 +454,42 @@ the connector's lack of pagination does not bite at this scope — the full list
 pages at 100 a page, and nothing in the FDA cells asks for it. **ISO 13485 returns no records at
 all**, confirming the source map is right to carry it as a separate "incorporated by reference, cite
 and link only" item rather than as a recognition-list entry.
+
+## Q9 — Is the robots.txt conflict real? (closes Q4's open item)
+
+**No — and the publisher says so directly.** Q4 recorded the `Disallow` on
+`/api/versioner/v1/full/` as a genuine conflict and declined to resolve it. Fetching the eCFR's own
+**developer documentation page** resolved it, by redirecting to `unblock.federalregister.gov`:
+
+> Due to aggressive automated scraping of FederalRegister.gov and eCFR.gov, **programmatic access to
+> these sites is limited to access to our extensive developer APIs.** Please visit
+> FederalRegister.gov API documentation or eCFR.gov API documentation to learn more about how to
+> access the API.
+
+What is defended against is **scraping the site**; the **API is the sanctioned channel**. The
+`Disallow` carries its own explanation one line above it — *"Don't index developer tool links"* — and
+addresses indexers rather than the endpoint's documented clients.
+
+**The behaviour separates the two paths cleanly**, which is the part worth keeping:
+
+| Path | This session |
+|---|---|
+| `/api/versioner/v1/*`, `/api/v1/*` | ~40 calls, all 200, never throttled, no CAPTCHA |
+| First HTML page request (`/developers/documentation/api/v1`) | **302 → CAPTCHA gate on the first try** |
+
+Recorded as [ADR-0018](ADR-0018-fda-source-model.md) **decision 11**: documented API only, **never
+their HTML**, no RSS or HTML fallback for these two hosts, and a block is a signal to slow down and
+use the *Site Help* channel — never to rotate a `User-Agent` or spread across IPs.
+
+### The alternative, measured before the answer arrived
+
+Had the conflict been real, the fallback was govinfo — permitted (`/bulkdata/` is not disallowed) and
+keyless. It would have been a poor trade:
+
+| | eCFR API | govinfo bulkdata |
+|---|---|---|
+| Unit | one Part, **21 KB** | whole title, **20.7 MB** |
+| Point-in-time | yes, by date | **no — current only** (`ECFR-title21`, no dated packages, 0 granules) |
+| Provenance | the bytes decision 4 cites | a different publisher pipeline; the WORM archive is content-addressed, so the citation baseline would shift |
+
+Kept here because the comparison is the reason decision 11 is a decision rather than a preference.

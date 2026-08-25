@@ -200,6 +200,47 @@ is gated**, because this is the first time the mapping path carries a gated cell
 move signal underneath it. The `removed` flag helps: it distinguishes "the authority deleted this"
 from "our differ lost it", which MFDS never had to.
 
+#### 11. The documented API is the only way we touch eCFR and the Federal Register. **Never their HTML.**
+
+*Added 2026-08-24, after acceptance, closing open question 6. The publisher answered the question we
+were about to answer for ourselves.*
+
+`ecfr.gov/robots.txt` disallows `/api/versioner/v1/full/` — decision 4's version spine — and that
+looked like a conflict with [ADR-0003](ADR-0003-ingestion-and-change-detection.md) decision 9. It is
+not, and the evidence is the publisher's own words. Requesting the eCFR *developer documentation
+page* redirects to `unblock.federalregister.gov`, which states:
+
+> Due to aggressive automated scraping of FederalRegister.gov and eCFR.gov, **programmatic access to
+> these sites is limited to access to our extensive developer APIs.** Please visit
+> FederalRegister.gov API documentation or eCFR.gov API documentation to learn more about how to
+> access the API.
+
+So the thing being defended against is **scraping the site**, and the **API is the sanctioned
+channel** for exactly what we do. The `Disallow` sits under a comment that says so itself — *"Don't
+index developer tool links"* — and it is an instruction to indexers, not a prohibition on the
+documented endpoint it names. The behaviour corroborates it: roughly forty API calls across this
+spike returned 200 and were never throttled, while the **first** HTML page request was redirected to
+a CAPTCHA gate.
+
+Therefore:
+
+1. **Fetch documented API endpoints only.** `/api/versioner/v1/...` on the eCFR and `/api/v1/...` on
+   the Federal Register.
+2. **Never fetch an HTML page from either host** — not as a fallback, not to fill a field the API
+   omits, not "just once" to check something. That is the activity the policy names, and it is
+   CAPTCHA-gated, so a connector that tries will archive a bot-check page instead of a regulation.
+3. **No RSS or HTML fallback may be built for these two hosts.** If something appears to need one,
+   that is a signal to find the API or to stop — not to scrape. This retires the RSS route all four
+   `docs/reference/` documents recommended, on policy grounds as well as the technical ones.
+4. **A block is a signal to slow down and ask, never to evade.** The unblock page carries a *Site
+   Help* channel for requesting a wider IP range. Rotating a `User-Agent`, spreading across IPs, or
+   otherwise disguising the client is prohibited outright — it would make us the aggressive scraper
+   the policy exists to stop, and `redact_url` plus an honest UA are already the house rule.
+
+This binds `regulation` for both FDA cells and applies to any later cell that reaches these hosts.
+It does not reach `fda.gov` or `accessdata.fda.gov`, which are different hosts with their own
+robots.txt — the Recognized Consensus Standards list is a permitted HTML fetch there.
+
 ### Part C — guidance
 
 #### 9. Guidance is stored, citable, and never extracted — excluded at `doc_type` level with a reason
@@ -325,8 +366,10 @@ being defined into existence.
    MoCRA made facility registration mandatory. Which the `fda_cosmetic` cell treats as authoritative
    is a scope question for [import-source-map.md](../import-source-map.md), not a connector question.
 
-6. **`ecfr.gov/robots.txt` disallows `/api/versioner/v1/full/` — the endpoint decision 4 makes the
-   version spine.** Found after this ADR was accepted
+6. ~~**`ecfr.gov/robots.txt` disallows `/api/versioner/v1/full/`.**~~ **Closed 2026-08-24 by
+   decision 11** — the publisher states that programmatic access belongs on the documented APIs, and
+   the `Disallow` is an indexing rule by its own comment. Original text kept for the record:
+   **the endpoint decision 4 makes the version spine.** Found after this ADR was accepted
    ([spike Part 2](spike-2026-08-24-fda-source-recon.md) Q4). The rule sits under `User-agent: *`
    with no API exemption; the comment above it says *"Don't index developer tool links"*, which reads
    as anti-indexing rather than anti-API, and the endpoint is documented for developers. Both

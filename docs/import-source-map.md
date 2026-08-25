@@ -214,6 +214,15 @@ remains outside.*
 > - **The eCFR serves no future dates.** A request past `up_to_date_as_of` returns 404. Pending
 >   amendments are visible only on the Federal Register, and produce no `DocumentVersion`.
 >
+> **Documented API only on `ecfr.gov` and `federalregister.gov` — never their HTML.**
+> The publisher states that *"programmatic access to these sites is limited to access to our
+> extensive developer APIs"* (`unblock.federalregister.gov`), and an HTML request is CAPTCHA-gated on
+> the first try while the APIs served ~40 calls unthrottled. No RSS or HTML fallback may be attached
+> to either host; a block is answered by slowing down and using their *Site Help* channel, never by
+> changing `User-Agent` or IP. [ADR-0018](design/ADR-0018-fda-source-model.md) decision 11. This does
+> **not** reach `fda.gov` or `accessdata.fda.gov`, which are separate hosts — the Recognized
+> Consensus Standards list is a permitted HTML fetch.
+>
 > `uscode.house.gov` was unreachable at probe time and is unverified as a govinfo alternative.
 
 ## Domain : Cosmetics
