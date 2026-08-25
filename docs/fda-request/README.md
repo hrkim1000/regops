@@ -1,6 +1,12 @@
 # FDA access request
 
-**Status: drafted 2026-08-25, not yet sent.**
+**Status: drafted 2026-08-25, not yet sent. No longer blocking phase 2.0a.**
+
+The two sources this unlocks — the Recognized Consensus Standards list and the FDA Guidance block —
+were taken out of [phase2.0a](../plan/phase2.0a_fda.md)'s scope on 2026-08-25 (*Deviations* 20), so
+the slice can finish without an answer. The request is still worth sending: nothing else reaches
+either source, and the four trust gates do not depend on it because they measure regulation text
+from the eCFR and the Federal Register.
 
 `accessdata.fda.gov` and `www.fda.gov` sit behind Akamai, which currently classifies this project's
 identified client as abuse and answers it with a redirect to an apology page. That closes the only

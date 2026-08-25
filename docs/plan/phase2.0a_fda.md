@@ -31,6 +31,11 @@ Everything below exists either to serve that test or to keep it honest.
 extraction, English retrieval, the first real `document_cells` M:N exercise, and golden sets for
 both cells.
 
+**Out, added 2026-08-25: everything that lives on `fda.gov`** — the Recognized Consensus Standards
+list (Tier D freshness) and the whole Guidance block. Not deferred on cost or priority: FDA's CDN
+classifies our identified client as abuse, so both are unreachable and asking to be let back in is
+a request with someone else's answer on the end of it (*Deviations* 20).
+
 **Out:** Tier C scraping and multilingual normalization — they stay in
 [phase2.0](phase2.0_tier_c_scale.md) because the FDA cells need neither. Every FDA source in
 [import-source-map.md](../import-source-map.md) is Tier A/B and English. That is exactly why this
@@ -203,7 +208,11 @@ its open questions 6 and 7 — see *Deviations* 7.
       seed row and no new code. If it needs code, record that in *Deviations*: the connector was built
       against an FDA-shaped assumption ([phase1.0](phase1.0_ingestion.md) recon) and this is the first
       time that assumption is tested
-      → **it needed code, and the code turned out to be "read HTML properly" (2026-08-25).** The
+      → **deferred out of this slice 2026-08-25 — the work is done, the access is not.** The
+      connector, the column mapping and six seed rows all exist and are verified correct against the
+      live page; the rows ship **disabled** and the source returns when FDA answers (*Deviations* 20).
+      What was learned building it:
+      **it needed code, and the code turned out to be "read HTML properly" (2026-08-25).** The
       three gaps were real — no `<th>`, chrome rows parsing as data, continuation rows misaligned —
       but each has a **standard attribute** behind it: `scope="col"` marks the header, `rowspan`
       says the continuation carries the row above, `colspan` spanning the width marks a banner.
@@ -296,6 +305,11 @@ its open questions 6 and 7 — see *Deviations* 7.
       → 1.3.0. See *Deviations* 13
 - [ ] Guidance excluded by the rule decided above — with an `ExclusionReason`, so it appears as
       examined-and-excluded rather than unexamined
+      → **deferred with the Guidance block (2026-08-25).** The rule is decided
+      ([ADR-0018](../design/ADR-0018-fda-source-model.md) decision 9) and `ExclusionReason.NON_BINDING`
+      exists in the schema; there is simply no guidance document to apply it to while `fda.gov`
+      refuses us. **Nothing in the coverage number moves**: decision 10 already defines the
+      denominator over obligation-bearing `doc_type`s, so guidance was never in it
 - [x] `IR_RULE_VERSION` bumped if the inventory or taxonomy moves. IRs extracted under two rule
       versions are not comparable, and a golden-set score is meaningful only per rule version
       → **1.2.0 → 1.3.0** with the taxonomy. The modal inventory did not move, so *whether* a clause
@@ -360,7 +374,12 @@ And the structural criteria the slice is really about:
       reach both cells and no third
 - [ ] An English document is extracted under an English rule set, and a missing rule set **raises**
       rather than silently extracting nothing
-- [ ] No Tier D body text — CI scan green with the Recognized Consensus Standards list live
+- [ ] No Tier D body text — CI scan green. **Amended 2026-08-25**: this read "…with the Recognized
+      Consensus Standards list **live**", and that cannot be met while `accessdata.fda.gov` refuses
+      us. The scan still runs and is still green; what it no longer proves is that the rule holds
+      with a live Tier D source attached. That proof moves with the source (*Deviations* 20), and
+      saying so is the point — a criterion quietly reworded to be passable is worse than one that
+      names what it stopped covering
 - [ ] The MFDS golden sets score no worse after the full-text change than before it
 
 ## Risks & open questions
@@ -673,7 +692,45 @@ And the structural criteria the slice is really about:
     direction and propagates; enabling is the one that would override a deliberate stop, and still
     does not.
 
-19. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+20. **Tier D freshness and the whole Guidance block leave this slice (2026-08-25).** Decided after
+    a question worth recording, because the reasoning behind it was wrong in a way that would have
+    left the plan saying something false: *"if the FDA submission feature moves to the next tier,
+    the access request is not needed"*.
+
+    **It is not a submission question.** There is no submission work in this slice — the 제출 서류
+    view is phase1.5, built from the MFDS clause tree, and FDA premarket submissions are not in
+    scope here at all. What the block actually closes is two other things:
+
+    - **`accessdata.fda.gov`** — the Recognized Consensus Standards list, which is how Tier D
+      freshness is tracked ([ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md)
+      decision 7: watch the list, never the standard).
+    - **`www.fda.gov`** — and this is the larger half. The entire Guidance block for `fda_samd`
+      lives there: SaMD, AI/ML, Cybersecurity and Premarket Submission guidance. The block is
+      FDA-wide, not one host.
+
+    So deferring a submission feature would have changed nothing, and recording it that way would
+    have left a false reason attached to a real decision.
+
+    **What is actually deferred, and what it costs.** Both sources leave 2.0a's scope and return
+    when FDA answers [the request](../fda-request/README.md). The costs, stated rather than
+    absorbed:
+
+    - The Tier D acceptance row could no longer be met as written and is **amended in place with
+      its old text quoted**, not silently reworded to something passable.
+    - The Guidance block is a large part of the SaMD cell and is simply absent. **The coverage
+      number does not move** — [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 10 defines
+      the denominator over obligation-bearing `doc_type`s, and guidance was never in it — so this
+      shows up as a smaller corpus rather than as a gap, which is exactly why it needs saying here.
+    - `ExclusionReason.NON_BINDING` and ADR-0018 decision 9 stay decided and unexercised.
+
+    **What is not affected.** The four per-cell trust gates measure regulation text, which comes
+    from the eCFR and the Federal Register — both working, neither on `fda.gov`. Nothing in the
+    detection, citation or hallucination path depends on the blocked host.
+
+    **The request is still worth sending** and is no longer blocking: it is drafted, unsent, and
+    the six seed rows sit disabled behind it.
+
+21. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while
