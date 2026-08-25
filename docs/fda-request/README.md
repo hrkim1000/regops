@@ -11,8 +11,23 @@ This folder holds the request that asks FDA to let us back in, and the measured 
 
 | File | What it is |
 |---|---|
-| [access-request.md](access-request.md) | The request itself — ready to paste into FDA's contact form or an email |
+| [access-request.md](access-request.md) | The request itself, in Markdown — for an email |
+| [access-request.txt](access-request.txt) | The same request as plain text — **for a web form**, which will not render Markdown. 4,192 characters between its two markers |
 | [evidence.md](evidence.md) | What was measured, when, and with what commands — so nothing in the request is asserted from memory |
+
+## How to send it
+
+Open <https://www.fda.gov/about-fda/contact-fda> **in a browser** and take the technical or
+website-feedback route. An abuse-detection unblock is handled by the people who run the site rather
+than by the standards programme, so website feedback is likelier to reach them than a device-policy
+mailbox.
+
+That page could not be checked from here, because `www.fda.gov` returns the same redirect the
+request is about. **A person opening it in a browser is not affected** — the block is on automated
+access, not on us as people, and using the site as intended is not the workaround ruled out below.
+
+Use the `.txt` for a form and the `.md` for an email. If the form caps the length, the `.txt` says
+what to cut and in what order — and what must not be cut.
 
 ## Why a request rather than a workaround
 
