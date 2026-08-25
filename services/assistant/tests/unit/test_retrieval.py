@@ -10,11 +10,14 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
+import pytest
+
 from app.prompts import build_answer_prompt, passage_text
 from app.retrieval import (
     RetrievalResult,
     _scope_dates,
     extract_annex_terms,
+    extract_identifier_paths,
     extract_identifiers,
     fuse,
 )
@@ -65,9 +68,45 @@ def test_annex_and_form_identifiers_are_recognised() -> None:
     assert extract_identifiers("별표 1 과 별지 3") == ("별표1", "별지3")
 
 
-def test_us_section_identifier_is_recognised() -> None:
-    """The EU/FDA spike shares this retrieval path; § is the address form it uses."""
-    assert extract_identifiers("what does § 892.2050 require") == ("§ 892.2050",)
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("what does § 892.2050 require", ("892.2050",)),
+        ("21 CFR 892.2050 classification", ("892.2050",)),
+        ("21 C.F.R. 700.27", ("700.27",)),
+        ("21 U.S.C. 351", ("351",)),
+        ("21 USC 351", ("351",)),
+        ("§820.35", ("820.35",)),
+        # A Part is the *Document* (ADR-0018 decision 1), not a clause address.
+        ("21 CFR Part 820 requires", ()),
+        # Compound forms belong to extract_identifier_paths — see the test below.
+        ("§ 820.35(a)", ()),
+    ],
+)
+def test_us_identifiers_are_normalised_to_the_stored_segment(
+    query: str, expected: tuple[str, ...]
+) -> None:
+    """The captured form must be what ``clauses.path_segments`` holds — ``820.35``, bare.
+
+    This test previously asserted ``("§ 892.2050",)``, **with the sign**, and so locked in a form
+    the store cannot match. Measured against the live corpus on 2026-08-25: `21 CFR 892.2050`
+    extracted nothing at all, and `§ 820.30(a)(1)` extracted one identifier that returned zero rows
+    while the bare `820.35` returned five. The bug was in the extractor and the test agreed with it.
+    """
+    assert extract_identifiers(query) == expected
+
+
+def test_a_compound_identifier_becomes_a_path_tail_not_loose_segments() -> None:
+    """``(a)`` on its own would match every clause with an ``(a)`` anywhere in scope.
+
+    ``path_segments &&`` is an overlap, so the loose form is worse than no form. The tail is
+    matched against the end of ``clause_path`` instead, where the container prefix the user never
+    types cannot cause a miss and the siblings cannot cause a hit.
+    """
+    assert extract_identifier_paths("§ 820.35(a)") == ("820.35/(a)",)
+    assert extract_identifier_paths("21 CFR 820.35(a)(3)") == ("820.35/(a)/(3)",)
+    assert extract_identifier_paths("21 CFR 820.35") == ()
+    assert extract_identifier_paths("화장품법 제8조제1항") == (), "Korean is unchanged here"
 
 
 def test_a_question_with_no_identifier_yields_none() -> None:

@@ -675,6 +675,20 @@ RETRIEVAL_IDENTIFIER_BOOST: Final[float] = 100.0
 #: English tokens inside a Korean corpus and leave the rest untouched.
 FTS_CONFIG: Final[str] = "simple"
 
+#: Per-language override. ``simple`` stays the default and the Korean answer; English gets the
+#: stemmer, because without it ``requirement`` and ``requirements`` are unrelated tokens and the
+#: lexical arm loses most of its recall on the vocabulary a regulatory corpus is built from —
+#: measured at +679% on ``requirement`` over the FDA corpus (migration 0010).
+#:
+#: A language absent from this map falls back to :data:`FTS_CONFIG`, which is the safe direction: an
+#: unknown language gets no stemming rather than the wrong stemming.
+FTS_CONFIG_BY_LANGUAGE: Final[dict[str, str]] = {"en": "english"}
+
+
+def fts_config_for(language: str | None) -> str:
+    """The Postgres text-search configuration for a version's language."""
+    return FTS_CONFIG_BY_LANGUAGE.get((language or "").lower(), FTS_CONFIG)
+
 
 # --- generation and verification (ADR-0006 decisions 4–8) ----------------------------------
 
@@ -760,7 +774,10 @@ VERIFICATION_PROMPT_VERSION: Final[str] = "1.3.0"
 
 #: Bumped when passage assembly, fusion or scoping changes what retrieval returns. Stored on the
 #: answer, because "which clauses were even available to cite" is part of an answer's provenance.
-RETRIEVAL_VERSION: Final[str] = "1.3.0"
+#: 1.4.0 (2026-08-25): US identifiers normalised to the stored segment form and compound addresses
+#: resolved as a path tail, plus a per-language text-search configuration. Both change what the
+#: identifier and lexical arms return for an English scope; neither changes the Korean one.
+RETRIEVAL_VERSION: Final[str] = "1.4.0"
 
 #: Guard against a model that never stops. Real regulatory answers are a handful of claims; a reply
 #: with more than this is a runaway, not a thorough analysis.

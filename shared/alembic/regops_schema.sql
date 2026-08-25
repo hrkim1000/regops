@@ -1687,6 +1687,13 @@ CREATE INDEX ix_clauses_fts ON public.clauses USING gin (to_tsvector('simple'::r
 
 
 --
+-- Name: ix_clauses_fts_english; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_clauses_fts_english ON public.clauses USING gin (to_tsvector('english'::regconfig, ((COALESCE(heading, ''::text) || ' '::text) || COALESCE(text, ''::text))));
+
+
+--
 -- Name: ix_clauses_path_segments; Type: INDEX; Schema: public; Owner: -
 --
 

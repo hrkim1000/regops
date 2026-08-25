@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from regops_shared.constants import FTS_CONFIG
+from regops_shared.constants import FTS_CONFIG, FTS_CONFIG_BY_LANGUAGE
 
 from .passages import ClauseRow
 
@@ -248,10 +248,29 @@ def clauses_by_path(
 # --- retrieval arms --------------------------------------------------------------------------
 
 
+#: The only configurations this module will interpolate into SQL. Closed on purpose — see
+#: :func:`lexical_search`.
+_ALLOWED_FTS_CONFIGS: frozenset[str] = frozenset({FTS_CONFIG, *FTS_CONFIG_BY_LANGUAGE.values()})
+
+
 def lexical_search(
-    session: Session, *, query: str, version_ids: list[uuid.UUID], limit: int
+    session: Session,
+    *,
+    query: str,
+    version_ids: list[uuid.UUID],
+    limit: int,
+    config: str | None = None,
 ) -> list[Hit]:
     """BM25-style ranking over clause text (ADR-0006 decision 3, lexical arm).
+
+    ``config`` is the Postgres text-search configuration, and it is a **property of the corpus's
+    language**, not a global. ``simple`` is right for Korean, which has no stemmer; English needs
+    one, or ``requirement`` and ``requirements`` are unrelated tokens. The caller groups the
+    versions in scope by language and calls once per group, so a mixed-language scope gets each half
+    read correctly rather than both read the same wrong way.
+
+    Each configuration has its own GIN index (0005 for ``simple``, 0010 for ``english``), and the
+    expression here has to match one exactly or Postgres will not use it.
 
     Table rows are excluded: they are served by :func:`annex_row_lookup`, which matches the
     identifier column exactly instead of ranking thousands of near-identical lines against each
@@ -260,23 +279,28 @@ def lexical_search(
     tsquery = build_tsquery(query)
     if not tsquery or not version_ids:
         return []
+    config = config or FTS_CONFIG
+    if config not in _ALLOWED_FTS_CONFIGS:
+        # Interpolated into SQL, so it is checked against a closed set rather than trusted. The
+        # value comes from our own constants today; this is what keeps that true tomorrow.
+        raise ValueError(f"unknown text-search configuration {config!r}")
     rows = session.execute(
         text(
             f"""
             SELECT c.id, c.clause_path, c.document_version_id, c.heading, c.text, c.kind::text,
                    coalesce(c.effective_date, dv.effective_date),
                    ts_rank_cd(
-                       to_tsvector('{FTS_CONFIG}',
+                       to_tsvector('{config}',
                                    coalesce(c.heading, '') || ' ' || coalesce(c.text, '')),
-                       to_tsquery('{FTS_CONFIG}', :tsquery)
+                       to_tsquery('{config}', :tsquery)
                    ) AS rank
             FROM clauses c
             JOIN document_versions dv ON dv.id = c.document_version_id
             WHERE c.document_version_id = ANY(:version_ids)
               AND c.kind <> 'table_row'
-              AND to_tsvector('{FTS_CONFIG}',
+              AND to_tsvector('{config}',
                               coalesce(c.heading, '') || ' ' || coalesce(c.text, ''))
-                  @@ to_tsquery('{FTS_CONFIG}', :tsquery)
+                  @@ to_tsquery('{config}', :tsquery)
             ORDER BY rank DESC, c.ordinal
             LIMIT :limit
             """
@@ -321,14 +345,32 @@ def vector_search(
 
 
 def identifier_lookup(
-    session: Session, *, identifiers: list[str], version_ids: list[uuid.UUID], limit: int
+    session: Session,
+    *,
+    identifiers: list[str],
+    version_ids: list[uuid.UUID],
+    limit: int,
+    path_suffixes: list[str] | None = None,
 ) -> list[Hit]:
     """Resolve clause identifiers the query named outright — exactly, not fuzzily.
 
     *"화장품법 제8조"* is a lookup, not a search. A clause number has no useful embedding, and
     a lexical rank over one competes with every other article that happens to mention it.
+
+    Two forms, and the difference is precision. ``identifiers`` are single segments matched by array
+    overlap, so ``820.35`` returns the section **and everything beneath it** — which is the right
+    answer to a question that named only the section. ``path_suffixes`` are compound addresses
+    matched against the *end* of ``clause_path`` **and against everything beneath it**: asking for
+    ``820.35(a)`` must return ``(a)`` together with ``(a)(1)``…``(a)(7)``, because that list is what
+    the provision says — and must not return ``(b)``, which is what the loose-segment form drags in.
+
+    Passing the compound form as loose segments would also put ``(a)`` into the overlap, where it
+    matches every clause with an ``(a)`` anywhere in scope.
+
+    The suffix match cannot use an index, and does not need one: it is already bounded to the
+    versions in scope, so it scans one document's clauses rather than the corpus.
     """
-    if not identifiers or not version_ids:
+    if not version_ids or not (identifiers or path_suffixes):
         return []
     rows = session.execute(
         text(
@@ -338,12 +380,26 @@ def identifier_lookup(
             FROM clauses c
             JOIN document_versions dv ON dv.id = c.document_version_id
             WHERE c.document_version_id = ANY(:version_ids)
-              AND (c.clause_path = ANY(:identifiers) OR c.path_segments && :identifiers)
+              AND (
+                    c.clause_path = ANY(:identifiers)
+                 OR c.path_segments && :identifiers
+                 OR c.clause_path LIKE ANY(:suffix_patterns)
+              )
             ORDER BY c.ordinal
             LIMIT :limit
             """
         ),
-        {"identifiers": identifiers, "version_ids": version_ids, "limit": limit},
+        {
+            "identifiers": identifiers,
+            # `LIKE ANY` over an empty array is false, which is what an absent compound form means.
+            "suffix_patterns": [
+                pattern
+                for suffix in (path_suffixes or [])
+                for pattern in (f"%{suffix}", f"%{suffix}/%")
+            ],
+            "version_ids": version_ids,
+            "limit": limit,
+        },
     ).all()
     return [_hit(row, score=1.0) for row in rows]
 

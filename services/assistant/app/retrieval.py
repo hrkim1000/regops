@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 import structlog
+from sqlalchemy.orm import Session
 
 from regops_shared.constants import (
     RETRIEVAL_CANDIDATES,
@@ -38,6 +39,7 @@ from regops_shared.constants import (
     RETRIEVAL_TOP_K,
     RETRIEVAL_VECTOR_WEIGHT,
     RRF_K,
+    fts_config_for,
 )
 from regops_shared.llm import LLMClient
 
@@ -59,8 +61,22 @@ log = structlog.get_logger(__name__)
 _KO_IDENTIFIER = re.compile(r"제\s*(\d+)\s*(조|항|호|목|장|절|편|관)\s*(의\s*\d+)?")
 #: 별표 1, 별표1의2, 별지 3 — annex and form addresses.
 _KO_ANNEX = re.compile(r"(별표|별지|서식)\s*(\d+(?:의\s*\d+)?)")
-#: § 892.2050 — the US form, kept because the EU/FDA spike shares this retrieval path.
-_EN_IDENTIFIER = re.compile(r"§\s*(\d+(?:\.\d+)*)")
+#: How a US regulatory professional writes a citation: ``21 CFR 892.2050``, ``21 U.S.C. 351``,
+#: ``§ 820.35(a)(1)``. The captured section is what ``clauses.path_segments`` actually holds —
+#: ``820.35``, bare. The old pattern matched only a leading ``§`` and emitted ``§ 820.35`` **with
+#: the sign**, which is a form nothing stores: measured 2026-08-25, `21 CFR 892.2050` extracted
+#: nothing at all and `§ 820.30(a)(1)` extracted one identifier that returned zero rows.
+#:
+#: ``Part`` is deliberately not accepted after the title. A CFR Part is the *Document*
+#: (ADR-0018 decision 1), not a clause address, so ``21 CFR Part 820`` names the instrument and has
+#: no segment to resolve to.
+_EN_IDENTIFIER = re.compile(
+    r"(?:\b\d{1,2}\s*(?:CFR|C\.F\.R\.|U\.?S\.?C\.?)\s*(?:§+\s*)?|§+\s*)"
+    r"(?P<section>\d+[A-Za-z]*(?:[.–-]\d+[A-Za-z]*)*)"
+    r"(?P<paras>(?:\s*\([A-Za-z0-9]{1,5}\))*)"
+)
+#: A paragraph designator inside the tail of a compound identifier.
+_EN_PARA = re.compile(r"\(([A-Za-z0-9]{1,5})\)")
 #: A CAS registry number. The single most identifier-like thing in the cosmetic corpus.
 _CAS = re.compile(r"\b\d{2,7}-\d{2}-\d\b")
 
@@ -128,6 +144,7 @@ def retrieve(
     exact: list[Hit] = identifier_lookup(
         session,
         identifiers=list(result.identifiers),
+        path_suffixes=list(extract_identifier_paths(query)),
         version_ids=version_ids,
         limit=RETRIEVAL_CANDIDATES,
     )
@@ -137,8 +154,8 @@ def retrieve(
         version_ids=version_ids,
         limit=RETRIEVAL_CANDIDATES,
     )
-    lexical = lexical_search(
-        session, query=query, version_ids=version_ids, limit=RETRIEVAL_CANDIDATES
+    lexical = _lexical_by_language(
+        session, query=query, versions=versions, limit=RETRIEVAL_CANDIDATES
     )
     vector = vector_search(
         session,
@@ -246,6 +263,42 @@ def _scope_dates(result: RetrievalResult, *, today: date) -> None:
 # --- query parsing ---------------------------------------------------------------------------
 
 
+def _lexical_by_language(
+    session: Session, *, query: str, versions: list[VersionRef], limit: int
+) -> list[Hit]:
+    """Run the lexical arm once per language in scope, each with its own stemmer.
+
+    The Postgres text-search configuration is a property of the text, not a global. ``simple`` — no
+    stemming — is the right answer for Korean, which Postgres has no stemmer for, and the wrong one
+    for English: measured over the FDA corpus on 2026-08-25, ``requirement`` matched 258 clauses
+    under ``simple`` and 2,009 under ``english``, and ``label`` 185 against 696. A hybrid retrieval
+    whose lexical arm loses three quarters of its recall is a vector-only retrieval with extra
+    steps.
+
+    Grouping rather than picking one configuration for the whole scope: cross-cell mode
+    ([ADR-0006](../../../docs/design/ADR-0006-retrieval-and-citation-enforced-generation.md)
+    decision 9) can put Korean and English versions in one query, and either single choice would
+    read half the corpus with the wrong stemmer.
+
+    **The Korean path is unchanged.** With a Korean-only scope this is one call with ``simple``,
+    which is the query that ran before — same SQL, same index. There is nothing here for a
+    before-and-after over the MFDS golden sets to detect, which is why the no-op is structural
+    rather than asserted.
+    """
+    by_config: dict[str, list[uuid.UUID]] = {}
+    for version in versions:
+        by_config.setdefault(fts_config_for(version.language), []).append(version.version_id)
+
+    hits: list[Hit] = []
+    for config, ids in by_config.items():
+        hits.extend(
+            lexical_search(session, query=query, version_ids=ids, limit=limit, config=config)
+        )
+    # Each group ranked within itself; one order over the merged set is what the fuser expects.
+    hits.sort(key=lambda hit: hit.score, reverse=True)
+    return hits[:limit]
+
+
 def extract_identifiers(query: str) -> tuple[str, ...]:
     """Clause addresses the query names outright, normalised to stored path segments.
 
@@ -258,9 +311,42 @@ def extract_identifiers(query: str) -> tuple[str, ...]:
         found.append(f"제{number}{unit}{branch.replace(' ', '')}")
     for kind, number in _KO_ANNEX.findall(query or ""):
         found.append(f"{kind}{number.replace(' ', '')}")
-    for number in _EN_IDENTIFIER.findall(query or ""):
-        found.append(f"§ {number}")
+    for match in _EN_IDENTIFIER.finditer(query or ""):
+        if _EN_PARA.search(match.group("paras")):
+            # The compound form is resolved by :func:`extract_identifier_paths`, which reaches the
+            # named provision and its descendants. Emitting the bare section here as well would
+            # re-admit its *siblings*: a question about 820.35(a) would come back carrying (b).
+            continue
+        found.append(match.group("section"))
     return tuple(dict.fromkeys(found))
+
+
+def extract_identifier_paths(query: str) -> tuple[str, ...]:
+    """Compound addresses, as a **path tail** rather than as loose segments.
+
+    ``§ 820.35(a)(1)`` names one provision. Emitting ``820.35``, ``(a)`` and ``(1)`` as separate
+    identifiers would be worse than emitting nothing: ``path_segments &&`` is an overlap, so ``(a)``
+    alone matches every clause with an ``(a)`` anywhere in scope. The tail ``820.35/(a)/(1)`` is
+    matched against the end of ``clause_path`` instead, which cannot over-reach — the container
+    prefix (``Subpart B/``) is the part the user never types.
+
+    Returned only for compound forms. A bare section is already resolved by
+    :func:`extract_identifiers`, and the whole section is the right answer to a question that named
+    only the section.
+
+    **The Korean side has the same over-match and is deliberately not changed here.** ``제8조제1항``
+    still emits two loose identifiers, so it matches 제1항 of every article in scope. That is
+    pre-existing, it is measurable against the MFDS golden sets, and changing retrieval for the
+    gated cells is a separate change with a before-and-after behind it — see
+    [phase2.0a](../../../docs/plan/phase2.0a_fda.md) *Deviations* 26.
+    """
+    paths: list[str] = []
+    for match in _EN_IDENTIFIER.finditer(query or ""):
+        paragraphs = _EN_PARA.findall(match.group("paras"))
+        if paragraphs:
+            tail = "/".join([match.group("section"), *(f"({p})" for p in paragraphs)])
+            paths.append(tail)
+    return tuple(dict.fromkeys(paths))
 
 
 def extract_annex_terms(query: str) -> tuple[str, ...]:
@@ -295,6 +381,7 @@ def _is_hangul(char: str) -> bool:
 __all__ = [
     "RetrievalResult",
     "extract_annex_terms",
+    "extract_identifier_paths",
     "extract_identifiers",
     "fuse",
     "retrieve",

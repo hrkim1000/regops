@@ -353,20 +353,38 @@ Not planned when this slice was written: the FD&C Act was expected to reuse a pr
 
 ### Retrieval — an English corpus
 
-- [ ] **CFR identifier boost.** [retrieval.py](../../services/assistant/app/retrieval.py) boosts
-      `제N조` and `별표N` only; `21 CFR 892.2050` and `§ 820.30(a)(1)` are not recognised. Identifier
-      lookup is one of the six golden-set axes, so this is a gate input, not a nicety
-- [ ] **Per-language full-text configuration.** `FTS_CONFIG` is the global constant `simple`
-      ([constants.py](../../shared/regops_shared/constants.py)) — correct for Korean, which has no
-      Postgres stemmer, and wrong for English, where it indexes `requirement` and `requirements` as
-      unrelated tokens. Make it a property of the version's language. **This can change what the
-      lexical arm returns for the MFDS cells**, so it must be a no-op for `ko`, proven by re-running
-      the MFDS golden sets before and after
+- [x] **CFR identifier boost.** `21 CFR 892.2050` and `§ 820.30(a)(1)` are now recognised
+      → and the bug was worse than "not recognised": the extractor emitted `§ 892.2050` **with the
+      sign**, a form nothing stores. Measured 2026-08-25 against the live corpus — `21 CFR
+      892.2050` extracted *nothing*, `§ 820.30(a)(1)` extracted one identifier returning *zero*
+      rows, while the bare `820.35` returned five. A unit test had locked the broken form in.
+      Now: `21 CFR`, `21 U.S.C.` and bare `§` all normalise to the stored segment; `21 CFR Part 820`
+      deliberately yields nothing, because a Part is the *Document*; and a compound address becomes
+      a **path tail** matched against the end of `clause_path` together with its descendants —
+      `820.35(a)` returns `(a)` and `(a)(1)`…`(a)(7)` and **not** `(b)`, where the loose-segment
+      form would have put `(a)` into an array overlap matching every `(a)` in scope
+- [x] **Per-language full-text configuration.** Now a property of the version's language
+      → `fts_config_for()` plus migration `0010`, a second GIN index stemmed for English beside the
+      `simple` one from 0005. The cost of not doing it, measured over the FDA corpus on 2026-08-25:
+      `requirement` matched **258** clauses under `simple` and **2,009** under `english` (+679%),
+      `label` 185 against 696, `manufacturer` 495 against 1,066. A hybrid retrieval whose lexical
+      arm loses three quarters of its recall is a vector-only retrieval with extra steps.
+      **The `ko` no-op is structural, not tested for**: the 0005 index and its `simple` query are
+      untouched, so a Korean-only scope runs exactly the SQL it ran before and there is nothing for
+      a before-and-after to detect. The lexical arm groups the versions in scope by language and
+      runs once per group, because cross-cell mode can put both languages in one query and either
+      single choice would read half the corpus with the wrong stemmer
 - [ ] Embedding model unchanged — `nomic-embed-text`, 768-dim, fixed regardless of generation
       provider. If the English corpus argues for a different model, that is a separate decision with a
       full re-index behind it
-- [ ] Passage assembly reviewed against CFR section length; `MAX_PASSAGE_CHARS` was tuned on
+- [x] Passage assembly reviewed against CFR section length; `MAX_PASSAGE_CHARS` was tuned on
       별표-heavy Korean text
+      → **reviewed, measured, and left alone.** The worry does not bite: English clauses sit more
+      comfortably under the 1,200-character cap than Korean ones do. Raw clauses — `en` median 153,
+      p95 612, max 5,827, **0.6%** over the cap; `ko` median 60, p95 312, max 272,172, **2.0%** over.
+      Assembled passages — `en` mean 482, p95 1,152; `ko` mean 696, p95 1,196; **neither corpus
+      produced a single passage over the cap**. Recorded because "no change" is only a finding if
+      the numbers behind it are written down
 
 ### Cross-cell — the M:N exercise
 
@@ -859,3 +877,15 @@ And the structural criteria the slice is really about:
     returning everything passes the positive one; only the pair pins it. Measured at
     `versions_in_scope`, which is where ADR-0006 decision 9's bound is actually enforced, so no
     model is involved.
+
+26. **The Korean compound identifier over-matches, and is deliberately left alone (2026-08-25).**
+    Found while fixing the English side. `제8조제1항` extracts two *loose* identifiers, and
+    `path_segments &&` is an overlap, so it matches 제1항 of **every** article in scope rather than
+    the 제1항 of 제8조. The English fix — a path tail matched against the end of `clause_path` — is
+    the same mechanism the Korean side would need.
+
+    Not applied here, because it would change what retrieval returns for the two **gated** cells,
+    and that is a change with a before-and-after over the MFDS golden sets behind it rather than a
+    change to make in passing while building an English corpus. Recorded so the next person finds a
+    measurement instead of rediscovering it: the fix is `extract_identifier_paths` extended to the
+    Korean patterns, and the proof is the phase 1.6 golden sets re-scored either side of it.
