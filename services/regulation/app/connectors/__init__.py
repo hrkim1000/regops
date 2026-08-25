@@ -23,6 +23,7 @@ from .base import (
     StandardRecord,
     assert_ingestible,
 )
+from .ecfr import ECFRConnector
 from .http import PoliteFetcher, redact_url, resolve_url
 from .law_go_kr import AdmRuleConnector, LawConnector, PendingLawConnector
 from .mfds import MfdsListingConnector, MfdsRssConnector
@@ -37,6 +38,7 @@ _CONNECTORS: Final[dict[str, type]] = {
         MfdsRssConnector,
         MfdsListingConnector,
         RecognitionListConnector,
+        ECFRConnector,
     )
 }
 
@@ -62,6 +64,7 @@ __all__ = [
     "AuthorityError",
     "Connector",
     "ConnectorError",
+    "ECFRConnector",
     "FetchResult",
     "FetchedArtifact",
     "LawConnector",

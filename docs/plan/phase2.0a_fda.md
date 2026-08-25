@@ -183,9 +183,13 @@ its open questions 6 and 7 — see *Deviations* 7.
 
 ### Connectors
 
-- [ ] eCFR connector — section-granular fetch, point-in-time where the API offers it.
+- [x] eCFR connector — section-granular fetch, point-in-time where the API offers it.
       **Unblocked 2026-08-24**: [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 11 settles
       the robots.txt question — documented API only, and **never** eCFR or Federal Register HTML
+      → [`ecfr_part`](../../services/regulation/app/connectors/ecfr.py). Polls `versions/` for
+      identity, then fetches the body **at the issue_date that endpoint stated** rather than at
+      "today", so archived bytes are reproducible. 15 unit tests, one of which asserts the no-HTML
+      rule against the recorded call list. Verified live end to end: 21,490 B → 61 clauses
 - [ ] Federal Register connector — final rules by agency and affected CFR part, carrying the stated
       effective date in `meta` (it is a parse output, not a fetch output —
       [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 5)
@@ -203,9 +207,13 @@ its open questions 6 and 7 — see *Deviations* 7.
 - [ ] Safety surfaces — Warning Letters, Import Alerts, recalls, MAUDE — as change signals. A feed
       yields no clauses and that is not a gap
       ([parsing/__init__.py](../../services/regulation/app/parsing/__init__.py))
-- [ ] Every new connector registered by key; a seed row cannot name one that does not exist
-- [ ] Polite fetch, backoff and `redact_url` reused unchanged. **No credential in `sources`, logs or
+- [x] Every new connector registered by key; a seed row cannot name one that does not exist
+      → `ecfr_part` in `CONNECTOR_KEYS`, asserted by test. **Seed rows are not written yet** — the
+      connector exists, nothing points a source at it
+- [x] Polite fetch, backoff and `redact_url` reused unchanged. **No credential in `sources`, logs or
       fixtures**
+      → `PoliteFetcher` unchanged; the eCFR needs **no credential at all**, so there is nothing to
+      redact on this source. govinfo is the one FDA host that will need a key
 - [ ] ISO 13485:2016 stays a `StandardReference` even though 21 CFR 820 (QMSR) incorporates it by
       reference — cite the requirement, link the standard, store neither
 
