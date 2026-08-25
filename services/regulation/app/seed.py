@@ -168,6 +168,29 @@ def _cfr_part(
     )
 
 
+def _fr_part(cell: str, ordinal: int, part: str, subject: str) -> SeedSource:
+    """The Federal Register feed for one CFR Part — dates and identifiers, no regulation text.
+
+    Paired with the ``_cfr_part`` row of the same Part so the join ADR-0018 decision 5 needs is
+    structural: ``fda:fr:21-820`` against ``fda:cfr:21-820``. The eCFR sources that Part to
+    ``89 FR 7523`` while the Federal Register calls the same rule ``89 FR 7496``, so citation
+    strings cannot be joined on and the Part is what is left to join by.
+
+    Block is ``SAFETY`` regardless of where the Part itself sits: this is a change-signal surface,
+    like the MFDS RSS boards, not the instrument.
+    """
+    return SeedSource(
+        cell=cell,
+        block=SourceBlock.SAFETY,
+        ordinal=ordinal,
+        name=f"fr_{part}",
+        title=f"Federal Register — final rules affecting 21 CFR Part {part} ({subject})",
+        tier=SourceTier.A,
+        connector="federal_register",
+        params={"title": "21", "part": part},
+    )
+
+
 SEED: tuple[SeedSource, ...] = (
     # --- mfds_cosmetic ------------------------------------------------------
     _law("mfds_cosmetic", 1, "cosmetics_act", "화장품법"),
@@ -413,6 +436,23 @@ SEED: tuple[SeedSource, ...] = (
         "treats as authoritative is ADR-0018 open question 5 — a scope decision, not a connector "
         "one. Seeded because the Part is live and unreserved; the title is not ours to correct.",
     ),
+    # --- Federal Register, one feed per Part --------------------------------
+    #
+    # The effective date the eCFR does not carry, and the only view of an amendment that is
+    # published but not yet in force — the eCFR 404s on future dates (ADR-0018 decisions 5 and 7).
+    _fr_part("fda_samd", 11, "820", "QMSR"),
+    _fr_part("fda_samd", 12, "892", "radiology devices"),
+    _fr_part("fda_samd", 13, "860", "classification procedures"),
+    _fr_part("fda_samd", 14, "11", "electronic records"),
+    _fr_part("fda_samd", 15, "803", "medical device reporting"),
+    _fr_part("fda_samd", 16, "806", "corrections and removals"),
+    _fr_part("fda_samd", 17, "807", "establishment registration"),
+    _fr_part("fda_samd", 18, "822", "postmarket surveillance"),
+    _fr_part("fda_samd", 19, "7", "enforcement policy"),
+    _fr_part("fda_cosmetic", 11, "700", "cosmetics general"),
+    _fr_part("fda_cosmetic", 12, "701", "cosmetic labeling"),
+    _fr_part("fda_cosmetic", 13, "740", "warning statements"),
+    _fr_part("fda_cosmetic", 14, "710", "establishment registration"),
 )
 
 #: 행정규칙 added from the discovery sweep on 2026-08-06 — the triage backlog, decided in.

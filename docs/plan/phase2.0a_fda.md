@@ -190,9 +190,13 @@ its open questions 6 and 7 — see *Deviations* 7.
       identity, then fetches the body **at the issue_date that endpoint stated** rather than at
       "today", so archived bytes are reproducible. 15 unit tests, one of which asserts the no-HTML
       rule against the recorded call list. Verified live end to end: 21,490 B → 61 clauses
-- [ ] Federal Register connector — final rules by agency and affected CFR part, carrying the stated
+- [x] Federal Register connector — final rules by agency and affected CFR part, carrying the stated
       effective date in `meta` (it is a parse output, not a fetch output —
       [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 5)
+      → [`federal_register`](../../services/regulation/app/connectors/federal_register.py), one
+      `FEED` per Part (`fda:fr:21-820` against `fda:cfr:21-820`, so the decision 5 join is structural
+      rather than a search). 24 unit tests; 13 seed rows live. **But `meta` reaches nothing** — see
+      *Deviations* 10. The rules themselves are archived and reproducible from WORM
 - [ ] govinfo connector for the FD&C Act, **ingested once** and claimed by both cells
 - [ ] Recognized Consensus Standards through the **existing** `recognition_list` connector — the
       header→field mapping is already `sources.params["columns"]` configuration, so this should be a
@@ -478,7 +482,28 @@ And the structural criteria the slice is really about:
    GET with a query string and returns bytes identical to the POST, so `PoliteFetcher.get()` is
    enough and no new fetch path is needed.
 
-10. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+10. **`FetchedArtifact.meta` is computed and then dropped — there is nowhere to put it
+    (2026-08-24).** `document_versions` has no column for it: `version_label`, `language`,
+    `content_hash`, `raw_object_key`, `published_at`, `effective_date`, `effective_date_phrase`,
+    `parser_version` and nothing else. On the MFDS path that is fine, because `meta` is *consumed*
+    at parse time to set `effective_date` and is not meant to survive.
+
+    The Federal Register connector breaks that assumption. Its `meta` carries `pending_count`,
+    `earliest_pending`, `latest_pending` and `truncated_of_total` — and a feed has **many** rules
+    with **many** dates, so there is no single version-level date to fold them into. Today those
+    values are computed on every fetch and reach nothing queryable.
+
+    **Nothing is lost, and nothing is usable either.** The raw payload is in the WORM archive and
+    round-trips: 32 rules recovered for Part 892, whose two newest are the same two amendments the
+    eCFR `versions` endpoint reported. So the evidence is reproducible by reading the archive, and
+    not by querying the database.
+
+    This blocks the half of ADR-0018 decision 7 that matters — *knowing* which amendments are
+    announced and not yet in force — and the decision 5 join, which needs per-rule `effective_on`
+    beside the CFR version. Both want the same thing: somewhere structured for the rules to live.
+    That is a schema decision, not a connector one, so it is recorded here rather than improvised.
+
+11. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while
