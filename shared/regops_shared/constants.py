@@ -498,15 +498,64 @@ PERMISSIVE_MODALS: Final[dict[str, tuple[str, ...]]] = {
 
 #: Obligation taxonomy per domain (ADR-0004 decision 3). This and the modal inventory and the prompt
 #: are the **entire** content of the domain branch — same tables, same stages, same lifecycle.
+#:
+#: **The SaMD set grew on 2026-08-25, and the measurement is why.** The original four read as though
+#: drawn from 21 CFR 820, and they were: triaged across the FDA corpus, Part 820 supplies **21 of
+#: 341** obligation-bearing SaMD clauses — 6% — while ``design_control``/``risk``/``vnv`` describe
+#: nothing outside it. The rest had no home at all:
+#:
+#: =========================================  =====  ==================================
+#: Part                                       Obl.   Code
+#: =========================================  =====  ==================================
+#: 803 medical device reporting                  82  ``postmarket``
+#: 892 radiology device classification           68  ``classification``  *(new)*
+#: 807 establishment registration & listing      63  ``registration``    *(new)*
+#: 860 device classification procedures          34  ``classification``  *(new)*
+#: 822 postmarket surveillance                   23  ``postmarket``
+#: 7   enforcement policy & recalls              21  ``postmarket``
+#: 820 quality management system                 21  ``design_control`` · ``risk`` · ``vnv``
+#: 11  electronic records & signatures           18  ``records``         *(new)*
+#: 806 corrections & removals                    11  ``postmarket``
+#: =========================================  =====  ==================================
+#:
+#: ``postmarket`` **deliberately absorbs** MDR, surveillance, corrections/removals and recalls: all
+#: four are duties that attach after a device is on the market, and splitting them would multiply
+#: codes without separating obligations an RA treats differently.
+#:
+#: It does **not** absorb registration, classification or records, and that was the alternative
+#: considered and rejected: 892/807/860/11 are pre-market and market-entry duties, so filing them
+#: under ``postmarket`` would make the code's name false — worse than having no code, because a
+#: wrong label reads as information.
+#:
+#: **Cosmetic is unchanged and, honestly, unassessed.** Only Part 700 is ingested (16 obligations);
+#: 701, 740 and 710 failed to fetch, so there is no evidence to review the cosmetic taxonomy
+#: against. Absence of a change here means absence of measurement, not a verdict.
 TAXONOMY_CODES: Final[dict[Domain, tuple[str, ...]]] = {
-    Domain.SAMD: ("design_control", "risk", "vnv", "postmarket"),
+    Domain.SAMD: (
+        "design_control",
+        "risk",
+        "vnv",
+        "postmarket",
+        "registration",
+        "classification",
+        "records",
+    ),
     Domain.COSMETIC: ("ingredient", "labelling", "claims", "gmp", "notification"),
 }
 
 #: Bumped when the atomicity rules, modal inventory or taxonomy change. Stamped on every IR: an
 #: obligation extracted under an older rule set is not comparable with one extracted under this one,
 #: and the golden-set score is only meaningful per rule version.
-IR_RULE_VERSION: Final[str] = "1.2.0"
+#:
+#: **1.3.0 (2026-08-25) — three SaMD taxonomy codes added.** The modal inventory and the atomicity
+#: rules are untouched, so *whether* a clause bears an obligation is unchanged; only the label it
+#: can carry moved. The bump is still required, and the cost is real: every IR already stored is
+#: stamped ``1.2.0``, the gated MFDS ones included, and phase1.6's golden-set scores were measured
+#: against that version. They stay valid *for it* and are not comparable with anything extracted
+#: from here on. Re-extracting the MFDS corpus under 1.3.0 would restore comparability and cost a
+#: agent pass over 25,729 clauses — a decision for whoever next needs the two sides compared, not a
+#: side effect to slip into this change.
+IR_RULE_VERSION: Final[str] = "1.3.0"
 
 #: Bumped independently of the rules — a prompt can be reworded without the rule set moving.
 IR_PROMPT_VERSION: Final[str] = "1.2.0"

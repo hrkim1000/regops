@@ -284,13 +284,22 @@ its open questions 6 and 7 — see *Deviations* 7.
       nothing and reports full coverage. Keep a test on that behaviour
       → test kept, and a second one added that demonstrates *why*: the same English sentence yields
       `("shall",)` under the English set and `()` under the Korean one — a silent zero, not an error
-- [ ] Review `TAXONOMY_CODES` for FDA fit. The SaMD codes (`design_control`, `risk`, `vnv`,
+- [x] Review `TAXONOMY_CODES` for FDA fit. The SaMD codes (`design_control`, `risk`, `vnv`,
       `postmarket`) read as though drawn from 21 CFR 820 in the first place; registration, listing and
       MDR reporting need a home, or a recorded decision that `postmarket` is it
+      → **the hunch was right and the gap was larger than it reads.** Part 820 supplies **21 of 341**
+      obligation-bearing SaMD clauses, so the four codes described 6% of them. Added `registration`
+      (807, 63), `classification` (892 + 860, 102) and `records` (11, 18); `postmarket` absorbs MDR,
+      surveillance, corrections/removals and recalls (137) **by decision, recorded**. `IR_RULE_VERSION`
+      → 1.3.0. See *Deviations* 13
 - [ ] Guidance excluded by the rule decided above — with an `ExclusionReason`, so it appears as
       examined-and-excluded rather than unexamined
-- [ ] `IR_RULE_VERSION` bumped if the inventory or taxonomy moves. IRs extracted under two rule
+- [x] `IR_RULE_VERSION` bumped if the inventory or taxonomy moves. IRs extracted under two rule
       versions are not comparable, and a golden-set score is meaningful only per rule version
+      → **1.2.0 → 1.3.0** with the taxonomy. The modal inventory did not move, so *whether* a clause
+      bears an obligation is unchanged. The evaluation harness **records** the version rather than
+      asserting it, so nothing broke — but the 2026-08-13 Go/No-Go report is stamped 1.2.0 and is
+      now a valid record *of that version only*
 
 ### Retrieval — an English corpus
 
@@ -542,7 +551,30 @@ And the structural criteria the slice is really about:
     shared-code change: triage re-run over all **33,472** MFDS clauses before and after gives
     byte-identical counts across all ten verdicts, and the FDA counts are unchanged too.
 
-12. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+13. **The SaMD taxonomy grew from four codes to seven, and `IR_RULE_VERSION` moved with it
+    (2026-08-25).** The plan asked for a review and offered two acceptable outcomes — add codes, or
+    record that `postmarket` covers it. The measurement chose: 21 CFR 820 supplies **21 of 341**
+    obligation-bearing SaMD clauses, so `design_control`/`risk`/`vnv` described **6%** of them and
+    described nothing outside Part 820.
+
+    Added `registration` (Part 807, 63 obligations), `classification` (892 and 860, 102) and
+    `records` (Part 11, 18). `postmarket` absorbs MDR, surveillance, corrections/removals and
+    recalls (137) — one idea, duties attaching after market entry. It does **not** absorb the other
+    four: those are pre-market and market-entry duties, and filing them under `postmarket` would
+    make the label false, which is worse than no label because a wrong one reads as information.
+
+    **The cost is not hidden.** `Domain.SAMD` is shared with `mfds_samd`, so the wider taxonomy is
+    available to Korean extraction too, and `IR_RULE_VERSION` is now 1.3.0 while every stored IR —
+    the gated MFDS ones included — is stamped 1.2.0. phase1.6's golden-set scores stay valid *for
+    1.2.0* and are not comparable with anything extracted from here on. Restoring comparability
+    means re-extracting 25,729 clauses through the agent; that is a decision for whoever next needs
+    the two sides compared, not a side effect to slip in here.
+
+    **Cosmetic was not reviewed, and that is a gap rather than a verdict.** Only Part 700 is
+    ingested — 701, 740 and 710 failed to fetch — so there is no FDA evidence to assess the cosmetic
+    taxonomy against.
+
+14. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while

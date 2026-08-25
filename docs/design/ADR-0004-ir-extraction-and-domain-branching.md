@@ -70,7 +70,17 @@ What legitimately differs between SaMD and Cosmetic:
 | | `samd` | `cosmetic` |
 |---|---|---|
 | Typical obligation shape | process/lifecycle duties (documentation, verification, change control) | substance/labelling duties (concentration limits, prohibited ingredients, claim restrictions) |
-| Taxonomy | design control · risk · V&V · postmarket | ingredient · labelling · claims · GMP · notification |
+| Taxonomy | design control · risk · V&V · postmarket **+ registration · classification · records** | ingredient · labelling · claims · GMP · notification |
+
+> **Taxonomy note, 2026-08-25 — the decision is unchanged; the SaMD list grew.** Decision 3 says the
+> branch *is* a rule set, and that stands. What changed is the contents of one: triaged over the FDA
+> corpus, 21 CFR 820 supplies **21 of 341** obligation-bearing SaMD clauses, so the original four
+> codes described 6% of them and the rest — registration and listing (807), classification
+> (892, 860), electronic records (11) — had no home. `postmarket` deliberately absorbs MDR,
+> surveillance, corrections/removals and recalls; it deliberately does **not** absorb the four
+> above, which are pre-market and market-entry duties. `IR_RULE_VERSION` moved to 1.3.0 with it.
+> Cosmetic is untouched and **unassessed** — only Part 700 is ingested, so there is no evidence to
+> review it against. See [phase2.0a](../plan/phase2.0a_fda.md) *Deviations* 13.
 | Tabular annexes | present but sparse (의료기기 기준규격: ~3% table lines) | **table-dense** (화장품 안전기준 별표 1·2: 35–43% table lines) — ingredient tables carry obligations in rows |
 
 **Falsification criterion.** If Cosmetic extraction requires a domain-specific column on `Clause`, a

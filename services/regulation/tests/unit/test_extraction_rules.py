@@ -20,6 +20,7 @@ from app.extraction.rules import (
     triage,
 )
 from regops_shared.constants import (
+    IR_RULE_VERSION,
     MODAL_INVENTORY,
     TAXONOMY_CODES,
     ClassificationKind,
@@ -305,3 +306,65 @@ def test_an_english_clause_under_the_korean_rule_set_finds_nothing() -> None:
     english = "The manufacturer shall maintain records of the review."
     assert found_modals(english, EN) == ("shall",)
     assert found_modals(english, SAMD) == ()
+
+
+# --- the SaMD taxonomy, and the measurement that grew it ------------------------------------------
+#
+# Triaged over the FDA corpus on 2026-08-25: Part 820 supplies 21 of 341 obligation-bearing SaMD
+# clauses, so the original four codes described 6% of them. These cases pin what the other 94% is
+# for, and the boundary that was deliberately not crossed.
+
+
+def test_the_original_four_codes_survive_the_addition() -> None:
+    """Existing IRs carry these; dropping one would orphan them."""
+    for code in ("design_control", "risk", "vnv", "postmarket"):
+        assert code in TAXONOMY_CODES[Domain.SAMD]
+
+
+@pytest.mark.parametrize("code", ["registration", "classification", "records"])
+def test_each_added_code_has_a_part_behind_it(code: str) -> None:
+    """No speculative codes: 807 registration & listing, 892+860 classification, 11 records."""
+    assert code in TAXONOMY_CODES[Domain.SAMD]
+
+
+def test_postmarket_is_the_only_code_that_absorbs_several_parts() -> None:
+    """MDR, surveillance, corrections/removals and recalls are one idea — duties that attach after
+    a device is on the market. Splitting them would multiply codes without separating obligations
+    an RA treats differently."""
+    assert TAXONOMY_CODES[Domain.SAMD].count("postmarket") == 1
+
+
+def test_the_taxonomy_carries_no_premarket_catch_all() -> None:
+    """The rejected alternative was filing 892/807/860/11 under ``postmarket``.
+
+    They are pre-market and market-entry duties, so that label would be false — worse than no code,
+    because a wrong one reads as information.
+    """
+    samd = TAXONOMY_CODES[Domain.SAMD]
+    assert "premarket" not in samd, "a catch-all was added instead of naming the duty"
+    assert {"registration", "classification"} <= set(samd)
+
+
+def test_the_cosmetic_taxonomy_is_untouched() -> None:
+    """Only Part 700 is ingested for the cosmetic cell, so there is nothing to review against.
+    Absence of a change is absence of measurement, not a verdict."""
+    assert TAXONOMY_CODES[Domain.COSMETIC] == (
+        "ingredient",
+        "labelling",
+        "claims",
+        "gmp",
+        "notification",
+    )
+
+
+def test_the_rule_version_moved_with_the_taxonomy() -> None:
+    """An IR extracted under a different taxonomy is not comparable with one extracted under this,
+    which is the whole reason the version is stamped on every row."""
+    assert IR_RULE_VERSION == "1.3.0"
+    assert rule_set_for(Domain.SAMD, "en").rule_version == IR_RULE_VERSION
+
+
+def test_adding_codes_did_not_touch_the_modal_inventory() -> None:
+    """*Whether* a clause bears an obligation is unchanged; only the label it can carry moved."""
+    assert rule_set_for(Domain.SAMD, "en").modals == MODAL_INVENTORY["en"]
+    assert rule_set_for(Domain.SAMD, "ko").modals == MODAL_INVENTORY["ko"]
