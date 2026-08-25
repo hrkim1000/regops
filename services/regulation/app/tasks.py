@@ -21,6 +21,7 @@ from regops_shared.models.base import utcnow
 from .celery_app import celery_app
 from .diff import diff_version
 from .discovery import fetch_admrul_index, reconcile
+from .effective_dates import resolve_effective_dates
 from .extraction import domains_for, extract_version, rederive_version
 from .extraction.extract import REDERIVE_TASK
 from .ingest import ingest_source
@@ -91,12 +92,20 @@ def fetch_source(self, source_id: str) -> dict[str, object]:
             schedule.consecutive_failures = schedule.consecutive_failures + 1 if result.error else 0
             session.commit()
 
+        # Either surface may arrive first — the eCFR can issue text before the rule explaining it is
+        # published, and a rule can be published long before the compilation absorbs it. So the
+        # sweep runs after every ingest of either, in the same session, and only touches versions
+        # whose effective_date is still null (ADR-0019 open question 1).
+        resolved = resolve_effective_dates(session)
+        session.commit()
+
     return {
         "source": result.source_slug,
         "outcome": result.outcome.value,
         "new_versions": len(result.new_version_ids),
         "unchanged_artifacts": result.unchanged_artifacts,
         "standards_seen": result.standards_seen,
+        "effective_dates_resolved": resolved.resolved,
     }
 
 
@@ -122,6 +131,24 @@ def discover_sources() -> dict[str, int | bool]:
         }
         session.commit()
     return result
+
+
+@celery_app.task(name="regulation.resolve_effective_dates")
+def resolve_effective_dates_task(force: bool = False) -> dict[str, object]:
+    """Attach the legally stated effective date to regulation versions that lack one.
+
+    ADR-0019 open question 1, answered: a sweep rather than a write-time join, because a rule can be
+    published *after* the eCFR issues the text it explains. A write-time join would be permanently
+    wrong for those; a sweep resolves them on its next run.
+
+    Dispatched at the end of every ingest — both connectors matter, since either the text or the
+    rule may arrive first — and cheap enough to run unconditionally: it touches only versions whose
+    ``effective_date`` is still null.
+    """
+    with sync_session() as session:
+        summary = resolve_effective_dates(session)
+        session.commit()
+    return summary.as_dict()
 
 
 @celery_app.task(name="regulation.parse_document_version")

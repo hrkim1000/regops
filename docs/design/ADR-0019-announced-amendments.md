@@ -117,6 +117,12 @@ small, and it is history we did not archive ourselves, so it is **evidence about
 than evidence *in* it — it is never cited, and nothing downstream may treat it as a source of
 regulation text.
 
+**The unmatched six are a finding, not noise.** Their Parts' newest eCFR issue has no FDA final
+rule within 30 days — the nearest is 440 days off, and one is 4,120. Either those issues were
+editorial, or a rule amended the Part without naming it in `cfr_references`, or it came from an
+agency the filter excludes. ADR-0018 decision 4 called this join best-effort; this is the size of
+"best-effort" measured, and it is a number someone can now work on.
+
 **Cost — `meta` still drops for every other connector.** This fixes the Federal Register's case by
 giving those records a home, not by making `FetchedArtifact.meta` durable. If a second connector
 needs its envelope to survive, that is the same conversation again and it should be had once.
@@ -139,10 +145,22 @@ needs its envelope to survive, that is the same conversation again and it should
 
 ## Open questions
 
-1. **Who performs the join, and when?** Decision 5 defers it. The candidates are the version stage
-   (at write time, needing the announcement to already exist) and a sweep (after the fact, able to
-   correct itself). The second is likelier to be right, because a rule can be published *after* the
-   eCFR issues the text it explains.
+1. ~~**Who performs the join, and when?**~~ **Closed 2026-08-25: a sweep**, as anticipated —
+   `regulation.resolve_effective_dates`, dispatched after every ingest of either connector and
+   touching only versions whose `effective_date` is still null. Write-time was rejected for the
+   reason recorded here: a rule can be published *after* the eCFR issues the text it explains, so a
+   write-time join is permanently wrong for those while a sweep resolves them on its next run.
+
+   **The matching window is measured rather than chosen.** Across the 13 in-scope Parts the gaps
+   fall in two clusters with nothing between them — every true match at **0–2 days** (Parts 803,
+   860, 892 at 0; Part 820's QMSR at 2) and the nearest non-match at **440**. The threshold is 30,
+   sitting in a gap two orders of magnitude wide, so its exact value is not load-bearing.
+
+   Live result: 10 versions examined, **4 resolved, 6 left null**, 1 ambiguous. The ambiguity is the
+   QMSR pair — two rules, one date — where the *date* is unambiguous even though the rule is not.
+   An unmatched version **stays null**: decision 5's fallback is the eCFR `amendment_date`, which is
+   not persisted anywhere, and writing the issue date instead would put a derived value in the
+   column citations resolve through. The 6 are the honest output, not a failure to report.
 2. **Does an announcement belong to `monitoring`'s alert stream?** A rule effective in 2033 is not a
    change event, but an RA plausibly wants to hear about it once. Deciding that is
    `monitoring`-side and needs the alerting model, not this table.
