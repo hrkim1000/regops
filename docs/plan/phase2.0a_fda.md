@@ -193,6 +193,11 @@ its open questions 6 and 7 — see *Deviations* 7.
       seed row and no new code. If it needs code, record that in *Deviations*: the connector was built
       against an FDA-shaped assumption ([phase1.0](phase1.0_ingestion.md) recon) and this is the first
       time that assumption is tested
+      → **it needs code — the assumption did not hold (2026-08-24, *Deviations* 9).** Three specific
+      gaps, measured by running the real parser against the live page: no `<th>` anywhere so the
+      header is not detected; chrome rows (results-per-page, *Export to Excel*) parse as data; and a
+      second standard under one query arrives as a **continuation row with fewer cells**, so its
+      columns do not line up with the header. Scope it as connector work, not a seed row
 - [ ] Safety surfaces — Warning Letters, Import Alerts, recalls, MAUDE — as change signals. A feed
       yields no clauses and that is not a gap
       ([parsing/__init__.py](../../services/regulation/app/parsing/__init__.py))
@@ -419,7 +424,39 @@ And the structural criteria the slice is really about:
    moves yearly against a ≤24h detection gate; Public Laws (`PLAW`) are the likely announcement
    surface and were not probed. [ADR-0018](../design/ADR-0018-fda-source-model.md) open question 7.
 
-8. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+9. **`recognition_list` needs code for FDA, and the seed row is blocked behind it (2026-08-24).**
+   This row predicted "a seed row and no new code" and asked to be corrected if wrong. It is wrong,
+   and the correction is worth more than the prediction was: the connector has **never been seeded
+   anywhere** — no source row in `seed.py` names it — so this is its first real use, not its first
+   FDA use. The MFDS Tier D row points its note at `mfds_samd.standards.recognition_list`, a source
+   that does not exist.
+
+   Measured by running `extract_table_rows` + `row_to_record` against the live page rather than by
+   reading the HTML:
+
+   - **No `<th>` in the document at all.** The header is a plain `<tr>` of `<td>`s, so extraction
+     falls back to positional keys (`col0`…`col6`) and `_match_column` — which looks up header
+     labels — matches nothing. `row_to_record` returns `None` for every row. **`sources.params["columns"]`
+     cannot fix this**: it maps labels to fields, and there are no labels.
+   - **Chrome rows parse as data.** The results-per-page control and the *New Search / Export to
+     Excel* bar are `<tr>`s in the same table.
+   - **Continuation rows do not align with the header.** One query returns two recognized standards;
+     the second arrives with **3 cells instead of 7**, its leading columns omitted. Read positionally
+     it would file `ANSI AAMI IEC` as *Date of Entry*.
+
+   What the fix is *not*: an FDA branch in the connector. Header-row detection without `<th>`, chrome
+   rejection and continuation carry-forward are all properties of *this table shape*, so they belong
+   behind configuration or a shape-keyed rule, the same way parser profiles key on the shape of an
+   instrument and never on who published it ([ADR-0002](../design/ADR-0002-canonical-regulation-model.md)
+   decision 3). If the fix acquires an `if authority == "fda"`, that is the same falsifier this slice
+   exists to run.
+
+   Two things this does **not** block: `edition` and `withdrawal_date` remain unfillable from this
+   surface regardless (*Deviations* 5), and the GET/POST question is settled — `results.cfm` accepts
+   GET with a query string and returns bytes identical to the POST, so `PoliteFetcher.get()` is
+   enough and no new fetch path is needed.
+
+10. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while

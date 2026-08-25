@@ -413,3 +413,44 @@ template ([ADR-0003](ADR-0003-ingestion-and-change-detection.md) decision 13).
 **"No published limit" is not "no limit."** Nothing was throttled here, which bounds the polite rate
 from below and says nothing about the ceiling. `PoliteFetcher`'s existing backoff is reused
 unchanged; no probe justified tuning it.
+
+## Q8 — Does the existing `recognition_list` connector actually read the FDA table?
+
+**No, and Q6's answer was too optimistic.** Q6 compared *labels* and concluded configuration would be
+enough. Running the parser settles it differently.
+
+`extract_table_rows` + `row_to_record` against the live page for `referencenumber=62304`:
+
+| row | what it is | cells |
+|---|---|---:|
+| 0 | results-per-page control | 2 |
+| 1 | *New Search / Export to Excel* bar | 1 |
+| 2 | **the header** — `Date of  Entry` · `Specialty Task Group Area` · `Recognition Number` · `Extent of  Recognition` · `Standards Developing Organization` · `Standard Designation Number and Date` · `Standard Title  (click for recognition information)` | 7 |
+| 3 | IEC 62304 | 7 |
+| 4 | **ANSI AAMI IEC 62304 — a continuation row** | **3** |
+| 5 | empty | 2 |
+
+Three findings, and only the first was visible from the labels alone:
+
+1. **There is no `<th>` in the document** — zero, across five `<table>` elements. The header is a
+   plain `<tr>` of `<td>`s, so extraction falls back to positional keys `col0…col6` and
+   `_match_column`, which looks up header *labels*, matches nothing. **Every row yields `None`.**
+   `sources.params["columns"]` maps labels to fields and cannot help where there are no labels.
+2. **Chrome rows sit in the same table as the data.**
+3. **One query returns two standards, and the second has 3 cells rather than 7** — its leading
+   columns are omitted rather than repeated. Read positionally it files `ANSI AAMI IEC` as
+   *Date of Entry*.
+
+So the FDA row is **connector work, not a seed row**. Recorded as
+[phase2.0a](../plan/phase2.0a_fda.md) *Deviations* 9. Worth noting the connector has **never been
+seeded anywhere** — nothing in `seed.py` names it — so this is its first use, not merely its first
+FDA use, and the MFDS Tier D row's note points at a `recognition_list` source that does not exist.
+
+**Settled and not a problem:** `results.cfm` accepts **GET** with a query string and returns bytes
+identical to the POST form, so `PoliteFetcher.get()` suffices and no new fetch path is needed.
+
+**Also settled:** the six standards the source map names return 1–2 records each on a single page, so
+the connector's lack of pagination does not bite at this scope — the full list is 1,000+ across 10+
+pages at 100 a page, and nothing in the FDA cells asks for it. **ISO 13485 returns no records at
+all**, confirming the source map is right to carry it as a separate "incorporated by reference, cite
+and link only" item rather than as a recognition-list entry.
