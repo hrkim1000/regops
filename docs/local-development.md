@@ -45,6 +45,8 @@ docker compose logs frontend --tail=30       # when a surface does not answer
 | **MinIO console** | root user | `docker-compose.yml` → `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`, with local defaults inline. The same two variables drive the **server** and every **service client**, so they cannot drift apart |
 | **pgAdmin** | login | `docker-compose.yml` → `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_PASSWORD` |
 | **PostgreSQL (owner)** | `regops` | `docker-compose.yml` → `POSTGRES_PASSWORD`. Migrations connect as this role |
+| **국가법령정보 OPEN API** | account `OC` | `.env.dev` → `LAW_GO_KR_OC`, read through `Settings.law_go_kr_oc`. Self-designated and passed in the query string; the API **echoes it back inside response bodies**, so it is in `source_credentials` and the WORM archive refuses any payload containing it |
+| **govinfo (api.data.gov)** | issued key | `.env.dev` → `GOVINFO_API_KEY`, read through `Settings.govinfo_api_key`. Free from <https://api.data.gov/signup/>, one key across every api.data.gov service. `DEMO_KEY` works at 10 requests/hour — enough to probe, not to ingest |
 | **PostgreSQL (app)** | `regops_app` | `REGOPS_APP_DB_PASSWORD`. Services connect as this least-privilege role — it holds no `UPDATE`/`DELETE` on `audit_log` ([ADR-0011](design/ADR-0011-audit-trail-immutability.md)) |
 | **국가법령정보 API** | `OC` query parameter | `.env.dev` → `LAW_GO_KR_OC`. **The only real secret in the list** |
 | Flower | none | unauthenticated; local only |

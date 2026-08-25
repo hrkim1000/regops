@@ -68,6 +68,17 @@ class Settings(BaseSettings):
     #: URL is built at request time and is not persisted.
     law_go_kr_oc: str | None = None
 
+    #: api.data.gov key for govinfo — the FD&C Act (USCODE) and Public Laws (PLAW), ADR-0018
+    #: decision 12. Unlike the MFDS key this one is an issued token passed as ``?api_key=``, and
+    #: govinfo does **not** echo it back in responses — checked across the collection, package and
+    #: granule endpoints. It is still listed in :attr:`source_credentials` below: the archive
+    #: refusing any payload that contains it costs nothing, and the day the API starts embedding it
+    #: in a ``detailsLink`` is not a day anyone will notice in advance.
+    #:
+    #: ``DEMO_KEY`` works and is rate-limited to **10 requests an hour**, which is enough to probe
+    #: and not enough to ingest — title 21 alone has 901 granules.
+    govinfo_api_key: str | None = None
+
     # --- fetch politeness (ADR-0003 decision 9) ---------------------------
     http_timeout_seconds: float = 30.0
     http_max_retries: int = 4
@@ -91,7 +102,7 @@ class Settings(BaseSettings):
         reason ADR-0003 decision 13 exists is that a credential written somewhere append-only can
         never be cleaned up.
         """
-        return tuple(value for value in (self.law_go_kr_oc,) if value)
+        return tuple(value for value in (self.law_go_kr_oc, self.govinfo_api_key) if value)
 
 
 @lru_cache
