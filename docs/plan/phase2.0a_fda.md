@@ -375,11 +375,27 @@ Not planned when this slice was written: the FD&C Act was expected to reuse a pr
       cells had never exposed: the claim is written only where an artefact is applied, so a cell
       that lost the claim to a race could never regain it while the source answered 304. See
       *Deviations* 23
-- [ ] Cell isolation extended to the shared document: a change event fans out to **every** claiming
+- [x] Cell isolation extended to the shared document: a change event fans out to **every** claiming
       cell and no others — one of the five non-negotiable test cases
-- [ ] Alert routing verified for a subscriber in one FDA cell when the shared act changes
-- [ ] Refusal verified in the other direction: an `fda_cosmetic` question must not be answered from
-      `fda_samd` clauses of the same act
+      → [3 acceptance tests](../../services/regulation/tests/integration/test_phase2_0a_acceptance.py).
+      Phase 1.1 already proved the *mechanism*, but against a fixture that hands both
+      claims to one version — the gated MFDS pair share no regulation, so it had no real M:N case.
+      These drive the claim through the **real path**: two sources in two cells, one
+      `canonical_key`, one Document, one version, then an amendment producing exactly one event per
+      (diff, claiming cell) and none for the other six cells. That path is where *Deviations* 23's
+      defect lived, which is why it is the one under test
+- [x] Alert routing verified for a subscriber in one FDA cell when the shared act changes
+      → the phase 1.4 fan-out test is now **parameterized over both authorities**. Routing matches
+      on `cell_id` with no authority-conditional branch, so an FDA copy of the MFDS test would be
+      the same code path with different ids; parameterizing says exactly that, and the FDA case is
+      the one where the shared document is real rather than synthetic
+- [x] Refusal verified in the other direction — **but not as this row states it.** The criterion
+      asked that an `fda_cosmetic` question not be answered from `fda_samd` clauses *of the same
+      act*, and there is no such thing: the Act is one Document claimed by both cells, so its
+      clauses belong to both, and refusing it would deny the cosmetic cell the statute governing it.
+      The coherent test is a document the other cell claims **alone** — 21 CFR Part 892 is
+      `fda_samd` only — and both halves are asserted together, because either alone is satisfiable
+      by a scope that is wrong in the other direction. See *Deviations* 25
 
 ### Evaluation
 
@@ -828,3 +844,18 @@ And the structural criteria the slice is really about:
     suffixes it deterministically, which is what that mechanism is for — but it was built for *the
     source's* ambiguous numbering, and whether these 23 are that or our own mis-nesting has not been
     established. Recorded as an open row rather than described as clean.
+
+25. **One cross-cell criterion did not survive contact with the M:N case (2026-08-25).** The row
+    *"an `fda_cosmetic` question must not be answered from `fda_samd` clauses of the same act"* was
+    written before the Act was ingested, and it rests on a misreading of what sharing a document
+    means. `document_cells` is M:N over **documents**, not over clauses: one Document, two claims,
+    and every clause reachable from both. There is no `fda_samd` subset of the FD&C Act to refuse,
+    and a scope that refused it would deny the cosmetic cell the statute it is governed by — MoCRA
+    sits inside that same Act.
+
+    Rewritten to the case that is real: a document claimed by the *other cell alone* — 21 CFR Part
+    892, Radiology Devices — must not be reachable from a cosmetic question. Asserted together with
+    its positive half, because a scope returning nothing passes the negative test and a scope
+    returning everything passes the positive one; only the pair pins it. Measured at
+    `versions_in_scope`, which is where ADR-0006 decision 9's bound is actually enforced, so no
+    model is involved.

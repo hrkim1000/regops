@@ -126,8 +126,9 @@ def session():
 
 @pytest.fixture
 def cells(session) -> dict[str, uuid.UUID]:
-    rows = session.scalars(select(Cell).where(Cell.slug.in_(["mfds_cosmetic", "mfds_samd"]))).all()
-    assert len(rows) == 2, "migration 0001 seeds the 8 cells"
+    wanted = ["mfds_cosmetic", "mfds_samd", "fda_cosmetic", "fda_samd"]
+    rows = session.scalars(select(Cell).where(Cell.slug.in_(wanted))).all()
+    assert len(rows) == len(wanted), "migration 0001 seeds the 8 cells"
     return {cell.slug: cell.id for cell in rows}
 
 
@@ -465,31 +466,51 @@ def test_re_routing_does_not_unassign_the_owner(session, amendment) -> None:
 # --- criterion: fan-out reaches every claiming cell and no others ---------------------------------
 
 
-def test_a_document_claimed_by_two_cells_alerts_both_and_only_those(session, cells) -> None:
-    """One ChangeEvent per claiming cell already; this side must not widen or narrow it."""
-    document = _document(
-        session,
-        key="shared",
-        title="인체적용제품 규정",
-        cell_ids=[cells["mfds_cosmetic"], cells["mfds_samd"]],
-    )
+@pytest.mark.parametrize(
+    ("authority", "title"),
+    [
+        ("mfds", "인체적용제품 규정"),
+        ("fda", "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act"),
+    ],
+)
+def test_a_document_claimed_by_two_cells_alerts_both_and_only_those(
+    session, cells, authority: str, title: str
+) -> None:
+    """One ChangeEvent per claiming cell already; this side must not widen or narrow it.
+
+    **Parameterized over both authorities on purpose, and the FDA case is the real one.** Routing
+    matches on ``cell_id`` and has no authority-conditional branch, so this is the same code path
+    with different ids — which is exactly the claim worth pinning. The MFDS pair share no
+    regulation, so their shared document is synthetic; the FD&C Act genuinely is claimed by both
+    FDA cells ([ADR-0018](../../../../docs/design/ADR-0018-fda-source-model.md) decision 12), and
+    that it routes identically is what says the two cells were never special-cased.
+
+    The producing side — that two sources in two cells really do converge on one document and emit
+    one event per claiming cell — is proven in `regulation`'s
+    `test_phase2_0a_acceptance.py`. This is the consuming side of the same seam.
+    """
+    both = [cells[f"{authority}_cosmetic"], cells[f"{authority}_samd"]]
+    document = _document(session, key=f"shared_{authority}", title=title, cell_ids=both)
     first = _version(session, document, label="s1")
     second = _version(session, document, label="s2")
     _amend(
         session,
         previous=first,
         current=second,
-        cell_ids=[cells["mfds_cosmetic"], cells["mfds_samd"]],
+        cell_ids=both,
         changes=[("제3조", ChangeKind.MODIFIED)],
     )
-    _subscribe(session, cell_id=cells["mfds_cosmetic"])
-    _subscribe(session, cell_id=cells["mfds_samd"], subscriber_id=OTHER_SUBSCRIBER)
+    _subscribe(session, cell_id=both[0])
+    _subscribe(session, cell_id=both[1], subscriber_id=OTHER_SUBSCRIBER)
     session.commit()
 
     route_version(session, second.id)
 
     alerts = session.scalars(select(Alert).where(Alert.document_version_id == second.id)).all()
-    assert {alert.cell_id for alert in alerts} == {cells["mfds_cosmetic"], cells["mfds_samd"]}
+    assert {alert.cell_id for alert in alerts} == set(both)
+
+    outsiders = {cells[slug] for slug in cells} - set(both)
+    assert not ({alert.cell_id for alert in alerts} & outsiders)
 
 
 def test_a_cell_nobody_subscribes_to_gets_no_alert(session, cells) -> None:

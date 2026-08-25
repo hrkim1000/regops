@@ -172,20 +172,32 @@ def session():
 
 @pytest.fixture
 def cells(session) -> dict[str, uuid.UUID]:
-    rows = session.scalars(select(Cell).where(Cell.slug.in_(["mfds_cosmetic", "mfds_samd"]))).all()
-    assert len(rows) == 2, "migration 0001 seeds the 8 cells"
+    wanted = ["mfds_cosmetic", "mfds_samd", "fda_cosmetic", "fda_samd"]
+    rows = session.scalars(select(Cell).where(Cell.slug.in_(wanted))).all()
+    assert len(rows) == len(wanted), "migration 0001 seeds the 8 cells"
     return {cell.slug: cell.id for cell in rows}
 
 
-def _document(session, *, key: str, title: str, cell_id: uuid.UUID) -> Document:
+def _document(
+    session,
+    *,
+    key: str,
+    title: str,
+    cell_id: uuid.UUID | None = None,
+    cell_ids: list[uuid.UUID] | None = None,
+    doc_type: DocType = DocType.LAW,
+) -> Document:
+    """One Document, claimed by one cell or by several — ``document_cells`` is M:N (ADR-0002)."""
+    claims = cell_ids if cell_ids is not None else [cell_id]
     document = Document(
         canonical_key=f"{KEY_PREFIX}:{key}",
         title=title,
-        doc_type=DocType.LAW,
+        doc_type=doc_type,
     )
     session.add(document)
     session.flush()
-    session.add(DocumentCell(document_id=document.id, cell_id=cell_id))
+    for claim in claims:
+        session.add(DocumentCell(document_id=document.id, cell_id=claim))
     return document
 
 
@@ -936,3 +948,62 @@ def test_scoping_picks_the_version_in_force_not_the_newest(session, cells) -> No
 
     picked = [row for row in scoped if row.document_id == document.id]
     assert [row.version_id for row in picked] == [in_force.id]
+
+
+# --- criterion: cell scope holds for a document two cells share ------------------------------
+
+
+def test_a_shared_act_is_in_scope_for_both_claiming_cells_and_a_single_cell_one_is_not(
+    session, cells
+) -> None:
+    """*An `fda_cosmetic` question must not be answered from `fda_samd` clauses of the same act.*
+
+    **That criterion does not hold as written, and this is the coherent form of it.** The FD&C Act
+    is *one* Document claimed by both FDA cells, so its clauses belong to both — there is no
+    `fda_samd` subset of the same act to refuse. Refusing it would be the bug: the Act is the
+    statute the cosmetic cell is governed by.
+
+    What must be refused is a document the other cell claims *alone*. 21 CFR Part 892 (Radiology
+    Devices) is `fda_samd` only, and a cosmetic question reaching it is the confident wrong answer
+    ADR-0006 decision 9 exists to prevent. Both halves are asserted here, because either one alone
+    is satisfiable by a scope that is simply wrong in the other direction.
+
+    Scope is enforced in `versions_in_scope`, so that is where this is measured — no model involved.
+    """
+    today = date(2026, 8, 25)
+
+    shared = _document(
+        session,
+        key="fdc_act",
+        title="21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+        cell_ids=[cells["fda_samd"], cells["fda_cosmetic"]],
+        doc_type=DocType.CODIFIED_STATUTE,
+    )
+    _version(session, shared, effective=date(2024, 12, 31), label="USCODE-2024-title21")
+
+    samd_only = _document(
+        session,
+        key="cfr_892",
+        title="21 CFR Part 892 — Radiology Devices",
+        cell_id=cells["fda_samd"],
+        doc_type=DocType.REGULATION,
+    )
+    _version(session, samd_only, effective=date(2026, 2, 4), label="2026-02-04")
+    session.commit()
+
+    def in_scope(slug: str) -> set[uuid.UUID]:
+        return {
+            ref.document_id
+            for ref in versions_in_scope(
+                session,
+                cell_ids=cell_ids_for(session, cell_id=cells[slug], cross_cell=False),
+                today=today,
+            )
+        }
+
+    cosmetic, samd = in_scope("fda_cosmetic"), in_scope("fda_samd")
+
+    assert shared.id in cosmetic, "the cosmetic cell is governed by the FD&C Act"
+    assert shared.id in samd, "and so is the device cell — one Document, two claims"
+    assert samd_only.id in samd
+    assert samd_only.id not in cosmetic, "a cosmetic question reached device-only regulation"
