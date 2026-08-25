@@ -32,6 +32,8 @@ from regops_shared.constants import (
     StandardStatus,
 )
 from regops_shared.models import (
+    AmendmentAnnouncement,
+    AnnouncementDocument,
     Attachment,
     Document,
     DocumentCell,
@@ -45,6 +47,7 @@ from regops_shared.models.base import utcnow
 from regops_shared.storage import archive_bytes
 
 from .connectors import (
+    AnnouncementRecord,
     AuthorityError,
     ConnectorError,
     FetchedArtifact,
@@ -73,6 +76,7 @@ class IngestResult:
     new_version_ids: list[uuid.UUID] = field(default_factory=list)
     unchanged_artifacts: int = 0
     standards_seen: int = 0
+    announcements_seen: int = 0
     error: str | None = None
 
 
@@ -204,6 +208,10 @@ def ingest_source(
 
     if fetched.standards:
         summary.standards_seen = _apply_standards(session, source, fetched.standards)
+        session.commit()
+
+    if fetched.announcements:
+        summary.announcements_seen = _apply_announcements(session, source, fetched.announcements)
         session.commit()
 
     if summary.new_version_ids:
@@ -421,6 +429,56 @@ def _apply_standards(session: Session, source: Source, records: tuple[StandardRe
             existing.withdrawal_date = _coerce_date(record.withdrawal_date)
             existing.official_url = record.official_url or existing.official_url
             existing.last_seen_at = now
+    session.flush()
+    return len(records)
+
+
+def _apply_announcements(
+    session: Session, source: Source, records: tuple[AnnouncementRecord, ...]
+) -> int:
+    """Upsert announced amendments and link them to the Documents they name (ADR-0019).
+
+    Keyed ``(authority, ref)`` — the authority's own document number — so the same rule arriving
+    through several Parts' feeds updates one row instead of multiplying. That is the whole reason
+    the link is a table: the QMSR rule reaches us from both Part 4's feed and Part 820's, and its
+    ``effective_on`` must not exist in two places to disagree.
+
+    ``affects`` names canonical keys; only those already ingested resolve. A rule naming a Part
+    outside the corpus keeps its row and gains no link — the announcement is still true, and
+    coverage is a question about Parts.
+    """
+    now = utcnow()
+    for record in records:
+        if not record.ref:
+            continue
+        announcement = session.scalar(
+            select(AmendmentAnnouncement).where(
+                AmendmentAnnouncement.authority == record.authority,
+                AmendmentAnnouncement.ref == record.ref,
+            )
+        )
+        if announcement is None:
+            announcement = AmendmentAnnouncement(authority=record.authority, ref=record.ref)
+            session.add(announcement)
+        announcement.citation = record.citation or announcement.citation
+        announcement.title = record.title or announcement.title
+        announcement.published_on = _coerce_date(record.published_on)
+        announcement.effective_on = _coerce_date(record.effective_on)
+        announcement.effective_date_phrase = record.effective_date_phrase
+        announcement.official_url = record.official_url or announcement.official_url
+        announcement.source_id = source.id
+        announcement.last_seen_at = now
+        session.flush()
+
+        for key in record.affects:
+            document_id = session.scalar(select(Document.id).where(Document.canonical_key == key))
+            if document_id is None:
+                continue
+            linked = session.get(AnnouncementDocument, (announcement.id, document_id))
+            if linked is None:
+                session.add(
+                    AnnouncementDocument(announcement_id=announcement.id, document_id=document_id)
+                )
     session.flush()
     return len(records)
 

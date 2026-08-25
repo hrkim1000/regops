@@ -163,6 +163,30 @@ class StandardRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnouncementRecord:
+    """An amendment the authority has announced, whether or not its text exists yet.
+
+    ADR-0019. Sibling of :class:`StandardRecord`: connector output that becomes a row of its own
+    rather than a Document, because a rule published and not yet in force has no version to hang on.
+
+    ``affects`` holds **canonical keys** — ``fda:cfr:21-820`` — not raw part numbers. The connector
+    knows its own key convention; the ingest stage only resolves keys to Documents it already has,
+    so a rule naming a Part outside the corpus keeps its row and gains no link.
+    """
+
+    ref: str
+    authority: str
+    affects: tuple[str, ...] = ()
+    citation: str | None = None
+    title: str | None = None
+    published_on: str | None = None
+    #: Nullable on purpose — ADR-0013. Null with the phrase retained, never a derived date.
+    effective_on: str | None = None
+    effective_date_phrase: str | None = None
+    official_url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class FetchResult:
     """What one fetch attempt produced, whether or not it produced anything."""
 
@@ -171,6 +195,8 @@ class FetchResult:
     artifacts: tuple[FetchedArtifact, ...] = ()
     #: Populated only by recognition-list connectors.
     standards: tuple[StandardRecord, ...] = ()
+    #: Populated only by announcement connectors (ADR-0019).
+    announcements: tuple[AnnouncementRecord, ...] = ()
     etag: str | None = None
     last_modified: str | None = None
     #: Feed-level publication timestamp, where the source exposes one at that level.

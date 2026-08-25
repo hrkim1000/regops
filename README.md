@@ -168,6 +168,7 @@ STAGE=dev docker compose --profile local-llm up -d
 | [ADR-0016](docs/design/ADR-0016-pending-effect-versions.md) | 시행예정 versions: MST is the version, staged dates are not clause-level |
 | [ADR-0017](docs/design/ADR-0017-extraction-determinism-and-conditional-obligations.md) | Extraction determinism, and conditional obligations stay one IR |
 | [ADR-0018](docs/design/ADR-0018-fda-source-model.md) | FDA sources — the eCFR is the text and the version spine, the Federal Register is the effective date |
+| [ADR-0019](docs/design/ADR-0019-announced-amendments.md) | An announced amendment is a row of its own, because it exists before any version does |
 
 ---
 
@@ -226,7 +227,7 @@ Build state by workstream. Update the **State** column as work lands — keep it
 | MFDS source reconnaissance | [spike-2026-07-29](docs/design/spike-2026-07-29-mfds-source-recon.md) | 🟢 done — live API verified |
 | FDA source reconnaissance | [spike-2026-08-24](docs/design/spike-2026-08-24-fda-source-recon.md) | 🟡 done for the ADR — eCFR and Federal Register verified live; govinfo, accessdata and rate limits partial |
 | Service-boundary decisions | [brief-2026-08-05](docs/design/decision-2026-08-05-lapsed-service-boundaries.md) | 🟢 both taken — `assistant` split retained (2026-08-05); `monitoring` stays its own service (2026-08-11, at the W7 deadline) |
-| Architecture decisions | [ADR-0001 – ADR-0018](docs/design/) | 🟢 complete for Phase 1 — 0001, 0004, 0006 and 0012–0018 accepted; the rest proposed. 0018 is the first Phase 2 decision |
+| Architecture decisions | [ADR-0001 – ADR-0019](docs/design/) | 🟢 complete for Phase 1 — 0001, 0004, 0006 and 0012–0019 accepted; the rest proposed. 0018–0019 are the Phase 2 decisions |
 | Phase plan — 14 build files | [docs/plan/README.md](docs/plan/README.md) | 🟢 settled |
 | Foundation — stack, shared lib, platform-core, audit chain | [phase0](docs/plan/phase0_foundation.md) | 🟢 done |
 | Ingestion — MFDS SaMD + Cosmetic | [phase1.0](docs/plan/phase1.0_ingestion.md) | 🟢 done (2026-08-05) — 20 sources live, 8/8 acceptance |

@@ -82,7 +82,7 @@ golden sets of 162 items per gated cell across six axes (seeded, **not yet RA-si
 markup denominators, a resumable scored run, and the Go/No-Go report. Two of the six gates are
 machine-measurable; **the other four are reported as 미측정 with their reasons** — they need a person
 or a pilot, and a defaulted gate would move the decision rather than the number.
-Architecture is settled through [ADR-0001 – ADR-0018](docs/design/); anything below still marked
+Architecture is settled through [ADR-0001 – ADR-0019](docs/design/); anything below still marked
 *target* describes what to build, not what runs. Read the relevant ADR before writing new code.
 
 Phase 1 (PoC, 4 months) gates two of the eight cells — MFDS SaMD + MFDS Cosmetic — and ships
@@ -206,7 +206,8 @@ regulation    : cells · sources · source_schedules · fetch_observations
                 source_discovery_runs · documents · document_cells
                 document_versions · attachments · clauses
                 clause_diffs · change_events · structure_drift_alerts
-                standard_references · irs · ir_citations · extraction_runs
+                standard_references · amendment_announcements
+                announcement_documents · irs · ir_citations · extraction_runs
                 ir_standard_citations · clause_classifications
                 concepts · concept_labels · concept_relations
                 clause_concepts · clause_references · enrichment_runs

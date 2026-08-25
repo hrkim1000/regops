@@ -222,17 +222,31 @@ def test_an_html_body_on_http_200_is_refused() -> None:
     assert caught.value.signal is DriftSignal.MISSING_ROOT
 
 
-def test_a_payload_without_results_is_drift() -> None:
-    with pytest.raises(AuthorityError) as caught:
-        _fetch(_Fetcher(payload={"count": 0}))
-    assert caught.value.signal is DriftSignal.MISSING_ROOT
+def test_an_honest_zero_is_not_drift() -> None:
+    """This test previously asserted the opposite, and the live API proved it wrong.
+
+    The reasoning was "a Part we ingest having no final rules is likelier to be a broken filter".
+    21 CFR Part 710 is the counterexample: an old voluntary-registration Part with no FDA final
+    rules at all. When nothing matches, the API omits ``results`` and answers ``count: 0``. Raising
+    would file a structure-drift alert every day, for ever, about a source that works.
+    """
+    result = _fetch(_Fetcher(payload={"description": "…", "count": 0}))
+    assert result.http_status == 200
+    assert result.artifacts == ()
+    assert result.announcements == ()
 
 
-def test_an_empty_result_set_is_drift_not_a_quiet_zero() -> None:
-    """A Part we ingest having no final rules at all is far likelier to be a broken filter."""
+def test_an_empty_array_with_a_nonzero_count_is_drift() -> None:
+    """The contradictory shape: the authority claims rows and returns none."""
     with pytest.raises(AuthorityError) as caught:
-        _fetch(_Fetcher(payload={"count": 0, "results": []}))
+        _fetch(_Fetcher(payload={"count": 12, "results": []}))
     assert caught.value.signal is DriftSignal.ZERO_RECORDS
+
+
+def test_a_payload_with_neither_results_nor_a_zero_count_is_drift() -> None:
+    with pytest.raises(AuthorityError) as caught:
+        _fetch(_Fetcher(payload={"description": "…"}))
+    assert caught.value.signal is DriftSignal.MISSING_ROOT
 
 
 def test_a_non_200_is_refused() -> None:

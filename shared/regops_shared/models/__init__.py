@@ -13,6 +13,7 @@ from regops_shared.models.alert import (
     alert_status_enum,
     delivery_status_enum,
 )
+from regops_shared.models.announcement import AmendmentAnnouncement, AnnouncementDocument
 from regops_shared.models.answer import (
     Answer,
     AnswerCitation,
@@ -71,6 +72,8 @@ __all__ = [
     "Alert",
     "AlertDelivery",
     "AlertSubscription",
+    "AmendmentAnnouncement",
+    "AnnouncementDocument",
     "Answer",
     "AnswerCitation",
     "Attachment",

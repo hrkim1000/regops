@@ -503,6 +503,15 @@ And the structural criteria the slice is really about:
     beside the CFR version. Both want the same thing: somewhere structured for the rules to live.
     That is a schema decision, not a connector one, so it is recorded here rather than improvised.
 
+    → **Resolved 2026-08-25 by [ADR-0019](../design/ADR-0019-announced-amendments.md)**, migration
+    `0008`. `amendment_announcements` + `announcement_documents`, upserted on `(authority, ref)`.
+    Both questions are SQL now: `fda:cfr:21-820`'s eCFR issue reads **2026-02-04** against the
+    Federal Register's `effective_on` of **2026-02-02** for the two QMSR rules — the exact two-day
+    difference decision 5 predicted, visible rather than argued. 150 announcements and 187 links
+    across the 13 in-scope Parts; **no pending amendment in any of them**, which is now a measured
+    answer instead of an absence of one. The generic `FetchedArtifact.meta` gap is **not** closed:
+    this gave the Federal Register's records a home, it did not make `meta` durable.
+
 11. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation

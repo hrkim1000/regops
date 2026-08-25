@@ -942,6 +942,30 @@ CREATE TABLE public.sources (
 -- Name: standard_references; Type: TABLE; Schema: public; Owner: -
 --
 
+CREATE TABLE public.amendment_announcements (
+    id uuid NOT NULL,
+    authority character varying(16) NOT NULL,
+    ref character varying(64) NOT NULL,
+    citation character varying(64),
+    title character varying(512),
+    published_on date,
+    effective_on date,
+    effective_date_phrase text,
+    official_url character varying(512),
+    source_id uuid,
+    last_seen_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+CREATE TABLE public.announcement_documents (
+    announcement_id uuid NOT NULL,
+    document_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
 CREATE TABLE public.standard_references (
     id uuid NOT NULL,
     number character varying(64) NOT NULL,

@@ -41,6 +41,7 @@ from regops_shared.constants import DocType, DriftSignal
 
 from ..canonicalize import canonical_records
 from .base import (
+    AnnouncementRecord,
     ArtifactRef,
     AuthorityError,
     FetchedArtifact,
@@ -57,6 +58,7 @@ _HOST = "https://www.federalregister.gov"
 _FIELDS: tuple[str, ...] = (
     "document_number",
     "citation",
+    "title",
     "type",
     "publication_date",
     "effective_on",
@@ -120,19 +122,30 @@ class FederalRegisterConnector:
             )
 
         payload = _payload(spec.slug, response.body)
+        count = payload.get("count")
         results = payload.get("results")
+
+        if count == 0 and results is None:
+            # **Not drift.** When nothing matches, the API omits ``results`` entirely and answers
+            # ``{"description": …, "count": 0}``. 21 CFR Part 710 does exactly this: it is an old
+            # voluntary-registration Part with no FDA final rules at all, so an honest zero arrives
+            # every poll. Raising here would file a structure-drift alert daily, for ever, about a
+            # source that is working — the false-alert failure ADR-0003 decision 6 exists to avoid.
+            # The observation still records that the source was checked.
+            return FetchResult(http_status=response.status)
+
         if not isinstance(results, list):
+            # No ``results`` *and* no zero count is a shape we do not recognise.
             raise AuthorityError(
-                f"{spec.slug}: response carries no results array",
+                f"{spec.slug}: response carries neither a results array nor a zero count",
                 signal=DriftSignal.MISSING_ROOT,
             )
 
         records = [_record(item) for item in results if isinstance(item, dict)]
         if not records:
-            # A Part with no final rules in the whole Federal Register is possible but would be
-            # remarkable for anything we ingest, and it is far more likely that the filter broke.
+            # ``results: []`` with a non-zero count is contradictory, and that *is* drift.
             raise AuthorityError(
-                f"{spec.slug}: the query matched no final rules",
+                f"{spec.slug}: results array is empty while count is {count!r}",
                 signal=DriftSignal.ZERO_RECORDS,
             )
 
@@ -152,9 +165,40 @@ class FederalRegisterConnector:
         return FetchResult(
             http_status=response.status,
             artifacts=(artifact,),
+            announcements=tuple(_announcement(item) for item in results if isinstance(item, dict)),
             etag=response.etag,
             last_modified=response.last_modified,
         )
+
+
+def _announcement(item: dict[str, Any]) -> AnnouncementRecord:
+    """One rule as a durable row (ADR-0019), beside the feed artefact that archives the response.
+
+    ``affects`` is emitted as **canonical keys** rather than part numbers because the key convention
+    is the connector's to know — ``fda:cfr:21-820`` pairs with the eCFR Document of the same Part,
+    which is the structural join ADR-0018 decision 5 needs.
+    """
+    refs = item.get("cfr_references")
+    affects: tuple[str, ...] = ()
+    if isinstance(refs, list):
+        affects = tuple(
+            sorted(
+                f"fda:cfr:{ref.get('title')}-{ref.get('part')}"
+                for ref in refs
+                if isinstance(ref, dict) and ref.get("title") and ref.get("part")
+            )
+        )
+    return AnnouncementRecord(
+        ref=str(item.get("document_number") or ""),
+        authority="fda",
+        affects=affects,
+        citation=str(item.get("citation") or "") or None,
+        title=str(item.get("title") or "") or None,
+        published_on=str(item.get("publication_date") or "") or None,
+        effective_on=str(item.get("effective_on") or "") or None,
+        effective_date_phrase=str(item.get("dates") or "") or None,
+        official_url=str(item.get("html_url") or "") or None,
+    )
 
 
 def _target(spec: SourceSpec) -> tuple[str, str]:

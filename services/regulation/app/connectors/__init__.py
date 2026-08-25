@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Final
 
 from .base import (
+    AnnouncementRecord,
     ArtifactRef,
     AttachmentLink,
     AuthorityError,
@@ -61,6 +62,7 @@ def get_connector(key: str, *, fetcher: PoliteFetcher | None = None) -> Connecto
 __all__ = [
     "CONNECTOR_KEYS",
     "AdmRuleConnector",
+    "AnnouncementRecord",
     "ArtifactRef",
     "AttachmentLink",
     "AuthorityError",

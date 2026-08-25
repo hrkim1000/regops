@@ -120,4 +120,4 @@ next five are already below, before anyone has started the slice they belong to.
 | [development-plan.md](../development-plan.md) | The roadmap these files decompose — milestones, exit criteria, staffing, risk register |
 | [RegOps.md](../RegOps.md) | Scope, data tiers, five layers, Go/No-Go gate definitions |
 | [import-source-map.md](../import-source-map.md) | The single source catalog — never copied into a plan file |
-| [design/](../design/) | ADR-0001 – ADR-0018; a plan file cites them, never contradicts them |
+| [design/](../design/) | ADR-0001 – ADR-0019; a plan file cites them, never contradicts them |
