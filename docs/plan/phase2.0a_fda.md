@@ -259,16 +259,31 @@ its open questions 6 and 7 — see *Deviations* 7.
 
 ### Extraction — the English rule set
 
-- [ ] `rule_set_for(domain, "en")` is **already implemented** — `shall` · `must` · `is required to` ·
+- [x] `rule_set_for(domain, "en")` is **already implemented** — `shall` · `must` · `is required to` ·
       `may not`, with permissive `may` behind a negative lookahead, and `document_versions.language`
       already selects it. Verify it end to end rather than rebuilding it
-- [ ] English counterparts for the triage heuristics that are Korean-only: delegation (`_DELEGATION`
+      → **verified, not rebuilt.** Run over **2,039 real CFR clauses** (2026-08-25): 357
+      obligation-bearing, every inventory modal firing — `must` 229, `shall` 116, `is required to`
+      16, `may not` 13 — plus 194 permissive, 41 heading, 8 scope, 7 definition. Nothing needed
+      writing; the advice to verify rather than rebuild was right
+- [x] English counterparts for the triage heuristics that are Korean-only: delegation (`_DELEGATION`
       matches 대통령령/총리령 only), transitional segments (`부칙` — CFR has no direct equivalent, and
       "no equivalent" is an acceptable answer that must be recorded), and the `제N조(제목)` title regex.
       Definition and scope headings already carry English forms
-- [ ] **A missing rule set must raise, never fall back.** `rule_set_for` already refuses an unknown
+      → **"no equivalent" for both, measured and recorded in
+      [rules.py](../../services/regulation/app/extraction/rules.py).** Delegation: zero matches for
+      every FDA form searched, and structurally so — 법령 delegates down to 시행령/시행규칙 while a
+      CFR Part *is* the subordinate instrument. The 46 hits that look like it are **cross-references**
+      ("in accordance with part 807"), and admitting them would exclude 39 clauses that do state
+      obligations. Transitional: zero — effective dates live in the Federal Register rule, which
+      ADR-0019 models as an announcement, not codified text. The `제N조(제목)` regex needs no English
+      twin: the eCFR supplies `heading` separately. **One real defect found and fixed** — see
+      *Deviations* 11
+- [x] **A missing rule set must raise, never fall back.** `rule_set_for` already refuses an unknown
       language for exactly this reason: extracting an English document under a Korean inventory finds
       nothing and reports full coverage. Keep a test on that behaviour
+      → test kept, and a second one added that demonstrates *why*: the same English sentence yields
+      `("shall",)` under the English set and `()` under the Korean one — a silent zero, not an error
 - [ ] Review `TAXONOMY_CODES` for FDA fit. The SaMD codes (`design_control`, `risk`, `vnv`,
       `postmarket`) read as though drawn from 21 CFR 820 in the first place; registration, listing and
       MDR reporting need a home, or a recorded decision that `postmarket` is it
@@ -512,7 +527,22 @@ And the structural criteria the slice is really about:
     answer instead of an absence of one. The generic `FetchedArtifact.meta` gap is **not** closed:
     this gave the Federal Register's records a home, it did not make `meta` durable.
 
-11. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+11. **`_matches` compared substrings, so `scope` matched `endoscope` (2026-08-25).** Found while
+    verifying the English triage, not by a failing test — nothing in the current corpus trips it,
+    and that is exactly what makes it the dangerous kind. A clause wrongly excluded as *scope*
+    never reaches the agent while coverage still counts it examined, so the obligation disappears
+    and the number that would reveal it stays green.
+
+    Fixed by matching on word boundaries **where the script has them**: an ASCII needle uses ``,
+    a Korean needle keeps the substring path. `` is defined against ASCII word characters and
+    matches nothing useful in Hangul, so applying it across the board would have stopped 정의 and
+    목적 matching at all — the fix had to be script-aware rather than uniform.
+
+    **Proven a no-op for the gated cells**, which is the condition this slice attaches to any
+    shared-code change: triage re-run over all **33,472** MFDS clauses before and after gives
+    byte-identical counts across all ten verdicts, and the FDA counts are unchanged too.
+
+12. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while

@@ -194,3 +194,114 @@ def test_unknown_language_is_refused_rather_than_defaulted() -> None:
     """Extracting an English document with a Korean inventory finds nothing and reports success."""
     with pytest.raises(ValueError, match="No modal inventory"):
         rule_set_for(Domain.SAMD, "fr")
+
+
+# --- the English rule set, against the shapes the FDA corpus actually contains -----------------
+#
+# Verified end to end on 2026-08-25 over 2,039 real CFR clauses: 357 obligation-bearing, with every
+# inventory modal firing (must 229, shall 116, is required to 16, may not 13). These cases pin the
+# behaviour that measurement confirmed, and the two *absences* that measurement also confirmed.
+
+
+def _en(text: str, *, heading: str | None = None, segments=None):
+    return triage(
+        clause_kind=ClauseKind.PROSE,
+        clause_path="Subpart A/820.35",
+        path_segments=list(segments or ["Subpart A", "820.35"]),
+        heading=heading,
+        text=text,
+        rules=EN,
+    )
+
+
+@pytest.mark.parametrize("modal", MODAL_INVENTORY["en"])
+def test_every_english_inventory_modal_is_detected(modal: str) -> None:
+    """The English mirror of the Korean inventory test. All four fire in the live corpus."""
+    sentence = {
+        "shall": "The manufacturer shall maintain records of the review.",
+        "must": "The manufacturer must include the following information.",
+        "is required to": "Each establishment is required to register annually.",
+        "may not": "A device may not be introduced into interstate commerce.",
+    }[modal]
+    assert modal in found_modals(sentence, EN)
+
+
+def test_shall_not_be_construed_is_not_an_obligation() -> None:
+    """The negative lookahead in the ``shall`` pattern: a construction clause imposes nothing.
+
+    **A precaution rather than a measured need, and worth saying so.** Searched on 2026-08-25:
+    "shall not be construed", "shall be construed" and "may not be construed" each return **zero**
+    across the FDA corpus. The guard covers exactly one phrasing — the one written into the
+    pattern — and the sibling form ``shall be construed`` is *not* covered. Neither occurs, so
+    neither is load-bearing today; if one ever does, this is the test that should grow.
+    """
+    assert found_modals("This section shall not be construed to require a submission.", EN) == ()
+    # The uncovered sibling, pinned so the asymmetry is visible rather than surprising.
+    assert found_modals("Nothing here shall be construed to limit the authority.", EN) == ("shall",)
+
+
+# --- the CFR heading shape ----------------------------------------------------------------------
+
+
+def test_a_cfr_scope_heading_is_excluded() -> None:
+    """The eCFR heading is ``§ 892.1 Scope.`` — number, title, period. 8 matched in the corpus."""
+    verdict = _en(
+        "This part sets forth the classification of radiology devices.", heading="§ 892.1 Scope."
+    )
+    assert verdict.reason is ExclusionReason.SCOPE
+
+
+def test_a_cfr_definitions_heading_is_excluded() -> None:
+    verdict = _en("As used in this subchapter:", heading="§ 700.3 Definitions.")
+    assert verdict.reason is ExclusionReason.DEFINITION
+
+
+def test_scope_inside_a_longer_word_does_not_exclude_the_clause() -> None:
+    """``endoscope`` contains ``scope``. A substring test would drop an obligation-bearing clause
+    while coverage still counted it examined — the quietest way to lose one."""
+    verdict = _en(
+        "The manufacturer must validate the sterilization process.",
+        heading="§ 876.1500 Endoscope and accessories.",
+    )
+    assert verdict.kind is ClassificationKind.OBLIGATION_BEARING
+
+
+# --- the two heuristics with no CFR counterpart, and why -----------------------------------------
+
+
+def test_a_cross_reference_is_not_a_delegation() -> None:
+    """Measured: the FDA corpus has **zero** delegation forms and 46 cross-references.
+
+    A cross-reference says where the detail lives; a delegation says someone else will decide the
+    duty. Treating "in accordance with part 807" as delegation would silently exclude 39 clauses
+    that do state obligations, which is why ``_DELEGATION`` stays Korean-only.
+    """
+    verdict = _en(
+        "All owners must register in accordance with part 807 of this chapter.",
+    )
+    assert verdict.kind is ClassificationKind.OBLIGATION_BEARING
+    assert verdict.reason is not ExclusionReason.DELEGATION
+
+
+def test_a_cfr_clause_is_never_transitional() -> None:
+    """A CFR Part carries no 부칙: effective dates live in the Federal Register rule, which this
+    pipeline models as an announcement rather than as codified text (ADR-0019)."""
+    verdict = _en(
+        "Each manufacturer must establish and maintain procedures.",
+        segments=["Subpart B", "820.30", "(a)"],
+    )
+    assert verdict.reason is not ExclusionReason.PROCEDURAL
+
+
+# --- the falsifier the language split exists for --------------------------------------------------
+
+
+def test_an_english_clause_under_the_korean_rule_set_finds_nothing() -> None:
+    """Why ``rule_set_for`` refuses an unknown language instead of falling back.
+
+    Extracting an English document under the Korean inventory finds no modal and reports full
+    coverage — a silent zero rather than an error.
+    """
+    english = "The manufacturer shall maintain records of the review."
+    assert found_modals(english, EN) == ("shall",)
+    assert found_modals(english, SAMD) == ()

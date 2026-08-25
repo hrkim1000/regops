@@ -83,6 +83,16 @@ _SCOPE_HEADINGS: Final[tuple[str, ...]] = ("목적", "적용범위", "적용 범
 
 #: "…는 총리령으로 정한다" — the clause defers the duty to another instrument rather than stating
 #: one. Extracting an IR here would assert an obligation whose content lives somewhere else.
+#: **Korean-only, and deliberately so — the CFR has no counterpart.** Searched across the whole FDA
+#: corpus on 2026-08-25: "by regulation prescribe", "as the Commissioner prescribes" and "under
+#: procedures in part" return **zero** matches. That is structural rather than accidental: 법령
+#: delegates downward to 시행령/시행규칙/고시, while a CFR Part *is* the subordinate instrument and
+#: has nothing beneath it to defer to.
+#:
+#: What the corpus does contain is **cross-references** — "in accordance with part 807" (39) and
+#: "as specified in § ..." (7). Those are not delegations: a cross-reference says where the detail
+#: lives, a delegation says someone else will decide the duty. Admitting them here would exclude 46
+#: clauses that do state obligations, which is why this pattern stays Korean.
 _DELEGATION: Final[re.Pattern[str]] = re.compile(
     r"(?:대통령령|총리령|부령|고시|정관)(?:으)?로\s*정(?:한다|하는)"
 )
@@ -91,6 +101,13 @@ _DELEGATION: Final[re.Pattern[str]] = re.compile(
 #: they attach to an operative clause; ADR-0004 decision 1's second row ("conditions span 조 + 부칙
 #: → 1 IR citing both") is that case, handled by citing 부칙 from the operative clause's IR rather
 #: than by extracting an IR out of 부칙 on its own.
+#: **Also Korean-only, and again structural.** A CFR Part carries no transitional segment: effective
+#: dates, compliance dates and grandfathering live in the *Federal Register rule*, which is not
+#: codified and which this pipeline models as an announcement rather than as text (ADR-0019).
+#: Measured 2026-08-25 — "transitional provision/period/rule" and "compliance date" return zero
+#: across the FDA corpus, and a leading "Effective date" appears once, as substantive text in
+#: 21 CFR 700.25(e) rather than as a segment. **"No equivalent" is the answer**, recorded here so a
+#: later reader does not read the absence as an oversight.
 _TRANSITIONAL_SEGMENTS: Final[tuple[str, ...]] = ("부칙",)
 
 #: Below this, a clause has no room for "one bearer + one modal + one required action".
@@ -257,8 +274,30 @@ def _title(heading: str | None, body: str) -> str:
 
 
 def _matches(title: str, needles: tuple[str, ...]) -> bool:
+    """Does the title announce one of these roles?
+
+    **Word boundaries where the script has them, substring where it does not.** ``scope`` is a
+    substring of ``endoscope`` and ``purpose`` of ``repurpose``, so a plain containment test can
+    exclude an obligation-bearing clause as *scope* — and a clause wrongly excluded never reaches
+    the agent while coverage still reports it as examined, which is the quietest way to lose an
+    obligation. Korean needles take the substring path unchanged: ``\b`` is defined against ASCII
+    word characters and matches nothing useful in Hangul, so applying it there would stop the
+    Korean headings matching at all.
+
+    No English heading in the FDA corpus trips this today — measured 2026-08-25, zero substring
+    false positives across 2,039 clauses. It is guarded because the corpus grows, not because it
+    is currently wrong.
+    """
+    if not title:
+        return False
     lowered = title.lower()
-    return bool(title) and any(needle in lowered for needle in needles)
+    for needle in needles:
+        if needle.isascii():
+            if re.search(rf"\b{re.escape(needle)}\b", lowered):
+                return True
+        elif needle in lowered:
+            return True
+    return False
 
 
 __all__ = [
