@@ -201,7 +201,7 @@ remains outside.*
 > | **Change detection (primary)** | `ecfr.gov/api/versioner/v1/versions/title-21.json?part=NNN` — per-section `amendment_date` · `issue_date` · `removed` · `substantive`. Poll incrementally with `?issue_date[gte]=` | A |
 > | Title freshness ceiling | `ecfr.gov/api/versioner/v1/titles.json` — `up_to_date_as_of`, and `meta.import_in_progress` | A |
 > | Effective dates + pending amendments | `federalregister.gov/api/v1/documents.json` — filter `conditions[cfr][title]=21&conditions[cfr][part]=NNN`; **a `type` filter is mandatory** or Proposed Rules are returned too | A |
-> | FD&C Act (USC) | `api.govinfo.gov` — `USCODE` collection; **needs an API key** (settings, placeholder in the template) | A |
+> | FD&C Act (USC) | `api.govinfo.gov/packages/USCODE-{year}-title21/granules/USCODE-{year}-title21-chap9/htm` — chapter 9 **is** the Act; one 5.37 MB response carries all 309 section heads. `…/summary` gives `dateIssued`. **Key in the `X-Api-Key` header, never as `api_key` in the URL** (401 without one; 36,000/hour with) | A |
 > | Recognized Consensus Standards | `accessdata.fda.gov/scripts/cdrh/cfdocs/cfStandards/search.cfm` — server-rendered HTML, **column labels only** | **D** |
 >
 > Three corrections to what this file and the plan docs previously implied:
@@ -222,6 +222,17 @@ remains outside.*
 > changing `User-Agent` or IP. [ADR-0018](design/ADR-0018-fda-source-model.md) decision 11. This does
 > **not** reach `fda.gov` or `accessdata.fda.gov`, which are separate hosts — the Recognized
 > Consensus Standards list is a permitted HTML fetch.
+>
+> Two further corrections, from building the connector (2026-08-25, spike Q11):
+>
+> - **There is no granule XML and no USCODE bulkdata.** Download formats are `txt · pdf · mods ·
+>   zip · premis`; `/txt` answers 400 and `/htm` answers 200, and
+>   `govinfo.gov/bulkdata/json/USCODE/…` answers 404. The HTML is **not well-formed XML**, which is
+>   why the Act needs its own parser profile.
+> - **The USC edition is annual and the connector says so.** The seed row carries a weekly interval
+>   override; the statute does not meet the ≤24h detection gate and that is reported separately
+>   rather than blended into a cell figure ([ADR-0018](design/ADR-0018-fda-source-model.md)
+>   decision 12).
 >
 > `uscode.house.gov` was unreachable at probe time and is unverified as a govinfo alternative.
 

@@ -40,6 +40,9 @@ from .model import ParsedClause, ParsedDocument, ParseError
 
 PROFILE = "law_structured"
 
+#: This profile takes a parsed XML root, not the archived bytes. See :mod:`.` .
+ACCEPTS_RAW = False
+
 
 def parse(root: Element) -> ParsedDocument:
     """Parse a 법령 본문조회 envelope into a clause tree."""

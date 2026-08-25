@@ -202,13 +202,18 @@ its open questions 6 and 7 — see *Deviations* 7.
       `FEED` per Part (`fda:fr:21-820` against `fda:cfr:21-820`, so the decision 5 join is structural
       rather than a search). 24 unit tests; 13 seed rows live. **But `meta` reaches nothing** — see
       *Deviations* 10. The rules themselves are archived and reproducible from WORM
-- [ ] govinfo connector for the FD&C Act, **ingested once** and claimed by both cells
-      → **unblocked 2026-08-25**: [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 12
+- [x] govinfo connector for the FD&C Act, **ingested once** and claimed by both cells
+      → [`govinfo_uscode`](../../services/regulation/app/connectors/govinfo.py), 10 unit tests.
+      **Verified live end to end 2026-08-25**: one 5.37 MB fetch of the chapter granule →
+      `fda:usc:21-9`, version `USCODE-2024-title21`, **12,179 clauses**, claimed by `fda_samd` *and*
+      `fda_cosmetic`. The key travels in `X-Api-Key`, never in a URL, and a test asserts it against
+      the recorded call list. Unblocked 2026-08-25: [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 12
       settles the cadence — **annual text** from `USCODE-{year}-title21`, one version per package.
       A mid-year amendment is not in the text until the next edition and **no version is synthesised
       to pretend otherwise**. `PLAW` is the announcement surface and is *not* built here, so the
       statute does not meet the ≤24h gate; decision 12 states that rather than blending a yearly
-      source into a cell-level daily figure. Needs an api.data.gov key (`DEMO_KEY` is 10/hour)
+      source into a cell-level daily figure. The seed row carries a **weekly** interval override
+      saying exactly that
 - [ ] Recognized Consensus Standards through the **existing** `recognition_list` connector — the
       header→field mapping is already `sources.params["columns"]` configuration, so this should be a
       seed row and no new code. If it needs code, record that in *Deviations*: the connector was built
@@ -273,6 +278,29 @@ its open questions 6 and 7 — see *Deviations* 7.
       → **not triggered.** `profile_for(doc_type)` takes one argument and the registry is keyed on
       `DocType`; a test asserts the signature so a later branch cannot be added quietly. Re-check when
       the connector and the extraction rules land — the profile was only the first place it could fire
+
+### Parser profile — `usc_text`
+
+Not planned when this slice was written: the FD&C Act was expected to reuse a profile. It could not.
+
+- [x] A **fifth** profile, registered on `DocType.CODIFIED_STATUTE`
+      → [usc.py](../../services/regulation/app/parsing/usc.py). Reading the Act through
+      `law_structured` fails at the envelope — a govinfo granule is HTML that is not well-formed XML
+      — and `DocType.LAW` names 법률, a rung of the Korean ladder. See *Deviations* 22
+- [x] The paragraph ladder shared with `cfr_structured`, **parameterized rather than copied**
+      → [ladder.py](../../services/regulation/app/parsing/ladder.py). The two conventions differ on
+      both axes: the CFR nests `(a)(1)(i)(A)` and continues `z → aa → ab`; the USC nests
+      `(a)(1)(A)(i)(I)(aa)(AA)` and continues `z → aa → bb`. Both differences were **measured**
+      against 21 U.S.C. chapter 9, not taken from a drafting manual — spike Q11
+- [x] Editorial notes excluded, and excluded **by position rather than by class name** — the chapter
+      carries more apparatus than law (4,149 `note-body` against 2,061 `statutory-body`), and the
+      one style used on both sides (`Q04`, 1,259 blocks) cannot be told apart any other way
+- [x] `path_segments` `[subchapter, part, section, paragraph…]`, so `21 U.S.C. 351(a)(1)` stores as
+      `Subchapter V/Part A/351/(a)/(1)` — the same shape `cfr_structured` uses, rendered at citation
+      time. 20 unit tests
+- [ ] The 23 ambiguous clause paths (0.19% of 12,179) that remain. Each is logged and suffixed
+      deterministically by `_disambiguate`; whether any is our mis-nesting rather than the source's
+      own repeat is **not yet established** — see *Deviations* 24
 
 ### Extraction — the English rule set
 
@@ -342,7 +370,11 @@ its open questions 6 and 7 — see *Deviations* 7.
 
 ### Cross-cell — the M:N exercise
 
-- [ ] FD&C Act ingested **once**, claimed by `fda_samd` and `fda_cosmetic` through `document_cells`
+- [x] FD&C Act ingested **once**, claimed by `fda_samd` and `fda_cosmetic` through `document_cells`
+      → verified live 2026-08-25, and it **found a defect in the shared-document path** the MFDS
+      cells had never exposed: the claim is written only where an artefact is applied, so a cell
+      that lost the claim to a race could never regain it while the source answered 304. See
+      *Deviations* 23
 - [ ] Cell isolation extended to the shared document: a change event fans out to **every** claiming
       cell and no others — one of the five non-negotiable test cases
 - [ ] Alert routing verified for a subscriber in one FDA cell when the shared act changes
@@ -743,3 +775,56 @@ And the structural criteria the slice is really about:
    recommending an RSS feed that returns 302 with 0 bytes. Two of its four files
    (`fda-regops.md`, `samd-fda.md`) are the same document. **Nothing in ADR-0018 rests on it**; the
    spike's *Where the prior research was wrong* table is the audit.
+
+22. **The FD&C Act needed a fifth parser profile and a new `doc_type` (2026-08-25).** The slice
+    assumed the statute would reuse `law_structured`, because both are statutes. It cannot: a
+    govinfo USCODE granule is HTML that fails `defusedxml` on its first character reference, while
+    `law_structured` reads 조/항/호/목 as XML *elements*. They are different **envelopes**, which is
+    what `doc_type` selects on ([ADR-0002](../design/ADR-0002-canonical-regulation-model.md)
+    decision 3).
+
+    So `DocType.CODIFIED_STATUTE` (migration `0009`) and `usc_text`, on exactly the precedent
+    `DocType.REGULATION` set three days earlier: `LAW` names 법률, a rung of the Korean statutory
+    ladder, and reusing it would assert a shape that is not there. The name says *codification*
+    rather than *statute* on purpose — what is ingested is the Office of the Law Revision Counsel's
+    annual compilation, not the enacted act, and `PLAW` (the enactment surface) is not built.
+
+    **The falsifier did not fire.** Profile selection is still `_BY_DOC_TYPE` and still has no
+    branch on authority or cell. `usc_text` and `cfr_structured` *share* their paragraph ladder
+    through [ladder.py](../../services/regulation/app/parsing/ladder.py), which is reuse of a shape
+    helper, not selection.
+
+    The registry did grow one seam: a profile now declares `ACCEPTS_RAW`, because hoisting "parse
+    the bytes as XML" into the registry had made XML-ness a property of every profile instead of the
+    four that happen to want it. All five state their input form explicitly.
+
+23. **A cell's claim on a shared document depended on HTTP cache state, and it should not have
+    (2026-08-25).** Found by the M:N exercise, latent since phase 1.0 and invisible until now.
+
+    `_claim_for_cell` runs inside `_apply_artifact`, which a 304 never reaches. Both FDA cells
+    fetched the FD&C Act in the same second; one committed the document and its claim, the other
+    lost its claim to the race and thereafter answered 304. The USC is republished **annually**
+    against a weekly poll, so `fda_samd` would have shown no claim on its own governing statute for
+    a year — and that cell's coverage denominator would have been wrong the whole time, silently.
+
+    Fixed with `_reclaim_from_history` on the 304 path. **The link is the content hash, not the
+    version this source wrote**: on a shared document only the race winner writes a version, so
+    "versions created by my observations" is empty for exactly the cell that lost the claim. What
+    the loser does have is an observation recording the hash of the bytes it saw. Reproduced, fixed
+    and verified live, and locked in by an integration test that replays the incident.
+
+    The MFDS cells never exposed this because their shared sources are RSS boards whose content
+    changes constantly, so a lost claim was re-won on the next changed fetch. An annually
+    republished statute has no next changed fetch.
+
+24. **Compound designators changed the CFR too, and the residual is recorded rather than rounded
+    off (2026-08-25).** `(3)(A) Except as provided…` opens two levels, not one. Teaching the shared
+    ladder that fixed the USC — and re-parsed 21 CFR Part 740 to **41 clauses against the 39
+    stored**, because two compound heads now open the level they always stated. That is a
+    correction, not a regression, but it means stored CFR clause counts move on the next parse and
+    the four Parts that could not be re-checked (503 under burst) are unmeasured.
+
+    23 ambiguous clause paths remain in the Act, 0.19% of 12,179. `_disambiguate` logs each and
+    suffixes it deterministically, which is what that mechanism is for — but it was built for *the
+    source's* ambiguous numbering, and whether these 23 are that or our own mis-nesting has not been
+    established. Recorded as an open row rather than described as clean.

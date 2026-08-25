@@ -194,7 +194,8 @@ CREATE TYPE public.doc_type AS ENUM (
     'annex',
     'guidance',
     'feed',
-    'regulation'
+    'regulation',
+    'codified_statute'
 );
 
 

@@ -529,3 +529,105 @@ So the statute has the same two-surface shape the regulations do, arrived at ind
 Recorded as [ADR-0018](ADR-0018-fda-source-model.md) decision 12. **One package was inspected** —
 that the field exists and is structured is measured; that a title-21 filter finds FD&C amendments
 at scale is not, and should be before anything relies on it.
+
+## Q11 — What shape does a USCODE granule actually have, and can one profile read it? (2026-08-25)
+
+Q5 established *that* `document_versions` can carry the FD&C Act. This is what it took to read one,
+measured while building `usc_text`. Four of these were wrong on first reading, and each cost clauses.
+
+### The chapter is one fetch, and 163 was our own error
+
+`GET /packages/USCODE-2024-title21/granules/USCODE-2024-title21-chap9/htm` → **200, 5,366,715 bytes,
+309 `section-head` blocks** — the whole Act in one response, one archived object, one Document.
+
+Q5's "163 sections" was an artifact of that probe reading `pageSize=300` against a 901-granule
+package: chapter 9's granules ran past the first page. The chapter really holds **302 live sections
+and 7 repealed/omitted/transferred** ones. The repealed ones are kept — `21 U.S.C. 333a` resolving
+to *"Repealed. Pub. L. 101–647…"* is the answer an RA needs, not a gap.
+
+### There is no granule XML, and the HTML is not XML either
+
+Granule download formats are `txtLink · pdfLink · modsLink · zipLink · premisLink`. `/txt` answers
+**400**; `/htm` answers 200. `https://www.govinfo.gov/bulkdata/json/USCODE/...` answers **404**, so
+there is no USLM bulk path to prefer.
+
+The HTML fails `defusedxml` with `undefined entity` on its first character reference. That is why
+`usc_text` declares `ACCEPTS_RAW` and reads bytes itself rather than going through the parse
+registry's XML gate.
+
+### The publisher declares the hierarchy in `class`, and the apparatus outweighs the law
+
+| class | count | is it law? |
+|---|---:|---|
+| `note-body` | 4,149 | no — Office of the Law Revision Counsel apparatus |
+| `statutory-body` + `-1em`…`-4em` + `-block` | 10,606 | yes |
+| `note-head` | 1,603 | no |
+| `subsection-head` · `paragraph-head` · `subparagraph-head` · `clause-head` · `subclause-head` | 4,190 | yes |
+| `Q04` | 1,259 | **both** |
+| `section-head` | 309 | yes |
+| `source-credit` | 302 | no — Public Law history |
+
+**Notes outnumber the enacted text they annotate**, so excluding them is worth more than half the
+corpus rather than being a tidy-up.
+
+`Q04` cannot be classified by name: it carries `(q)(1)(A) Except as provided in clause (B), the term
+"pesticide chemical" means…` *and* it carries the banner `Statutory Notes and Related Subsidiaries`.
+It follows `statutory-body-1em` 322 times and `source-credit` 250 times. Position resolves it —
+statutory text runs from `section-head` to the first `source-credit` or `note-head` — and that reads
+the document's own arrangement instead of guessing from a style token.
+
+### The USC ladder is seven deep and is *not* the CFR's
+
+The `*-head` classes name the first five levels, and 2,500 designator-bearing heads agree:
+
+| depth | class | alphabet | n |
+|---:|---|---|---:|
+| 0 | `subsection-head` | lower alpha | 1,365 |
+| 1 | `paragraph-head` | digit | 1,603 |
+| 2 | `subparagraph-head` | UPPER alpha | 863 |
+| 3 | `clause-head` | lower roman | 268 |
+| 4 | `subclause-head` | UPPER roman | 18 |
+
+So the USC nests `(a)(1)(A)(i)(I)` where **the CFR nests `(a)(1)(i)(A)`** — the third and fourth
+rungs are swapped, and `UPPER_ROMAN` does not exist in the CFR ladder at all.
+
+Two more levels never appear as heads and were read off the publisher's indentation instead. In
+21 U.S.C. 355: `(A)` at `statutory-body-1em`, `(i)` at `2em`, `(I)` at `3em`, **`(aa)` at `4em`**,
+with `(AA)` below that — an *item* and *subitem* level.
+
+### Two alphabet facts, each of which broke nesting
+
+**Past `z` the USC doubles the letter.** 21 U.S.C. 321 runs
+`… y z aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo`. Read base-26 (the CFR's convention) `(bb)` is
+the 54th designator rather than the 28th, no open level continues it, and every subsection from
+`(bb)` on is mis-nested.
+
+**The item level *begins* at a doubled letter**, so there `(aa)` is the 1st, not the 27th. The same
+token means two different positions in one document, and only sequence separates them.
+
+### Designators come in runs
+
+`(3)(A) Except as provided in subparagraph (B)…` is paragraph 3 **and** subparagraph A;
+`(i)(I) the food's advertising…` is a clause and its first subclause. Reading only the leading token
+leaves the middle level closed, and the next designator then has no open level to continue — in
+21 U.S.C. 334 that pushed nested `(i)` clauses up to subsection level, where they collided with the
+section's own subsection `(i)`.
+
+Adjacency is what keeps this safe: a token after the first must begin exactly where the previous one
+ended, so `(a) The term "pesticide" (as defined) means…` yields one designator, not two.
+
+### Result
+
+12,179 clauses from the live chapter, and **23 ambiguous clause paths (0.19%)** left, each logged
+and given a deterministic `~2` suffix by `_disambiguate`. The three systematic errors above are
+fixed; the residual is the source's own numbering, addressed rather than dropped.
+
+Fixing designator runs also changed the **CFR**: 21 CFR Part 740 re-parses to 41 clauses against the
+39 stored, because two compound heads now open the level they always stated. Parts 11, 7, 700 and
+701 could not be re-checked — the eCFR answered 503 under burst, which Q1 already recorded.
+
+### The key goes in a header
+
+`api.govinfo.gov` accepts the key as `X-Api-Key` (36,000/hour) and answers **401** without one.
+The `api_key` query parameter works too and is **not used**: a URL is written to `sources`, echoed
+into logs and quoted back in errors, and a credential must not travel in any of them.

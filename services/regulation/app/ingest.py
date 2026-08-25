@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from regops_shared.constants import (
@@ -166,6 +166,7 @@ def ingest_source(
             connector_version=connector.version,
             http_status=fetched.http_status,
         )
+        _reclaim_from_history(session, source)
         session.commit()
         return IngestResult(source.slug, FetchOutcome.NOT_MODIFIED, observation.id)
 
@@ -373,6 +374,56 @@ def _claim_for_cell(session: Session, document: Document, cell_id: uuid.UUID) ->
     if claimed is None:
         session.add(DocumentCell(document_id=document.id, cell_id=cell_id))
         session.flush()
+
+
+def _reclaim_from_history(session: Session, source: Source) -> None:
+    """Re-assert this source's cell claim on documents it has produced before.
+
+    **A cell's claim must not depend on HTTP cache state**, and until this existed it did. The
+    claim is written in :func:`_apply_artifact`, which a 304 never reaches, so a cell that lost the
+    claim once could never regain it while the source kept answering *not modified*.
+
+    That is not hypothetical. On 2026-08-25 both FDA cells fetched the FD&C Act in the same second;
+    one committed the document and its claim, the other lost its claim to the race and thereafter
+    answered 304. The USC is republished annually and this source polls weekly, so ``fda_samd``
+    would have gone a year showing no claim on the statute it is governed by — and the cell's
+    coverage denominator would have been wrong for that whole year, silently.
+
+    **The link is the content hash, not the version this source wrote**, and that distinction is
+    the whole fix. On a shared document only one source writes the version — whichever wins the
+    race — so "versions created by my observations" is empty for exactly the cell that lost the
+    claim. What the losing cell does have is an observation recording the hash of the bytes it saw,
+    and identical canonicalized bytes are the same instrument. Versions this source did write are
+    unioned in as well: a multi-artefact fetch records only the body's hash on the observation, so
+    an annex would otherwise be missed.
+
+    Cheap enough to sit on the 304 path: the observation lookup rides
+    ``ix_fetch_observations_source_id_fetched_at``, and nothing is written when the claim is
+    already there. A source cannot 304 before it has succeeded once, so the history this reads is
+    always present when it is needed.
+    """
+    seen_hashes = select(FetchObservation.content_hash).where(
+        FetchObservation.source_id == source.id,
+        FetchObservation.content_hash.is_not(None),
+    )
+    own_versions = (
+        select(DocumentVersion.document_id)
+        .join(FetchObservation, FetchObservation.id == DocumentVersion.fetch_observation_id)
+        .where(FetchObservation.source_id == source.id)
+    )
+    documents = session.scalars(
+        select(Document)
+        .join(DocumentVersion, DocumentVersion.document_id == Document.id)
+        .where(
+            or_(
+                DocumentVersion.content_hash.in_(seen_hashes),
+                Document.id.in_(own_versions),
+            )
+        )
+        .distinct()
+    ).all()
+    for document in documents:
+        _claim_for_cell(session, document, source.cell_id)
 
 
 def _version_group_for(session: Session, document: Document, language: str) -> uuid.UUID:

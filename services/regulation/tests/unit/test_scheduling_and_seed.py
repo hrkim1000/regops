@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.connectors import CONNECTOR_KEYS
+from app.connectors import CONNECTOR_KEYS, GovInfoUSCodeConnector
 from app.scheduling import advance, derive_interval_seconds
 from app.seed import SEED
 from regops_shared.constants import SourceBlock, SourceTier
@@ -118,18 +118,45 @@ def test_every_interval_override_carries_a_reason() -> None:
         assert (row.interval_override_seconds is None) == (row.interval_override_reason is None)
 
 
+#: Connectors that may serve a ``PRIMARY_LAWS`` row, per authority.
+#:
+#: Three now, not two. The set is authority-shaped because a primary law *is*: 국가법령정보 serves
+#: 현행 and 시행예정 as two endpoints (ADR-0016), while the FD&C Act reaches us as a USC
+#: chapter from govinfo (ADR-0018 decision 12). This is what would catch a primary-law row
+#: wired to a feed or a standards connector, so it is widened deliberately rather than dropped.
+_PRIMARY_LAW_CONNECTORS = {"law_go_kr_law", "law_go_kr_eflaw", "govinfo_uscode"}
+
+
 def test_primary_law_sources_are_enabled() -> None:
     """The 국가법령정보 본문조회 endpoints are the ones the spike confirmed, and they are the
     ingestion path for both gated cells.
 
-    Two connectors now, not one: every 법령 has a ``law_go_kr_eflaw`` companion tracking its
+    Two connectors for MFDS, not one: every 법령 has a ``law_go_kr_eflaw`` companion tracking its
     시행예정 amendments (ADR-0016). Both are enabled, because detection latency for the 법령 sources
     is unmeasurable without the second.
+
+    The FDA cells add a third: the FD&C Act, one Document claimed by both of them.
     """
     primary = [row for row in SEED if row.block is SourceBlock.PRIMARY_LAWS]
     assert len(primary) >= 6
     assert all(row.enabled for row in primary)
-    assert all(row.connector in {"law_go_kr_law", "law_go_kr_eflaw"} for row in primary)
+    assert all(row.connector in _PRIMARY_LAW_CONNECTORS for row in primary)
+
+
+def test_the_fdc_act_is_one_document_claimed_by_both_fda_cells() -> None:
+    """Both FDA cells seed the statute, and both rows resolve to the same ``canonical_key``.
+
+    This is the M:N case phase 2.0a exists to exercise, and the assertion that matters is the
+    *identity*, not the row count: two rows carrying different params would quietly create two
+    Documents for one Act, which is the duplicate ADR-0002 decision 1 exists to prevent. The MFDS
+    RSS boards already work this way; this is the first instrument to.
+    """
+    rows = [row for row in SEED if row.connector == "govinfo_uscode"]
+    assert {row.cell for row in rows} == {"fda_samd", "fda_cosmetic"}
+
+    connector = GovInfoUSCodeConnector()
+    keys = {connector.canonical_key(row.params["title"], row.params["chapter"]) for row in rows}
+    assert keys == {"fda:usc:21-9"}
 
 
 def test_every_law_has_a_pending_effect_companion() -> None:

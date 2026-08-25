@@ -168,6 +168,37 @@ def _cfr_part(
     )
 
 
+def _fdc_act(cell: str, ordinal: int) -> SeedSource:
+    """The FD&C Act — 21 U.S.C. chapter 9 — for one cell.
+
+    **Seeded once per cell, on purpose.** Both rows carry the same params, so both resolve to
+    ``fda:usc:21-9`` and therefore to one Document claimed by two cells through ``document_cells``.
+    That is the same shape a 고시 claimed by both MFDS cells already uses, and it is the M:N case
+    phase 2.0a exists to exercise: the statute is genuinely shared, not duplicated per domain.
+
+    ``SourceTier.A`` is the collectability of the *surface*, not a promise about freshness. The
+    USC is republished annually (ADR-0018 decision 12), so this row cannot meet the ≤24h detection
+    gate and its latency must be reported separately rather than averaged into a cell figure. The
+    interval override says so on the row itself.
+    """
+    return SeedSource(
+        cell=cell,
+        block=SourceBlock.PRIMARY_LAWS,
+        ordinal=ordinal,
+        name="usc_21_chap9",
+        title="21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+        tier=SourceTier.A,
+        connector="govinfo_uscode",
+        params={"title": "21", "chapter": "9"},
+        interval_override_seconds=7 * 24 * 3600,
+        interval_override_reason=(
+            "govinfo publishes one USCODE edition a year, so polling faster than weekly spends "
+            "requests to re-read bytes that cannot have changed. Weekly still catches a new "
+            "edition within days of issue."
+        ),
+    )
+
+
 def _fr_part(cell: str, ordinal: int, part: str, subject: str) -> SeedSource:
     """The Federal Register feed for one CFR Part — dates and identifiers, no regulation text.
 
@@ -504,6 +535,11 @@ SEED: tuple[SeedSource, ...] = (
         "treats as authoritative is ADR-0018 open question 5 — a scope decision, not a connector "
         "one. Seeded because the Part is live and unreserved; the title is not ours to correct.",
     ),
+    # --- the statute both FDA cells sit under -------------------------------
+    #
+    # One Document, two claiming cells. See ``_fdc_act``.
+    _fdc_act("fda_samd", 20),
+    _fdc_act("fda_cosmetic", 20),
     # --- Federal Register, one feed per Part --------------------------------
     #
     # The effective date the eCFR does not carry, and the only view of an amendment that is

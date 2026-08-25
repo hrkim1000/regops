@@ -137,13 +137,20 @@ class PoliteFetcher:
         *,
         etag: str | None = None,
         last_modified: str | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> HttpResponse:
         """GET with conditional headers and exponential backoff.
 
         A 304 is the cheapest possible ``fetch_observation``: we proved the source was checked
         without transferring or hashing anything.
+
+        ``extra_headers`` exists for **credentials that must not travel in a URL**. api.govinfo.gov
+        accepts its key either as an ``api_key`` query parameter or as ``X-Api-Key``, and the query
+        form would put a live credential into ``sources.url_template``, into every log line that
+        echoes a URL, and into any error we report. The header form keeps it in the request only.
+        ``redact_url`` covers what does end up in a URL elsewhere; this covers what never should.
         """
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = dict(extra_headers or {})
         if etag:
             headers["If-None-Match"] = etag
         if last_modified:

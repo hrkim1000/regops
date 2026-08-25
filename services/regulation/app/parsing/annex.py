@@ -39,6 +39,9 @@ from .tables import Table, find_tables, is_rule, render_row
 
 PROFILE = "annex"
 
+#: This profile takes a parsed XML root, not the archived bytes. See :mod:`.` .
+ACCEPTS_RAW = False
+
 #: 별표구분 values whose content is a blank template rather than data.
 FORM_KINDS = frozenset({"서식", "별지"})
 

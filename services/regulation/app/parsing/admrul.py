@@ -27,6 +27,9 @@ from .outline import segment_outline
 
 PROFILE = "admrul_text"
 
+#: This profile takes a parsed XML root, not the archived bytes. See :mod:`.` .
+ACCEPTS_RAW = False
+
 
 def parse(root: Element) -> ParsedDocument:
     """Parse a 행정규칙 본문조회 envelope into a clause tree."""

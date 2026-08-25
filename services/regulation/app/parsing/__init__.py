@@ -6,16 +6,22 @@ through the same profile because they are both 법령, and 화장품 안전기�
 go through the same profile because they are both 고시. A profile keyed on `samd` vs `cosmetic`
 would be the falsifier firing.
 
-There are four, and each exists because the *envelope* differs:
+There are five, and each exists because the *envelope* differs:
 
 ===================  ==================================================================
 ``law_structured``   법령 — 조문/항/호/목 arrive as XML elements; the hierarchy is given
 ``admrul_text``      고시 — flat ``조문내용`` blobs; the hierarchy must be segmented out
 ``annex``            별표/서식/별지 — a child Document, read in table, prose or form mode
 ``cfr_structured``   CFR Part — ``DIV`` containers, with ``(a)(1)(i)(A)`` inline in ``<P>``
+``usc_text``         USC chapter — flat HTML whose only structure is a ``class`` attribute
 ===================  ==================================================================
 
-Both gated cells use all three. `mfds_cosmetic` has 법령 (화장품법), 고시 (안전기준 규정) and
+``usc_text`` and ``cfr_structured`` share the ``(a)(1)(A)`` paragraph ladder, because both are US
+drafting; ``usc`` imports it rather than restating it. **Sharing a shape helper is not selecting on
+authority** — selection is this module's ``_BY_DOC_TYPE`` and nothing else, and that is what the
+falsifier is about.
+
+Both gated cells use the first three. `mfds_cosmetic` has 법령 (화장품법), 고시 (안전기준 규정) and
 table-dense annexes; `mfds_samd` has 법령 (의료기기법), 고시 (기준규격) and the same box-drawing
 annexes. Neither the split nor any profile is domain-conditional.
 """
@@ -30,7 +36,7 @@ from defusedxml.ElementTree import fromstring as parse_xml
 
 from regops_shared.constants import DocType, DriftSignal
 
-from . import admrul, annex, cfr, law
+from . import admrul, annex, cfr, law, usc
 from .model import ParsedClause, ParsedDocument, ParseError
 
 log = structlog.get_logger(__name__)
@@ -45,6 +51,7 @@ _BY_DOC_TYPE = {
     DocType.NOTICE: admrul,
     DocType.ANNEX: annex,
     DocType.REGULATION: cfr,
+    DocType.CODIFIED_STATUTE: usc,
 }
 
 
@@ -93,6 +100,15 @@ def parse_document(
             signal=DriftSignal.MISSING_ROOT,
             expected="a document type with a registered profile",
         )
+
+    if getattr(module, "ACCEPTS_RAW", False):
+        # A profile whose envelope is not XML reads the archived bytes itself. ``usc_text`` is the
+        # first: a govinfo granule is HTML and fails ``_root`` on its first character reference, so
+        # hoisting the XML parse into this registry would have made "is it XML" a property of every
+        # profile rather than of the one that happens to be asked for.
+        parsed = module.parse(raw)
+        _disambiguate(parsed, canonical_key=canonical_key)
+        return parsed
 
     root = _root(raw, canonical_key=canonical_key)
 

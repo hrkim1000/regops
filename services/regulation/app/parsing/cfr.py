@@ -33,9 +33,13 @@ from xml.etree.ElementTree import Element
 from regops_shared.constants import ClauseKind, DriftSignal
 
 from ..canonicalize import normalize_text
+from .ladder import CFR as _LADDER
 from .model import ParsedClause, ParsedDocument, ParseError
 
 PROFILE = "cfr_structured"
+
+#: This profile takes a parsed XML root, not the archived bytes. See :mod:`.` .
+ACCEPTS_RAW = False
 
 #: ``TYPE`` attribute → how deep the node sits. The eCFR numbers its ``DIV`` elements by depth
 #: (DIV5 part, DIV6 subpart, DIV8 section) but the ``TYPE`` is what actually names the level, and
@@ -51,85 +55,6 @@ _LEAF_TYPES: Final[frozenset[str]] = frozenset({"SECTION"})
 _PROVENANCE_TAGS: Final[frozenset[str]] = frozenset({"AUTH", "SOURCE", "CITA", "EDNOTE", "EFFDNOT"})
 
 #: A paragraph designator at the head of a ``<P>``: ``(a)``, ``(1)``, ``(iv)``, ``(A)``.
-_DESIGNATOR = re.compile(r"^\(([A-Za-z]{1,5}|\d{1,3})\)\s*")
-
-_ROMAN_VALUES: Final[dict[str, int]] = {
-    "i": 1,
-    "v": 5,
-    "x": 10,
-    "l": 50,
-    "c": 100,
-    "d": 500,
-    "m": 1000,
-}
-
-
-class _Style:
-    """The four designator alphabets, in the order the CFR nests them."""
-
-    LOWER_ALPHA = "lower_alpha"  # (a)
-    DIGIT = "digit"  # (1)
-    LOWER_ROMAN = "lower_roman"  # (i)
-    UPPER_ALPHA = "upper_alpha"  # (A)
-
-
-#: The CFR ladder repeats after four levels: (a)(1)(i)(A)(1)(i)…
-_LADDER: Final[tuple[str, ...]] = (
-    _Style.LOWER_ALPHA,
-    _Style.DIGIT,
-    _Style.LOWER_ROMAN,
-    _Style.UPPER_ALPHA,
-    _Style.DIGIT,
-    _Style.LOWER_ROMAN,
-)
-
-
-def _roman_to_int(token: str) -> int | None:
-    """``iv`` → 4. ``None`` when the token is not well-formed roman."""
-    total = previous = 0
-    for char in reversed(token):
-        value = _ROMAN_VALUES.get(char)
-        if value is None:
-            return None
-        total += -value if value < previous else value
-        previous = max(previous, value)
-    return total or None
-
-
-def _alpha_to_int(token: str) -> int | None:
-    """``a`` → 1, ``aa`` → 27, the way the CFR continues past ``z``."""
-    if not token.isalpha():
-        return None
-    total = 0
-    for char in token.lower():
-        total = total * 26 + (ord(char) - ord("a") + 1)
-    return total
-
-
-def _successor_of(token: str, style: str, previous: str | None) -> bool:
-    """Is ``token`` the next label after ``previous`` in ``style``?
-
-    This is what disambiguates ``(i)``. It is both the ninth lowercase letter and roman one, and the
-    CFR uses both — ``(h)`` is followed by ``(i)`` as a *sibling*, while a ``(1)`` level is followed
-    by ``(i)`` as a *child*. Style alone cannot tell them apart; position in the sequence can.
-    """
-    if previous is None:
-        return _index_in(token, style) == 1
-    prior = _index_in(previous, style)
-    current = _index_in(token, style)
-    return prior is not None and current == prior + 1
-
-
-def _index_in(token: str, style: str) -> int | None:
-    if style == _Style.DIGIT:
-        return int(token) if token.isdigit() else None
-    if style == _Style.LOWER_ROMAN:
-        return _roman_to_int(token) if token.islower() else None
-    if style == _Style.LOWER_ALPHA:
-        return _alpha_to_int(token) if token.isalpha() and token.islower() else None
-    if style == _Style.UPPER_ALPHA:
-        return _alpha_to_int(token) if token.isalpha() and token.isupper() else None
-    return None
 
 
 def _element_text(node: Element) -> str:
@@ -149,92 +74,6 @@ def _citation_of(node: Element) -> str | None:
         return None
     match = re.search(r'"citation"\s*:\s*"([^"]+)"', raw.replace("&quot;", '"'))
     return match.group(1) if match else None
-
-
-def _style_at(depth: int) -> str:
-    return _LADDER[depth] if depth < len(_LADDER) else _LADDER[-1]
-
-
-def _depth_for(token: str, stack: list[tuple[str, str, int]]) -> int:
-    """Which level does this designator belong to — an open one, or a new child?
-
-    Walking the open levels from the inside out is the whole disambiguation. ``(i)`` after ``(h)``
-    finds a level whose last label was ``h`` and continues it; ``(i)`` after ``(1)`` finds no level
-    that it continues, so it opens a child, which the ladder types as roman.
-    """
-    for depth in range(len(stack) - 1, -1, -1):
-        label, style, _ = stack[depth]
-        if _successor_of(token, style, label.strip("()")):
-            return depth
-
-    child_depth = len(stack)
-    if _index_in(token, _style_at(child_depth)) == 1:
-        return child_depth
-
-    # Neither a successor nor a well-formed first child — the authority's sequence broke. Address it
-    # at the level whose alphabet it does match, so an unexpected designator costs its nesting
-    # rather than the provision.
-    for depth in range(len(stack), -1, -1):
-        if _index_in(token, _style_at(depth)) is not None:
-            return depth
-    return child_depth
-
-
-def _append_unlabelled(
-    text: str,
-    *,
-    prefix: tuple[str, ...],
-    stack: list[tuple[str, str, int]],
-    clauses: list[ParsedClause],
-) -> None:
-    """An undesignated ``<P>`` continues whatever is open, or is the section's own lead text."""
-    if stack:
-        index = stack[-1][2]
-        clauses[index].text = normalize_text(f"{clauses[index].text}\n{text}")
-        return
-    if clauses and clauses[-1].path_segments == prefix:
-        clauses[-1].text = normalize_text(f"{clauses[-1].text}\n{text}")
-        return
-    clauses.append(ParsedClause(path_segments=prefix, text=text, kind=ClauseKind.PROSE))
-
-
-def _segment_paragraphs(
-    paragraphs: list[str], *, prefix: tuple[str, ...], clauses: list[ParsedClause]
-) -> None:
-    """Turn a flat run of ``<P>`` texts into a nested clause tree, by designator sequence.
-
-    The rule is **sequence first, style second**. For each designator the walker asks, from the
-    deepest open level outward, "is this the next label here?" — and only when no open level claims
-    it does it open a child. That ordering is what makes ``(h)`` → ``(i)`` a pair of siblings while
-    ``(1)`` → ``(i)`` is a parent and its child, with neither case needing to be special-cased.
-
-    A ``<P>`` with no designator is not an error: a section commonly opens with an unlabelled
-    paragraph, and 820.35 does.
-    """
-    #: (path segment, style, index into ``clauses``) per open level, outermost first.
-    stack: list[tuple[str, str, int]] = []
-
-    for text in paragraphs:
-        match = _DESIGNATOR.match(text)
-        if match is None:
-            _append_unlabelled(text, prefix=prefix, stack=stack, clauses=clauses)
-            continue
-
-        token = match.group(1)
-        depth = _depth_for(token, stack)
-        del stack[depth:]
-
-        segment = f"({token})"
-        parent_index = stack[-1][2] if stack else None
-        clauses.append(
-            ParsedClause(
-                path_segments=(*prefix, *(level[0] for level in stack), segment),
-                text=text,
-                kind=ClauseKind.PROSE,
-                parent_index=parent_index,
-            )
-        )
-        stack.append((segment, _style_at(len(stack)), len(clauses) - 1))
 
 
 def _container_segment(node_type: str, number: str | None) -> str:
@@ -290,7 +129,7 @@ def _section(
         )
     )
     paragraphs = [text for child in node if child.tag == "P" and (text := _element_text(child))]
-    _segment_paragraphs(paragraphs, prefix=section_prefix, clauses=clauses)
+    _LADDER.segment_paragraphs(paragraphs, prefix=section_prefix, clauses=clauses)
 
 
 def _walk(

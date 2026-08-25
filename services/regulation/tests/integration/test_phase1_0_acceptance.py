@@ -35,6 +35,8 @@ pytestmark = pytest.mark.integration
 PARENT_KEY = "mfds:admrul:2100000276068"
 TEST_SLUG = "test.integration.cosmetic_safety_standards"
 TIER_D_SLUG = "test.integration.tier_d"
+#: A second cell subscribing to the *same* upstream instrument. See the shared-document test.
+SHARED_SLUG = "test.integration.shared_across_cells"
 
 
 def _purge(session) -> None:
@@ -49,7 +51,11 @@ def _purge(session) -> None:
         session.execute(delete(Document).where(Document.parent_document_id.in_(ids)))
         session.execute(delete(Document).where(Document.id.in_(ids)))
 
-    sources = list(session.scalars(select(Source).where(Source.slug.in_([TEST_SLUG, TIER_D_SLUG]))))
+    sources = list(
+        session.scalars(
+            select(Source).where(Source.slug.in_([TEST_SLUG, TIER_D_SLUG, SHARED_SLUG]))
+        )
+    )
     for source in sources:
         session.execute(delete(FetchObservation).where(FetchObservation.source_id == source.id))
         session.execute(delete(Source).where(Source.id == source.id))
@@ -123,6 +129,70 @@ def test_document_is_claimed_by_the_cell(session, source: Source, cell_id: uuid.
     body = session.scalar(select(Document).where(Document.canonical_key == PARENT_KEY))
     claims = list(session.scalars(select(DocumentCell).where(DocumentCell.document_id == body.id)))
     assert [c.cell_id for c in claims] == [cell_id]
+
+
+def test_a_shared_document_is_claimed_by_every_cell_even_when_the_fetch_is_a_304(
+    session, source: Source, cell_id: uuid.UUID
+) -> None:
+    """A cell's claim must not depend on HTTP cache state.
+
+    Two cells subscribing to one instrument is the M:N case ADR-0002 decision 1 exists for, and
+    until ``_reclaim_from_history`` it had a hole: the claim is written in ``_apply_artifact``,
+    which a 304 never reaches. So a cell that lost its claim once could never regain it while the
+    source kept answering *not modified*.
+
+    Not hypothetical — measured on 2026-08-25. Both FDA cells fetched the FD&C Act in the same
+    second; one committed the document and its claim, the other lost the claim to the race and
+    thereafter answered 304. The USC is republished annually against a weekly poll, so that cell
+    would have shown no claim on its own governing statute for a year, and its coverage denominator
+    would have been wrong the whole time.
+
+    The sequence below is that incident: both cells ingest, one claim is removed to model the lost
+    race, and the next poll — a 304, carrying no body at all — puts it back.
+    """
+    other_cell = session.scalar(select(Cell).where(Cell.slug == "mfds_samd"))
+    assert other_cell is not None
+    shared = Source(
+        slug=SHARED_SLUG,
+        cell_id=other_cell.id,
+        block=SourceBlock.STANDARDS,
+        ordinal=98,
+        title="The same 고시, claimed by the other gated cell",
+        url_template="https://example.invalid/admrul",
+        tier=SourceTier.A,
+        ingestible=True,
+        connector="law_go_kr_admrul",
+        params={},
+    )
+    session.add(shared)
+    session.commit()
+
+    _ingest(session, source, "admrul_cosmetic_safety.xml")
+    _ingest(session, shared, "admrul_cosmetic_safety.xml")
+
+    body = session.scalar(select(Document).where(Document.canonical_key == PARENT_KEY))
+    claimed = {
+        c.cell_id
+        for c in session.scalars(select(DocumentCell).where(DocumentCell.document_id == body.id))
+    }
+    assert claimed == {cell_id, other_cell.id}, "both cells claim the one document"
+
+    # Model the lost race: the second cell's claim disappears, and the source keeps 304ing.
+    session.execute(
+        delete(DocumentCell).where(
+            DocumentCell.document_id == body.id, DocumentCell.cell_id == other_cell.id
+        )
+    )
+    session.commit()
+
+    result = ingest_source(session, shared, connector_fetcher=StubFetcher(status=304))
+    assert result.outcome is FetchOutcome.NOT_MODIFIED
+
+    recovered = {
+        c.cell_id
+        for c in session.scalars(select(DocumentCell).where(DocumentCell.document_id == body.id))
+    }
+    assert recovered == {cell_id, other_cell.id}, "the 304 poll restored the lost claim"
 
 
 # --- an unchanged re-fetch records an observation and creates NO version -------

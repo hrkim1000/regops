@@ -26,6 +26,7 @@ from .base import (
 )
 from .ecfr import ECFRConnector
 from .federal_register import FederalRegisterConnector
+from .govinfo import GovInfoUSCodeConnector
 from .http import PoliteFetcher, redact_url, resolve_url
 from .law_go_kr import AdmRuleConnector, LawConnector, PendingLawConnector
 from .mfds import MfdsListingConnector, MfdsRssConnector
@@ -42,6 +43,7 @@ _CONNECTORS: Final[dict[str, type]] = {
         RecognitionListConnector,
         ECFRConnector,
         FederalRegisterConnector,
+        GovInfoUSCodeConnector,
     )
 }
 

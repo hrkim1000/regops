@@ -39,7 +39,12 @@ class StubFetcher:
     calls: int = 0
 
     def get(
-        self, url: str, *, etag: str | None = None, last_modified: str | None = None
+        self,
+        url: str,
+        *,
+        etag: str | None = None,
+        last_modified: str | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> HttpResponse:
         self.calls += 1
         self.seen_etag = etag

@@ -75,16 +75,22 @@ authority states one ([ADR-0016](design/ADR-0016-pending-effect-versions.md) dec
 [ADR-0003](design/ADR-0003-ingestion-and-change-detection.md) decision 5); 부칙 supplies
 `effective_date_phrase` and is the fallback where no date is stated.
 
-**Three parser profiles, selected by source shape and never by domain** (phase 1.1):
+**Five parser profiles, selected by source shape and never by domain:**
 
-| Profile | Source | Why it is separate |
-|---|---|---|
-| `law_structured` | 법령 본문조회 | 조문/항/호/목 arrive as XML elements — the hierarchy is *given* |
-| `admrul_text` | 행정규칙 본문조회 | **no clause structure at all** — flat `조문내용` blobs, so the tree is segmented out of text |
-| `annex` | 별표 / 서식 / 별지 | a child Document read in table, prose or form mode; branches on `별표구분` |
+| Profile | Source | Phase | Why it is separate |
+|---|---|---|---|
+| `law_structured` | 법령 본문조회 | 1.1 | 조문/항/호/목 arrive as XML elements — the hierarchy is *given* |
+| `admrul_text` | 행정규칙 본문조회 | 1.1 | **no clause structure at all** — flat `조문내용` blobs, so the tree is segmented out of text |
+| `annex` | 별표 / 서식 / 별지 | 1.1 | a child Document read in table, prose or form mode; branches on `별표구분` |
+| `cfr_structured` | eCFR XML | 2.0a | `DIV` containers, with `(a)(1)(i)(A)` inline in `<P>` — the ladder is recovered from the designator sequence |
+| `usc_text` | govinfo USCODE | 2.0a | flat HTML whose only structure is a `class` attribute, and which is not well-formed XML |
 
-Both gated cells use all three. The split is 법령 vs 고시 vs 별표 — a source shape, not SaMD vs
-Cosmetic — which is what keeps the domain branch where the next section says it is.
+The two gated MFDS cells use the first three, both of them all three. The
+split is 법령 vs 고시 vs 별표 — a source shape, not SaMD vs Cosmetic — which is what keeps the domain
+branch where the next section says it is. The FDA pair adds two more for the same reason and by the
+same rule: **selection keys on `doc_type` and nothing else.** `usc_text` and `cfr_structured` share
+their paragraph ladder because both are US drafting, but sharing a shape helper is not selecting on
+authority ([ADR-0002](design/ADR-0002-canonical-regulation-model.md) decision 3).
 
 ### Politeness is part of the contract
 

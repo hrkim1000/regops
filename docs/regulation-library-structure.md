@@ -22,27 +22,6 @@ regulation-library/
 
 ---
 
-# Regulation Library 구조
-
-```
-regulation-library/
-└── FDA/
-    └── Cosmetics/
-        ├── Laws/
-        ├── Regulations/
-        ├── Guidance/
-        ├── Compliance/
-        ├── WarningLetters/
-        ├── Import/
-        ├── Labeling/
-        ├── Ingredient/
-        ├── Registration/
-        ├── AdverseEvent/
-        └── FAQ/
-```
-
----
-
 # 1. Laws (최우선)
 
 가장 중요한 원본 자료입니다.

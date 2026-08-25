@@ -282,6 +282,22 @@ Therefore:
 structured as shown; that a title-21 filter finds FD&C amendments *at scale* was not tested, and
 should be before anything depends on it.
 
+> **Annotation, 2026-08-25 — built, and it forced a `doc_type` this decision did not anticipate.**
+> `govinfo_uscode` ships and the Act is live as `fda:usc:21-9`, version `USCODE-2024-title21`,
+> 12,179 clauses, claimed by both FDA cells. Two things this decision assumed turned out otherwise,
+> and neither changes it:
+>
+> - **The Act is one fetch, not 163.** The chapter granule carries all 309 section heads in 5.37 MB.
+>   The "163 sections" in the spike was a paging artifact of the reconnaissance, not the corpus.
+> - **It could not reuse an existing profile.** A govinfo granule is HTML that is not well-formed
+>   XML, so `DocType.LAW` — which routes to the 법령 XML profile — fails at the envelope.
+>   `DocType.CODIFIED_STATUTE` and the `usc_text` profile were added (migration `0009`), on the
+>   precedent decision 3 set for `REGULATION`. The name says *codification* deliberately: what is
+>   ingested is the annual compilation, which is exactly what point 3 above is about.
+>
+> Point 3 stands unchanged and is now recorded on the seed row itself, as a weekly interval override
+> whose stated reason is that the edition is annual.
+
 ### Part C — guidance
 
 #### 9. Guidance is stored, citable, and never extracted — excluded at `doc_type` level with a reason
@@ -312,7 +328,11 @@ It has a better one: `structure/current/title-21.json` enumerates all 275 Parts 
 and every Part named in [import-source-map.md](../import-source-map.md) is present and unreserved.
 
 The denominator is **sections of the in-scope Parts of `doc_type` `REGULATION` or `LAW`**, computed
-per cell from that call. Guidance is outside it, per decision 9. It is a closed, authority-published
+per cell from that call.
+
+> **Annotation, 2026-08-25.** Read that as *the obligation-bearing types*, which now include
+> `CODIFIED_STATUTE` — the FD&C Act is that rather than `LAW` (decision 12's annotation). The rule
+> the sentence states is unchanged; the enumeration in it predates the value. Guidance is outside it, per decision 9. It is a closed, authority-published
 list, which is a stronger denominator than the MFDS cells have.
 
 ## Consequences

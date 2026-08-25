@@ -120,6 +120,11 @@ class DocType(StrEnum):
     #: statutory ladder (법률 → 시행령 → 시행규칙), and a CFR Part has no 시행령 tier above it, so
     #: reusing it would assert a hierarchy that does not exist.
     REGULATION = "regulation"
+    #: A statute as codified into a subject-arranged code — a USC chapter (ADR-0018 decision 12).
+    #: Deliberately *not* mapped onto ``LAW``: that value names 법률 and routes to a profile that
+    #: reads 조/항/호/목 as XML elements, while a USC granule is HTML that is not well-formed XML.
+    #: The two are different envelopes, which is what ``doc_type`` selects on (ADR-0002 decision 3).
+    CODIFIED_STATUTE = "codified_statute"
 
 
 class DocCategory(StrEnum):
