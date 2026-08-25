@@ -34,8 +34,17 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
-    "ruff>=0.7",
-    "mypy>=1.13",
+    # **The linters are pinned exactly, and that is the point.** They were `>=`, so CI installed
+    # whatever shipped that morning while developers ran whatever they installed months ago — and a
+    # linter is the one tool that fails a build on code nobody touched. CI was red for every run
+    # from 2026-08-21 to 2026-08-25, never once for a real defect: first `ruff format` changed how
+    # it wrapped a conditional inside a `key=lambda`, then `RUF059` arrived and flagged an unpacked
+    # variable in a test written days earlier. Locally ruff was 0.12.10 against CI's 0.16.4.
+    #
+    # Bumping these is now a deliberate commit that shows the diff it causes, which is the only way
+    # a formatter can be a gate at all.
+    "ruff==0.16.4",
+    "mypy==1.13.0",
 ]
 
 [build-system]

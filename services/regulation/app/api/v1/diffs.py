@@ -109,11 +109,13 @@ async def list_diffs(
     # neighbours instead of collapsing every removal to the top.
     rows.sort(
         key=lambda row: (
-            ordinals.get(row.to_clause_id)
-            if row.to_clause_id is not None
-            else ordinals.get(row.from_clause_id, 0)
+            (
+                ordinals.get(row.to_clause_id)
+                if row.to_clause_id is not None
+                else ordinals.get(row.from_clause_id, 0)
+            )
+            or 0
         )
-        or 0
     )
 
     previous_id = next((row.from_version_id for row in rows if row.from_version_id), None)

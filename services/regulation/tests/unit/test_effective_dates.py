@@ -180,6 +180,11 @@ def test_a_rule_without_an_effective_date_is_not_a_candidate() -> None:
     version = _Version("2026-02-04")
     _, summary = _sweep([version], [_Announcement("undated", None)])
     assert version.effective_date is None
+    # Counted, not silently skipped: an undated rule leaves the version *unmatched*, which is what
+    # the coverage figure has to show. Every other case in this file asserts its counter; this one
+    # bound `summary` and never looked at it, and ruff 0.16 is what noticed.
+    assert summary.unmatched == 1
+    assert summary.resolved == 0
 
 
 def test_an_unparseable_label_is_counted_never_guessed_at() -> None:
