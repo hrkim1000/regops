@@ -4,9 +4,14 @@
 contact is reachable, prefer it — that page could not be read from here to find one, because
 `www.fda.gov` returns the same abuse-detection redirect described below.
 
-**Before sending, fill in:** `<your name>`, `<your role>`, `<your organisation>`, `<your email>`,
+**Before sending, fill in:** `<your role>`, `<your organisation>`, `<your email>`,
 `<source IP or CIDR range>`. Leave everything else as written — the specifics are what make this
 answerable.
+
+**Fill the email and the IP range in the message you send, not in this file.** It is committed, and
+this repository is mirrored to a shared one; `CLAUDE.md` keeps real addresses out of docs, and no
+document here carries one today. The name is already the author of every commit, so it is written
+in.
 
 ---
 
@@ -19,7 +24,7 @@ Consensus Standards database
 
 Dear FDA,
 
-I am `<your name>`, `<your role>` at `<your organisation>`. We operate an internal regulatory
+I am Hyeran Kim, `<your role>` at `<your organisation>`. We operate an internal regulatory
 compliance system that tracks the medical device and cosmetic regulations our products are subject
 to, including the FDA Recognized Consensus Standards list.
 
@@ -109,7 +114,7 @@ Thank you for your time, and for maintaining the database — it is the authorit
 FDA recognises, and there is no substitute for it.
 
 Regards,
-`<your name>`
+Hyeran Kim
 `<your organisation>`
 `<your email>`
 
