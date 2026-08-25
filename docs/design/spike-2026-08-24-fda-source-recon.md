@@ -304,3 +304,112 @@ probes missed and repetition found**, which is the argument for the connectors r
 - `https://api.govinfo.gov/collections`
 - `https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfStandards/search.cfm`
 - `https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title21-chapter9&edition=prelim` — unreachable
+
+---
+
+# Part 2 — W0 completion (same day, after the ADR)
+
+The three W0 rows left partial when [ADR-0018](ADR-0018-fda-source-model.md) was written, now closed.
+**Two of the three turned up something the ADR did not account for.**
+
+## Q4 — Does robots.txt permit what the connectors will fetch?
+
+**Mostly, and there is one exception that lands on the ADR's version spine.**
+
+| Host | Relevant rule | Effect |
+|---|---|---|
+| `ecfr.gov` | `Disallow: /api/renderer/v1/content/` and **`Disallow: /api/versioner/v1/full/`** | The **body-text endpoint is disallowed.** `versions/`, `structure/` and `titles.json` are not |
+| `ecfr.gov` | `Disallow: /recent-changes` | Consistent with the 302 on the guessed RSS path |
+| `federalregister.gov` | No `/api` rule, no `Crawl-delay` | Unrestricted |
+| `accessdata.fda.gov` | No `cfStandards` rule, no `Crawl-delay`; **`Disallow: /scripts/cdrh/*excel*.cfm`** | The list page is permitted; **the Excel export is not** — read HTML |
+
+**This is a genuine conflict and it is not ours to wave away.**
+[ADR-0003](ADR-0003-ingestion-and-change-detection.md) decision 9 makes politeness part of the
+contract, and [ADR-0018](ADR-0018-fda-source-model.md) decision 4 makes
+`/api/versioner/v1/full/` the version spine — the one path robots.txt disallows.
+
+The rule sits under `User-agent: *` with no API exemption, but the comment above it reads
+*"Don't index developer tool links"*, which is an anti-**indexing** intent rather than an
+anti-API one, and the endpoint is documented for developer use. Both readings are defensible.
+**Recorded as ADR-0018 open question 6 rather than decided here** — it is a policy question about
+someone else's server, and the honest options (fetch it as a documented API and say so; or route
+citation text through `renderer` — also disallowed; or ask the eCFR) are not a spike's to pick.
+Detection is unaffected either way: `versions/` is permitted.
+
+## Q5 — Can `document_versions` carry the FD&C Act from govinfo?
+
+**Yes, at section granularity — but the cadence is annual, and that is a problem for the gate.**
+
+`GET /collections/USCODE/...` returns **1,552** packages named `USCODE-{year}-title{N}`; title 21 for
+one year holds **901** granules:
+
+| granuleId | granuleClass |
+|---|---|
+| `USCODE-2024-title21-toc` | `TOC` |
+| `USCODE-2024-title21-chap1` | `TOPPARENT` |
+| `USCODE-2024-title21-chap1-subchapI` | `NODE` |
+| `USCODE-2024-title21-chap1-subchapI-sec1` | **`LEAF`** |
+
+So the mapping is clean: **package → `DocumentVersion`** (`version_label` = the package id, which is
+the authority's own key, satisfying [ADR-0016](ADR-0016-pending-effect-versions.md) decision 1), and
+**`LEAF` granule → `Clause`**. `chap9` is the FD&C Act.
+
+**The cadence is the finding.** The USC is republished **once a year**. The FD&C Act is the Primary
+Law of *both* FDA cells, and an amendment to it would be invisible on this surface until the next
+annual edition — against a **≤24h detection-latency gate**. The eCFR gives per-issue-date granularity
+for the regulations; govinfo gives per-year for the statute they implement. Amendments arrive first
+as Public Laws (govinfo's `PLAW` collection), which was **not probed**. Recorded as ADR-0018 open
+question 7.
+
+## Q6 — Do the Recognized Consensus Standards columns fit the existing connector?
+
+**Configuration is enough for the fields that exist, and two fields do not exist on this surface.**
+
+`results.cfm` is a **POST** form (`referencenumber`, `recognitionnumber`, `organization`, `category`,
+`effectivedatefrom`/`to`, `productcode`, `regulationnumber`, `title`). Searching
+`referencenumber=62304` returns rows under these labels:
+
+| FDA label | `StandardRecord` field | Fits `DEFAULT_COLUMNS` as shipped? |
+|---|---|---|
+| Recognition Number | `recognition_number` | ✅ exact match on `"recognition number"` |
+| Date of Entry | `effective_date` | ✅ exact match on `"date of entry"` |
+| Standards Developing Organization | `issuing_body` | ❌ config — the default is `"organization"` |
+| Standard Designation Number and Date | `number` | ❌ config |
+| Standard Title | `title` | ❌ config — the default is `"title"` |
+| Extent of Recognition | (feeds `status` by keyword scan) | — |
+| Specialty Task Group Area | — | no counterpart; ignored |
+
+`_match_column` matches the normalized label **exactly**, not by substring, so with the defaults the
+`number` lookup misses and `row_to_record` returns `None` for **every** row. That is not a defect —
+`sources.params["columns"]` exists for exactly this, and the connector's docstring predicted it. **The
+seed row must carry a `columns` mapping; with one, no new code is needed.**
+
+Two gaps config cannot close, and they are the deviation the plan asked to be told about:
+
+- **`edition` has no column of its own.** FDA folds it into the designation
+  (`62304 Edition 1.1 2015-06 CONSOLIDATED VERSION`). Pointing `edition` at the same column stores the
+  whole blob twice; splitting it is code.
+- **`withdrawal_date` is absent from the list view entirely.** `standard_references` has the column and
+  this surface cannot fill it. The detail page behind *"click for recognition information"* may carry
+  it; not probed.
+
+Sample record, to show no body text is involved: `13-79` · Complete · IEC ·
+`62304 Edition 1.1 2015-06` · *Medical device software — Software life cycle processes* ·
+entered 01/14/2019.
+
+## Q7 — Rate limits and politeness, per host
+
+| Host | Limit | Evidence |
+|---|---|---|
+| `ecfr.gov` | **None published** — no `X-RateLimit-*`, no `Retry-After`, no `Crawl-delay` | ~30 probes over the session, none throttled |
+| `federalregister.gov` | **None published** — same | |
+| `api.govinfo.gov` | **`X-Ratelimit-Limit: 10`** on `DEMO_KEY` | Header returned on every call; remaining counted down 9 → 7 |
+| `accessdata.fda.gov` | None published | |
+
+**govinfo needs a real key**, and this is the only host that does. `DEMO_KEY` is 10 requests/hour —
+enough to probe, not to ingest 901 granules. A key belongs in settings with a placeholder in the
+template ([ADR-0003](ADR-0003-ingestion-and-change-detection.md) decision 13).
+
+**"No published limit" is not "no limit."** Nothing was throttled here, which bounds the polite rate
+from below and says nothing about the ceiling. `PoliteFetcher`'s existing backoff is reused
+unchanged; no probe justified tuning it.

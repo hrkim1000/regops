@@ -324,3 +324,21 @@ being defined into existence.
 5. **Part 710 is still titled *Voluntary* Registration of Cosmetic Product Establishments** while
    MoCRA made facility registration mandatory. Which the `fda_cosmetic` cell treats as authoritative
    is a scope question for [import-source-map.md](../import-source-map.md), not a connector question.
+
+6. **`ecfr.gov/robots.txt` disallows `/api/versioner/v1/full/` — the endpoint decision 4 makes the
+   version spine.** Found after this ADR was accepted
+   ([spike Part 2](spike-2026-08-24-fda-source-recon.md) Q4). The rule sits under `User-agent: *`
+   with no API exemption; the comment above it says *"Don't index developer tool links"*, which reads
+   as anti-indexing rather than anti-API, and the endpoint is documented for developers. Both
+   readings are defensible and [ADR-0003](ADR-0003-ingestion-and-change-detection.md) decision 9
+   makes politeness part of the contract, so this needs a decision before the eCFR connector fetches
+   body text. **Detection is unaffected** — `versions/` is not disallowed — so decision 6 stands
+   whichever way this goes. The `renderer` alternative is disallowed too.
+
+7. **The FD&C Act versions annually, against a ≤24h gate.** govinfo publishes the USC as
+   `USCODE-{year}-title21` — one edition a year, section-granular
+   ([spike Part 2](spike-2026-08-24-fda-source-recon.md) Q5). Decision 2 gives the act a
+   `canonical_key` and decision 1 makes it a Document claimed by both cells, but neither anticipated
+   that its *only* probed surface refreshes yearly. An FD&C Act amendment would be invisible until
+   the next edition. Public Laws (govinfo `PLAW`) are the likely announcement surface and were not
+   probed. Until this is settled the statute cannot carry the detection gate the regulations can.

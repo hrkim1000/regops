@@ -79,8 +79,10 @@ Same shape as [spike-2026-07-29](../design/spike-2026-07-29-mfds-source-recon.md
 reason: that spike downgraded the canonicalization estimate, found the three HTTP-200 failure
 signatures, and killed a guessed URL that turned out to be a different document.
 
-Run 2026-08-24 — [spike-2026-08-24](../design/spike-2026-08-24-fda-source-recon.md). Rows below are
-ticked only where a live call returned; partials say what is still missing.
+**W0 is complete — 2026-08-24.** [spike-2026-08-24](../design/spike-2026-08-24-fda-source-recon.md),
+Parts 1 and 2. Every row was answered by a live call; the connectors are no longer blocked on recon.
+Two answers landed *after* [ADR-0018](../design/ADR-0018-fda-source-model.md) was accepted and became
+its open questions 6 and 7 — see *Deviations* 7.
 
 - [x] **Which surface carries body text, and which carries only signals.** The one-line task in the
       undecomposed 2.0 named openFDA and Regulations.gov and named neither eCFR nor govinfo, while
@@ -100,22 +102,32 @@ ticked only where a live call returned; partials say what is still missing.
       → both queries confirmed. `effective_on` is structured and **nullable**; `cfr_references` is
       **Part-level only**. Lag sampled at 0 · 30 · null · 0 · 163 days, and 5 rules are on the books
       with a future effective date, one of them 2033-03-07
-- [ ] **govinfo** — the FD&C Act (USC) surface, and whether it versions in a way `document_versions`
+- [x] **govinfo** — the FD&C Act (USC) surface, and whether it versions in a way `document_versions`
       can carry
-      → **partial.** Reachable, 42 collections, `USCODE`/`CFR`/`FR`/`STATUTE` all present. Granularity
-      and version identity **not probed** — [ADR-0018](../design/ADR-0018-fda-source-model.md) open
-      question 3. `uscode.house.gov` timed out and is unverified as an alternative
-- [ ] **accessdata** — the Recognized Consensus Standards table: **column labels only**. Feeds
+      → **yes, section-granular — but annually.** Packages are `USCODE-{year}-title21` (1,552 in all,
+      901 granules in one title-21 year); a `LEAF` granule is a section. So package → `DocumentVersion`
+      and `LEAF` → `Clause`. **The cadence is the problem**: the FD&C Act is the Primary Law of both
+      cells and its only probed surface refreshes once a year, against a ≤24h gate — now
+      [ADR-0018](../design/ADR-0018-fda-source-model.md) open question 7. `PLAW` not probed.
+      `uscode.house.gov` timed out and is unverified as an alternative
+- [x] **accessdata** — the Recognized Consensus Standards table: **column labels only**. Feeds
       `sources.params["columns"]`, and no standard text is fetched at any point
       ([ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 7)
-      → **partial.** `search.cfm` returns 200 with 53 KB of server-rendered HTML, so Tier C in shape.
-      Column labels not yet extracted
-- [ ] **Credentials and rate limits** per host — API key, anonymous quota, `User-Agent` policy,
+      → **captured.** `results.cfm` is a POST form. Labels: Recognition Number · Date of Entry ·
+      Standards Developing Organization · Standard Designation Number and Date · Standard Title ·
+      Extent of Recognition · Specialty Task Group Area. `_match_column` matches **exactly**, so the
+      shipped defaults miss `number` and drop every row — the seed row must carry a `columns` mapping,
+      and with one **no new code is needed**. Two fields this surface cannot fill at all: `edition`
+      (folded into the designation string) and `withdrawal_date` (absent). See *Deviations* 6
+- [x] **Credentials and rate limits** per host — API key, anonymous quota, `User-Agent` policy,
       `Retry-After` behaviour. A key lives in settings and the template carries a placeholder
       ([ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 13)
-      → **partial.** eCFR and Federal Register served every probe anonymously; govinfo needs a key
-      (probed with the public `DEMO_KEY`). **No quota or `Retry-After` behaviour was measured** — no
-      probe was rate-limited, which is not the same as knowing the limit
+      → **govinfo is the only host that needs a key.** `api.data.gov` returns
+      `X-Ratelimit-Limit: 10` on `DEMO_KEY` — enough to probe, not to ingest 901 granules. eCFR,
+      Federal Register and accessdata publish no limit and throttled nothing across ~30 probes, which
+      bounds the polite rate from below and says nothing about the ceiling; `PoliteFetcher` is reused
+      unchanged. **robots.txt was read for all three** and turned up a conflict with
+      [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 4 — see *Deviations* 7
 - [x] **The HTTP-200 failure signatures for each host.** The MFDS lesson generalizes: a connector
       checking transport status alone records a healthy observation for a fetch that returned nothing
       → **none found, and that is the finding.** FDA hosts fail honestly: two distinct self-describing
@@ -370,7 +382,40 @@ And the structural criteria the slice is really about:
    `미측정` instead of defaulting. That boundary was not stated in the instruction; it is the
    conservative reading, and it is written here so it can be corrected rather than assumed.
 
-5. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+5. **The Recognized Consensus Standards row needs configuration, and two fields it cannot supply
+   (2026-08-24).** The plan predicted "a seed row and no new code" and asked to be told if that was
+   wrong. It is **half right**. `_match_column` matches a normalized header **exactly**, and the FDA
+   labels are longer than the shipped defaults (`Standard Title` vs `title`, `Standards Developing
+   Organization` vs `organization`), so with `DEFAULT_COLUMNS` the `number` lookup misses and
+   `row_to_record` drops **every** row. That is what `sources.params["columns"]` is for, so the seed
+   row carries a mapping and **no code changes** — the connector's FDA-shaped assumption
+   ([phase1.0](phase1.0_ingestion.md) recon) holds on its first real test.
+
+   What does **not** hold: `edition` has no column of its own (FDA folds it into
+   `62304 Edition 1.1 2015-06 CONSOLIDATED VERSION`) and `withdrawal_date` is absent from the list
+   view entirely. `standard_references` has both columns and this surface fills neither. Splitting the
+   designation string is code; the withdrawal date needs the per-standard detail page, which was not
+   probed. Neither blocks the seed row — they bound what it can populate.
+
+6. **robots.txt disallows the endpoint ADR-0018 made the version spine (2026-08-24).**
+   `ecfr.gov/robots.txt` carries `Disallow: /api/versioner/v1/full/` — the point-in-time body-text
+   call — under `User-agent: *`. [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md)
+   decision 9 makes politeness part of the contract, so this cannot be shrugged off, and it was found
+   *after* the ADR was accepted. The comment above the rule reads *"Don't index developer tool
+   links"*, which is an anti-indexing intent rather than an anti-API one, and the endpoint is
+   documented for developers — but the rule states no exemption. **Not decided here**: it is
+   [ADR-0018](../design/ADR-0018-fda-source-model.md) open question 6, and it must close before the
+   eCFR connector fetches body text. Detection is unaffected — `versions/` is permitted — so the
+   ≤24h gate does not depend on the answer. `accessdata` separately disallows its Excel export, so
+   the standards list is read as HTML.
+
+7. **The FD&C Act refreshes annually, and the gate does not care (2026-08-24).** govinfo publishes
+   the USC as `USCODE-{year}-title21`, section-granular but one edition a year. The act is the
+   Primary Law of *both* FDA cells. Nothing in ADR-0018 anticipated that its only probed surface
+   moves yearly against a ≤24h detection gate; Public Laws (`PLAW`) are the likely announcement
+   surface and were not probed. [ADR-0018](../design/ADR-0018-fda-source-model.md) open question 7.
+
+8. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while
