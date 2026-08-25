@@ -203,11 +203,13 @@ its open questions 6 and 7 — see *Deviations* 7.
       seed row and no new code. If it needs code, record that in *Deviations*: the connector was built
       against an FDA-shaped assumption ([phase1.0](phase1.0_ingestion.md) recon) and this is the first
       time that assumption is tested
-      → **it needs code — the assumption did not hold (2026-08-24, *Deviations* 9).** Three specific
-      gaps, measured by running the real parser against the live page: no `<th>` anywhere so the
-      header is not detected; chrome rows (results-per-page, *Export to Excel*) parse as data; and a
-      second standard under one query arrives as a **continuation row with fewer cells**, so its
-      columns do not line up with the header. Scope it as connector work, not a seed row
+      → **it needed code, and the code turned out to be "read HTML properly" (2026-08-25).** The
+      three gaps were real — no `<th>`, chrome rows parsing as data, continuation rows misaligned —
+      but each has a **standard attribute** behind it: `scope="col"` marks the header, `rowspan`
+      says the continuation carries the row above, `colspan` spanning the width marks a banner.
+      Honouring all three is authority-neutral and is a no-op for MFDS, which uses `<th>` and none
+      of them. Six seed rows written, records verified correct against the live page — and **all six
+      seeded disabled**, because FDA's CDN refuses our agent. See *Deviations* 16 and 17
 - [ ] Safety surfaces — Warning Letters, Import Alerts, recalls, MAUDE — as change signals. A feed
       yields no clauses and that is not a gap
       ([parsing/__init__.py](../../services/regulation/app/parsing/__init__.py))
@@ -612,7 +614,61 @@ And the structural criteria the slice is really about:
     reliable one. Fail-closed behaved correctly throughout: four attempts, an observation recorded,
     a drift alert, and **no version written** from a 503.
 
-16. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+16. **The `recognition_list` fix was HTML, not FDA (2026-08-25).** *Deviations* 9 scoped this as
+    connector work and was right that configuration alone could not do it. It was wrong about the
+    shape of the work. Reading the markup rather than the rendered text, each of the three gaps has
+    a standard attribute behind it:
+
+    - the header row is `<td>` throughout but **every cell carries `scope="col"`**, the attribute
+      that makes a cell a column header;
+    - the continuation row is a **`rowspan="2"`** on the four shared cells, so the row above is
+      carried down rather than the short row being re-aligned by guesswork;
+    - the *New Search / Export to Excel* bar is a **`colspan="7"`** banner, so skipping it needs no
+      list of chrome phrases for someone to maintain.
+
+    So the change is "parse an HTML table correctly", which is exactly the shape-keyed answer the
+    constraint demanded — no `if authority == "fda"` anywhere. **Provably a no-op for MFDS**: those
+    pages use `<th>` and contain no `rowspan`, `colspan` or `scope` at all, the three fixtures parse
+    to identical rows, and the feed tests pass unchanged.
+
+    One further fix the config forced: `_match_column` compared labels raw, and the FDA header
+    renders `Date of<br>Entry`, arriving with a double space. Requiring `sources.params["columns"]`
+    to reproduce the page's line breaks would break a column the day someone moved one, so labels
+    are folded to single spaces at match time. Verified against the live page: two records, both
+    recognition number `13-79`, differing in organization and designation — which is what the
+    `rowspan` meant.
+
+    Still unfillable, unchanged from *Deviations* 5: `edition` (folded into the designation string)
+    and `withdrawal_date` (absent from the list view).
+
+17. **FDA's CDN classifies our agent as abuse, so the six rows are seeded disabled (2026-08-25).**
+    `accessdata.fda.gov` sits behind Akamai, which answers our identified client with a 302 to
+    `/apology_objects/abuse-detection-apology.html` — a page that is itself 404, which is why the
+    connector saw a bare `HTTP 404`. The parser and the column mapping are verified correct against
+    the live page; only the fetch is refused.
+
+    **A User-Agent that slips through was not looked for, and must not be.** That is evasion, and
+    it is the behaviour [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 11 forbids on
+    the other FDA hosts for exactly this reason. There is an irony worth recording: the string that
+    trips it is our polite one, `RegOps-ImportAgent/0.1 (+https://github.com/…)` — the crawler
+    self-identification convention is itself a bot signal.
+
+    The rows exist and do not fire, which is this file's own rule for an endpoint we cannot reach.
+    The way forward is to ask FDA for access. **Consequence to state plainly:** Tier D freshness for
+    the FDA cell — [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 7's
+    "track the recognition list, never the standard" — has no working path today.
+
+18. **The seeder could disable a schedule the catalog stopped, and could not (2026-08-25).**
+    Found while disabling the six: `seed_sources` deliberately left `enabled` alone on update, so
+    that re-seeding could not revive a source an operator had stopped. Sound, and asymmetric in the
+    wrong direction — a row the catalog says must not fire kept firing, and the seed-level flag was
+    inert.
+
+    Now **the catalog may stop a schedule and may never start one.** Disabling is the safe
+    direction and propagates; enabling is the one that would override a deliberate stop, and still
+    does not.
+
+19. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while

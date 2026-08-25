@@ -59,10 +59,22 @@ _STATUS_BY_KEYWORD: Mapping[str, StandardStatus] = {
 }
 
 
+def _collapse(label: str) -> str:
+    """Fold a header label to a comparable key: lowercase, single-spaced, trimmed.
+
+    Header text carries the page's line breaks. The FDA header renders ``Recognition<br>Number``
+    and ``Date of<br>Entry``, which arrive as ``Recognition Number`` and ``Date of  Entry`` — the
+    second with a double space. Comparing raw would force ``sources.params["columns"]`` to encode
+    the authority's markup accidents, so a column would stop matching the day someone moved a line
+    break. The configuration should name the column, not reproduce its whitespace.
+    """
+    return " ".join(label.split()).lower()
+
+
 def _match_column(row: Mapping[str, str], labels: tuple[str, ...]) -> str | None:
-    normalized = {normalize_text(k).lower(): v for k, v in row.items()}
+    normalized = {_collapse(normalize_text(k)): v for k, v in row.items()}
     for label in labels:
-        value = normalized.get(label.lower())
+        value = normalized.get(_collapse(label))
         if value:
             return normalize_text(value)
     return None

@@ -89,3 +89,68 @@ def test_empty_listing_fails_closed_as_drift() -> None:
     with pytest.raises(AuthorityError) as exc:
         connector.parse(b"<html><body><p>maintenance</p></body></html>", spec=LISTING_SPEC)
     assert exc.value.signal is DriftSignal.ZERO_RECORDS
+
+
+# --- table shapes a second authority brought, read as HTML rather than as special cases ----------
+
+
+def test_a_scope_col_row_is_a_header_even_without_th() -> None:
+    """The FDA Recognized Consensus Standards table has no ``<th>`` anywhere.
+
+    Its header row is ``<td>`` throughout with ``scope="col"`` on every cell — the attribute that
+    makes a cell a column header. Reading it is reading HTML, not accommodating one authority.
+    """
+    html = """<table>
+      <tr><td scope="col">Recognition Number</td><td scope="col">Extent</td></tr>
+      <tr><td>13-79</td><td>Complete</td></tr>
+    </table>"""
+    rows = extract_table_rows(html)
+    assert rows == [{"Recognition Number": "13-79", "Extent": "Complete"}]
+
+
+def test_a_rowspan_carries_down_into_the_continuation_row() -> None:
+    """One recognition covering two designations is one ``rowspan="2"`` and a short second row.
+
+    Ignored, the continuation's cells line up against the *first* headers and file a developing
+    organization as a date of entry.
+    """
+    html = """<table>
+      <tr><td scope="col">Date</td><td scope="col">Number</td><td scope="col">Org</td></tr>
+      <tr><td rowspan="2">01/14/2019</td><td rowspan="2">13-79</td><td>IEC</td></tr>
+      <tr><td>ANSI AAMI IEC</td></tr>
+    </table>"""
+    rows = extract_table_rows(html)
+    assert rows == [
+        {"Date": "01/14/2019", "Number": "13-79", "Org": "IEC"},
+        {"Date": "01/14/2019", "Number": "13-79", "Org": "ANSI AAMI IEC"},
+    ]
+
+
+def test_a_full_width_banner_is_not_a_data_row() -> None:
+    """The FDA table opens with a *New Search / Export to Excel* bar at ``colspan="7"``.
+
+    Skipping it by span needs no list of chrome phrases for someone to maintain.
+    """
+    html = """<table>
+      <tr><td colspan="2">New Search  Export to Excel</td></tr>
+      <tr><td scope="col">A</td><td scope="col">B</td></tr>
+      <tr><td>1</td><td>2</td></tr>
+    </table>"""
+    assert extract_table_rows(html) == [{"A": "1", "B": "2"}]
+
+
+def test_a_malformed_span_is_ignored_rather_than_trusted() -> None:
+    html = """<table>
+      <tr><td scope="col">A</td><td scope="col">B</td></tr>
+      <tr><td rowspan="not-a-number">1</td><td colspan="">2</td></tr>
+    </table>"""
+    assert extract_table_rows(html) == [{"A": "1", "B": "2"}]
+
+
+def test_the_mfds_shape_is_untouched_by_any_of_it() -> None:
+    """Those pages use ``<th>`` and carry no rowspan, colspan or scope at all."""
+    html = """<table>
+      <tr><th>번호</th><th>제목</th><th>조회수</th></tr>
+      <tr><td>1</td><td>고시 제2026-1호</td><td>42</td></tr>
+    </table>"""
+    assert extract_table_rows(html) == [{"번호": "1", "제목": "고시 제2026-1호", "조회수": "42"}]

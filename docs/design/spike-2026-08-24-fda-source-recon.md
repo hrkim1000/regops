@@ -442,9 +442,11 @@ Three findings, and only the first was visible from the labels alone:
    *Date of Entry*.
 
 So the FDA row is **connector work, not a seed row**. Recorded as
-[phase2.0a](../plan/phase2.0a_fda.md) *Deviations* 9. Worth noting the connector has **never been
-seeded anywhere** — nothing in `seed.py` names it — so this is its first use, not merely its first
-FDA use, and the MFDS Tier D row's note points at a `recognition_list` source that does not exist.
+[phase2.0a](../plan/phase2.0a_fda.md) *Deviations* 9. Worth noting the connector was **not seeded anywhere in the
+current catalog** — nothing in `seed.py` named it — so this is its first live use, not merely its
+first FDA use. One row survives in the database, `mfds_samd.standards.recognition_list`, and it is a
+**retired** leftover: its own note reads *"Retired: no longer in import-source-map.md"* and its
+schedule is off. The MFDS Tier D row's note still points at it.
 
 **Settled and not a problem:** `results.cfm` accepts **GET** with a query string and returns bytes
 identical to the POST form, so `PoliteFetcher.get()` suffices and no new fetch path is needed.

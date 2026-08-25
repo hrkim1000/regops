@@ -191,6 +191,74 @@ def _fr_part(cell: str, ordinal: int, part: str, subject: str) -> SeedSource:
     )
 
 
+#: Header labels the FDA Recognized Consensus Standards table uses, mapped onto ``StandardRecord``.
+#: Configuration rather than code (ADR-0003 decision 7's shape): an FDA table and an MFDS 인정 목록
+#: are the same shape with different labels. Whitespace is folded at match time, so these name the
+#: column rather than reproducing the page's line breaks.
+#:
+#: Two fields this surface cannot fill, and no configuration can: ``edition`` has no column of its
+#: own — FDA folds it into the designation, "62304 Edition 1.1 2015-06 CONSOLIDATED VERSION" — and
+#: ``withdrawal_date`` is absent from the list view entirely.
+FDA_STANDARD_COLUMNS: dict[str, tuple[str, ...]] = {
+    "number": ("standard designation number and date",),
+    "issuing_body": ("standards developing organization",),
+    "recognition_number": ("recognition number",),
+    "title": ("standard title (click for recognition information)", "standard title"),
+    "effective_date": ("date of entry",),
+}
+
+#: The recognition list is queried per standard rather than swept. The connector fetches one page
+#: and does not follow the pager, and the whole list runs past 1,000 rows over 10+ pages — but
+#: ``import-source-map.md`` names six standards for the FDA cells, and each returns one or two rows
+#: on a single page. Sweeping the list would fetch 1,000 records to keep 8.
+FDA_RECOGNISED_STANDARDS: tuple[tuple[str, str], ...] = (
+    ("62304", "IEC 62304 — medical device software life cycle"),
+    ("14971", "ISO 14971 — risk management"),
+    ("62366", "IEC 62366-1 — usability engineering"),
+    ("81001-5-1", "IEC 81001-5-1 — health software security"),
+    ("SW96", "ANSI/AAMI SW96 — medical device security risk management"),
+    ("CR515", "AAMI CR515 — software bill of materials"),
+)
+
+
+def _recognition(ordinal: int, reference: str, title: str) -> SeedSource:
+    """One recognised standard's *record*, from the list. The standard itself is never fetched.
+
+    Tier **B**, not D: the recognition list is an ingestible page and this row fetches only it.
+    The Tier D rows are the standards themselves, which have no connector and no fetch path at all
+    (ADR-0003 decision 7).
+    """
+    return SeedSource(
+        cell="fda_samd",
+        block=SourceBlock.STANDARDS,
+        ordinal=ordinal,
+        name=f"recognition_{reference.lower().replace('-', '_')}",
+        title=f"FDA Recognized Consensus Standards — {title}",
+        tier=SourceTier.B,
+        connector="recognition_list",
+        url_template=(
+            "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfStandards/"
+            "results.cfm?referencenumber={reference}&Search=Search"
+        ),
+        params={"reference": reference, "columns": FDA_STANDARD_COLUMNS},
+        #: **Disabled: FDA's CDN classifies our agent as abuse** (2026-08-25). accessdata.fda.gov
+        #: sits behind Akamai, which answers this identified client with a 302 to
+        #: ``/apology_objects/abuse-detection-apology.html`` — a page that is itself 404. The
+        #: parser and the column mapping are verified against the live page and produce correct
+        #: records; only the fetch is refused.
+        #:
+        #: The row exists and does not fire, which is this file's rule for an endpoint we cannot
+        #: reach. **Finding a User-Agent that slips through would be evasion**, and it is the
+        #: behaviour ADR-0018 decision 11 forbids on the other FDA hosts for the same reason. The
+        #: way forward is to ask FDA for access, not to look less like ourselves.
+        enabled=False,
+        notes="Metadata only. The recognition list is fetched; the standard is not, and "
+        "standard_references has no column its text could occupy. "
+        "Schedule disabled 2026-08-25: Akamai abuse-detection refuses our agent — see phase2.0a "
+        "Deviations 17. Re-enable when access is granted, not by changing how we identify.",
+    )
+
+
 SEED: tuple[SeedSource, ...] = (
     # --- mfds_cosmetic ------------------------------------------------------
     _law("mfds_cosmetic", 1, "cosmetics_act", "화장품법"),
@@ -453,6 +521,11 @@ SEED: tuple[SeedSource, ...] = (
     _fr_part("fda_cosmetic", 12, "701", "cosmetic labeling"),
     _fr_part("fda_cosmetic", 13, "740", "warning statements"),
     _fr_part("fda_cosmetic", 14, "710", "establishment registration"),
+    # --- fda_samd standards — Tier D metadata via the recognition list ------
+    *(
+        _recognition(i, reference, title)
+        for i, (reference, title) in enumerate(FDA_RECOGNISED_STANDARDS, start=1)
+    ),
 )
 
 #: 행정규칙 added from the discovery sweep on 2026-08-06 — the triage backlog, decided in.
@@ -603,9 +676,16 @@ def seed_sources(session: Session, *, seed: tuple[SeedSource, ...] = SEED) -> di
             )
             session.add(schedule)
         else:
-            # Re-derive the interval so a catalog reclassification takes effect, but leave
-            # `enabled` alone: an operator may have disabled a drifting source deliberately.
+            # Re-derive the interval so a catalog reclassification takes effect.
             schedule.interval_seconds = interval_for(source)
+            # **The catalog may stop a schedule; it may never start one.** Leaving `enabled`
+            # untouched altogether protected the operator who disabled a drifting source
+            # deliberately — and made a seed-level disable inert, which is worse than surprising:
+            # a row the catalog says must not fire keeps firing. Disabling is the safe direction,
+            # so it propagates; enabling is the one that would override a deliberate stop, so it
+            # never does.
+            if not (row.enabled and row.ingestible and bool(row.connector)):
+                schedule.enabled = False
         session.flush()
 
     # A source dropped from the catalog must stop polling. Disable rather than delete: documents

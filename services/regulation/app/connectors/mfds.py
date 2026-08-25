@@ -52,10 +52,35 @@ def parse_rss_date(value: str | None) -> datetime | None:
 
 
 class _TableRows(HTMLParser):
-    """Extract ``<table>`` rows as header→cell dicts.
+    """Extract ``<table>`` rows as header to cell dicts.
 
     Stdlib rather than a parser dependency: this is one table on one page, and the alternative is
     carrying lxml or BeautifulSoup into every service image for it.
+
+    **It honours three standard attributes, and that is the whole of the "second authority"
+    support.** The FDA Recognized Consensus Standards table uses none of the markup the MFDS
+    listings do — there is no ``<th>`` anywhere in it — and the first reading of that was that a
+    bespoke rule was needed. The markup says otherwise:
+
+    ``scope="col"``
+        The FDA header row is ``<td>`` throughout, but every cell carries ``scope="col"`` — the
+        attribute that makes a cell a column header. Honouring it is reading HTML correctly, not
+        accommodating one authority.
+
+    ``rowspan``
+        One recognition can cover several standard designations, and the table says so the way any
+        table does: the shared cells carry ``rowspan="2"`` and the continuation row supplies only
+        the columns that differ. Carried down, that continuation becomes a full row; ignored, its
+        three cells line up against the first three headers and file a developing organization as a
+        date of entry.
+
+    ``colspan``
+        A single cell spanning the full width is a banner — the FDA table opens with a *New Search /
+        Export to Excel* bar at ``colspan="7"``. Skipping it needs no list of chrome phrases that
+        someone would have to maintain.
+
+    None of this is keyed on an authority, and none of it touches the MFDS path: those pages use
+    ``<th>`` and carry no ``rowspan``, ``colspan`` or ``scope`` at all.
     """
 
     def __init__(self) -> None:
@@ -63,32 +88,90 @@ class _TableRows(HTMLParser):
         self.headers: list[str] = []
         self.rows: list[dict[str, str]] = []
         self._cell: list[str] | None = None
-        self._row: list[str] = []
+        #: (text, colspan, rowspan) for each cell of the row being read.
+        self._row: list[tuple[str, int, int]] = []
+        self._colspan = 1
+        self._rowspan = 1
+        self._header_cell = False
         self._in_header = False
+        #: column index -> (text, rows still to fill) carried down from a ``rowspan`` above.
+        self._pending: dict[int, tuple[str, int]] = {}
+
+    @staticmethod
+    def _span(attrs: list[tuple[str, str | None]], name: str) -> int:
+        """A span attribute, floored at 1. A malformed value is ignored rather than trusted."""
+        for key, value in attrs:
+            if key.lower() == name and value:
+                try:
+                    return max(1, int(value.strip()))
+                except ValueError:
+                    return 1
+        return 1
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "tr":
             self._row = []
+            self._in_header = False
         elif tag in {"td", "th"}:
             self._cell = []
-            self._in_header = tag == "th"
+            self._colspan = self._span(attrs, "colspan")
+            self._rowspan = self._span(attrs, "rowspan")
+            self._header_cell = tag == "th" or any(
+                key.lower() == "scope" and (value or "").lower() == "col" for key, value in attrs
+            )
+            self._in_header = self._in_header or self._header_cell
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"td", "th"} and self._cell is not None:
-            self._row.append(normalize_text(" ".join(self._cell)))
+            text = normalize_text(" ".join(self._cell))
+            self._row.append((text, self._colspan, self._rowspan))
             self._cell = None
         elif tag == "tr":
-            if self._in_header and not self.headers:
-                self.headers = self._row
-            elif self._row:
-                keys = self.headers or [f"col{i}" for i in range(len(self._row))]
-                self.rows.append(dict(zip(keys, self._row, strict=False)))
-            self._row = []
-            self._in_header = False
+            self._flush()
 
     def handle_data(self, data: str) -> None:
         if self._cell is not None:
             self._cell.append(data)
+
+    def _flush(self) -> None:
+        """Lay this row out across columns, filling any position still spanned from above."""
+        banner = len(self._row) == 1 and self._row[0][1] > 1 and not self._pending
+        cells: list[str] = []
+        opened: dict[int, tuple[str, int]] = {}
+        column = 0
+        cursor = iter(self._row)
+
+        while True:
+            carried = self._pending.get(column)
+            if carried is not None:
+                cells.append(carried[0])
+                column += 1
+                continue
+            item = next(cursor, None)
+            if item is None:
+                break
+            text, colspan, rowspan = item
+            for _ in range(colspan):
+                cells.append(text)
+                if rowspan > 1:
+                    opened[column] = (text, rowspan - 1)
+                column += 1
+
+        self._pending = {
+            index: (text, rows - 1) for index, (text, rows) in self._pending.items() if rows - 1 > 0
+        }
+        self._pending.update(opened)
+        self._row = []
+
+        if not cells or banner:
+            self._in_header = False
+            return
+        if self._in_header and not self.headers:
+            self.headers = cells
+        else:
+            keys = self.headers or [f"col{i}" for i in range(len(cells))]
+            self.rows.append(dict(zip(keys, cells, strict=False)))
+        self._in_header = False
 
 
 def extract_table_rows(html: str) -> list[dict[str, str]]:

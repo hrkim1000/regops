@@ -184,9 +184,19 @@ def test_shared_boards_resolve_to_one_document_identity() -> None:
     assert connector.identity(specs[0]) == "data0008"
 
 
-def test_every_fetchable_source_is_enabled() -> None:
-    """After the W3 reconnaissance nothing fetchable is left switched off. The only disabled rows
-    are the reference-only ones, which have no connector at all."""
+def test_no_fetchable_source_is_disabled_without_a_recorded_reason() -> None:
+    """The invariant is not "nothing fetchable is off" — it is **nothing is off silently**.
+
+    This read ``assert row.enabled`` for every row with a connector, and the reason given was that
+    after the W3 reconnaissance nothing fetchable was left switched off. That held while the only
+    two states were "we can fetch it" and "there is nothing to fetch it with". A third arrived on
+    2026-08-25: a source whose connector works and whose **authority refuses us** — FDA's CDN
+    answers our identified agent with an abuse-detection redirect.
+
+    A row in that state must not fire, and must say why. Turning one off quietly is the failure
+    this guard exists to catch, and it is unchanged.
+    """
     for row in SEED:
-        if row.connector is not None:
-            assert row.enabled, f"{row.slug} has a connector but is disabled"
+        if row.connector is not None and not row.enabled:
+            assert row.notes, f"{row.slug} is disabled with no reason recorded"
+            assert len(row.notes) > 40, f"{row.slug}: the reason is too terse to act on"
