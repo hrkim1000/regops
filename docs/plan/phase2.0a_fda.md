@@ -203,17 +203,17 @@ its open questions 6 and 7 — see *Deviations* 7.
       rather than a search). 24 unit tests; 13 seed rows live. **But `meta` reaches nothing** — see
       *Deviations* 10. The rules themselves are archived and reproducible from WORM
 - [x] govinfo connector for the FD&C Act, **ingested once** and claimed by both cells
-      → [`govinfo_uscode`](../../services/regulation/app/connectors/govinfo.py), 10 unit tests.
-      **Verified live end to end 2026-08-25**: one 5.37 MB fetch of the chapter granule →
-      `fda:usc:21-9`, version `USCODE-2024-title21`, **12,179 clauses**, claimed by `fda_samd` *and*
-      `fda_cosmetic`. The key travels in `X-Api-Key`, never in a URL, and a test asserts it against
-      the recorded call list. Unblocked 2026-08-25: [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 12
-      settles the cadence — **annual text** from `USCODE-{year}-title21`, one version per package.
-      A mid-year amendment is not in the text until the next edition and **no version is synthesised
-      to pretend otherwise**. `PLAW` is the announcement surface and is *not* built here, so the
-      statute does not meet the ≤24h gate; decision 12 states that rather than blending a yearly
-      source into a cell-level daily figure. The seed row carries a **weekly** interval override
-      saying exactly that
+      → unblocked **and** built 2026-08-25 →
+      [`govinfo_uscode`](../../services/regulation/app/connectors/govinfo.py), with 10 unit tests.
+      Verified live end to end: one 5.37 MB fetch of the chapter granule → `fda:usc:21-9`, version
+      `USCODE-2024-title21`, **12,179 clauses**, claimed by `fda_samd` *and* `fda_cosmetic`. The key
+      travels in `X-Api-Key`, never in a URL, and a test asserts that against the recorded call list.
+      [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 12 settles the cadence — **annual
+      text** from `USCODE-{year}-title21`, one version per package. A mid-year amendment is not in
+      the text until the next edition and **no version is synthesised to pretend otherwise**. `PLAW`
+      is the announcement surface and is *not* built here, so the statute does not meet the ≤24h
+      gate; decision 12 states that rather than blending a yearly source into a cell-level daily
+      figure. The seed row carries a **weekly** interval override saying exactly that
 - [ ] Recognized Consensus Standards through the **existing** `recognition_list` connector — the
       header→field mapping is already `sources.params["columns"]` configuration, so this should be a
       seed row and no new code. If it needs code, record that in *Deviations*: the connector was built
