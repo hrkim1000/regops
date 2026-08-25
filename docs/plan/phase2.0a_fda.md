@@ -203,6 +203,12 @@ its open questions 6 and 7 — see *Deviations* 7.
       rather than a search). 24 unit tests; 13 seed rows live. **But `meta` reaches nothing** — see
       *Deviations* 10. The rules themselves are archived and reproducible from WORM
 - [ ] govinfo connector for the FD&C Act, **ingested once** and claimed by both cells
+      → **unblocked 2026-08-25**: [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 12
+      settles the cadence — **annual text** from `USCODE-{year}-title21`, one version per package.
+      A mid-year amendment is not in the text until the next edition and **no version is synthesised
+      to pretend otherwise**. `PLAW` is the announcement surface and is *not* built here, so the
+      statute does not meet the ≤24h gate; decision 12 states that rather than blending a yearly
+      source into a cell-level daily figure. Needs an api.data.gov key (`DEMO_KEY` is 10/hour)
 - [ ] Recognized Consensus Standards through the **existing** `recognition_list` connector — the
       header→field mapping is already `sources.params["columns"]` configuration, so this should be a
       seed row and no new code. If it needs code, record that in *Deviations*: the connector was built

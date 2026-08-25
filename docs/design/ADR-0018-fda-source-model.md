@@ -241,6 +241,47 @@ This binds `regulation` for both FDA cells and applies to any later cell that re
 It does not reach `fda.gov` or `accessdata.fda.gov`, which are different hosts with their own
 robots.txt — the Recognized Consensus Standards list is a permitted HTML fetch there.
 
+#### 12. The FD&C Act is annual text, and `PLAW` is its announcement surface
+
+*Added 2026-08-25, closing open question 7.*
+
+**The text is the annual edition, and that is accepted rather than worked around.** govinfo
+publishes the USC as `USCODE-{year}-title21` — one edition a year, section-granular, with a `LEAF`
+granule per section. One `DocumentVersion` per package, `version_label` the package id, which keeps
+the version key the authority's own exactly as decision 4 does for the CFR.
+
+Open question 7 asked whether that leaves the statute unable to carry the ≤24h detection gate, and
+guessed that Public Laws were "the likely announcement surface". **Probed, they are**, and the shape
+is the one Part B already argues for the regulations:
+
+| | Text | Announcement |
+|---|---|---|
+| CFR | eCFR, per issue date | Federal Register, `cfr_references` (Part-level) |
+| **FD&C Act** | **USCODE, annual** | **`PLAW`, `references` (title *and* sections)** |
+
+A `PLAW` package's summary carries structured USC citations —
+`{"label": "U.S.C", "title": "16", "sections": ["2201", "2206"]}` — so a law states which title and
+which sections it amends, as data rather than as prose. That is **finer** than the Federal
+Register's Part-level `cfr_references`, and it is what makes a title-21 filter possible at all;
+without it `PLAW` is every federal statute and no way to tell which touch us.
+
+Therefore:
+
+1. **The FD&C Act is ingested from the annual USCODE edition.** A mid-year amendment is not in the
+   text until the next edition, and no version is synthesised to pretend otherwise — the same
+   refusal as decision 7, for the same reason.
+2. **`PLAW` is the detection surface when the statute needs one**, filtered on
+   `references[].title == "21"`. It is confirmed available and is **not built here**; nothing in
+   phase 2.0a currently reads it.
+3. **Until it is built, the statute does not meet the ≤24h gate, and that is stated rather than
+   averaged away.** The regulations do meet it through the eCFR `versions` endpoint, and they are
+   where the obligations that gate measures actually live. A cell-level latency figure that quietly
+   blended a yearly source into a daily one would report a number describing neither.
+
+**Measured on one package.** The `references` field exists on the summary endpoint and is
+structured as shown; that a title-21 filter finds FD&C amendments *at scale* was not tested, and
+should be before anything depends on it.
+
 ### Part C — guidance
 
 #### 9. Guidance is stored, citable, and never extracted — excluded at `doc_type` level with a reason
@@ -378,10 +419,9 @@ being defined into existence.
    body text. **Detection is unaffected** — `versions/` is not disallowed — so decision 6 stands
    whichever way this goes. The `renderer` alternative is disallowed too.
 
-7. **The FD&C Act versions annually, against a ≤24h gate.** govinfo publishes the USC as
-   `USCODE-{year}-title21` — one edition a year, section-granular
-   ([spike Part 2](spike-2026-08-24-fda-source-recon.md) Q5). Decision 2 gives the act a
-   `canonical_key` and decision 1 makes it a Document claimed by both cells, but neither anticipated
-   that its *only* probed surface refreshes yearly. An FD&C Act amendment would be invisible until
-   the next edition. Public Laws (govinfo `PLAW`) are the likely announcement surface and were not
-   probed. Until this is settled the statute cannot carry the detection gate the regulations can.
+7. ~~**The FD&C Act versions annually, against a ≤24h gate.**~~ **Closed 2026-08-25 by
+   decision 12**: annual text from USCODE, with `PLAW` as the announcement surface. The guess that
+   Public Laws were "the likely announcement surface" was right, and better than expected — a law's
+   `references` name the USC title **and sections**, finer than the Federal Register's Part-level
+   `cfr_references`. `PLAW` is confirmed available and not built; until it is, the statute does not
+   meet the ≤24h gate and decision 12 says so rather than averaging it into the cell.

@@ -495,3 +495,37 @@ keyless. It would have been a poor trade:
 | Provenance | the bytes decision 4 cites | a different publisher pipeline; the WORM archive is content-addressed, so the citation baseline would shift |
 
 Kept here because the comparison is the reason decision 11 is a decision rather than a preference.
+
+
+## Q10 — Does anything announce an FD&C Act amendment before the annual edition? (closes Q5's open item)
+
+**Yes — `PLAW`, and it is more precise than the regulations' equivalent.** Q5 established that the
+USC refreshes once a year and left the announcement surface as a guess.
+
+`GET /collections/PLAW/{since}` returns public laws with current dates — `PLAW-119publ102` issued
+2026-07-12, last modified 2026-08-20 — so the collection is live rather than an archive.
+
+The part that decides it is on the package summary:
+
+```json
+"references": [
+  {"collectionCode": "USCODE",
+   "contents": [{"label": "U.S.C", "title": "16", "sections": ["2201", "2206"]}]}
+]
+```
+
+**A law states which USC title and which sections it amends, as structured data.** Without that,
+`PLAW` is every federal statute with no way to tell which touch us; with it, a title-21 filter is
+one field lookup. It is also **finer than the Federal Register's `cfr_references`**, which resolves
+only to a Part (Q2).
+
+So the statute has the same two-surface shape the regulations do, arrived at independently:
+
+| | Text | Announcement | Announcement granularity |
+|---|---|---|---|
+| CFR | eCFR, per issue date | Federal Register | Part |
+| FD&C Act | USCODE, **annual** | **`PLAW`** | title **and section** |
+
+Recorded as [ADR-0018](ADR-0018-fda-source-model.md) decision 12. **One package was inspected** —
+that the field exists and is structured is measured; that a title-21 filter finds FD&C amendments
+at scale is not, and should be before anything relies on it.
