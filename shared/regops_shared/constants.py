@@ -115,6 +115,11 @@ class DocType(StrEnum):
     ANNEX = "annex"  # 별표 — versions independently of its parent (ADR-0012)
     GUIDANCE = "guidance"
     FEED = "feed"  # RSS / listing surface
+    #: A codified agency rule issued directly under a statute — a CFR Part (ADR-0018 decision 3).
+    #: Deliberately *not* mapped onto ``ENFORCEMENT_RULE``: that name marks a rung of the Korean
+    #: statutory ladder (법률 → 시행령 → 시행규칙), and a CFR Part has no 시행령 tier above it, so
+    #: reusing it would assert a hierarchy that does not exist.
+    REGULATION = "regulation"
 
 
 class DocCategory(StrEnum):
@@ -460,6 +465,10 @@ class ExclusionReason(StrEnum):
     EMPTY = "empty"  # no substantive text (a stub or a structural placeholder)
     NO_OBLIGATION = "no_obligation"  # examined, prose, and simply states no duty
     UNPARSEABLE = "unparseable"  # the agent returned nothing usable; recorded, never silently
+    #: The *instrument* binds nobody — FDA guidance is explicitly nonbinding, so extraction skips it
+    #: by ``doc_type`` and every clause is recorded excluded for this reason (ADR-0018 decision 9).
+    #: Distinct from :attr:`PERMISSIVE`, which is about a modal inside a binding instrument.
+    NON_BINDING = "non_binding"
 
 
 class ExtractionRunStatus(StrEnum):

@@ -193,7 +193,8 @@ CREATE TYPE public.doc_type AS ENUM (
     'notice',
     'annex',
     'guidance',
-    'feed'
+    'feed',
+    'regulation'
 );
 
 
@@ -249,7 +250,8 @@ CREATE TYPE public.exclusion_reason AS ENUM (
     'form',
     'empty',
     'no_obligation',
-    'unparseable'
+    'unparseable',
+    'non_binding'
 );
 
 

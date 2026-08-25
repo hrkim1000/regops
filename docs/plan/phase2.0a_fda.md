@@ -208,9 +208,13 @@ its open questions 6 and 7 — see *Deviations* 7.
       Part → Subpart → Section → `(a)(1)(i)(A)`, which no existing profile segments
 - [ ] `path_segments` for that hierarchy, and a `clause_path` that renders the way a US regulatory
       professional writes a citation — `21 CFR 820.30(a)`, not a transliteration of 조/항/호/목
-- [ ] `DocType` mapping decided and recorded: the enum's `LAW` / `DECREE` / `ENFORCEMENT_RULE` are the
+- [x] `DocType` mapping decided and recorded: the enum's `LAW` / `DECREE` / `ENFORCEMENT_RULE` are the
       Korean statutory ladder ([constants.py](../../shared/regops_shared/constants.py)). Either map
       CFR onto existing values or add one — but the profile keys on the value, never on the cell
+      → **added `DocType.REGULATION`**, migration
+      [0007](../../shared/alembic/versions/0007_fda_source_model.py) (2026-08-24). `ENFORCEMENT_RULE`
+      was rejected: it names a rung of the Korean ladder and a CFR Part has no 시행령 tier above it.
+      The same migration adds `ExclusionReason.NON_BINDING` for the guidance rule (decision 9)
 - [ ] CFR appendices and tables follow [ADR-0014](../design/ADR-0014-annex-row-granularity.md)
       unchanged — a table row is a `Clause` with its columns in `row_columns`, not embedded, served by
       exact match. **`annex_rows` still does not exist**
