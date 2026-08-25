@@ -654,9 +654,14 @@ And the structural criteria the slice is really about:
     self-identification convention is itself a bot signal.
 
     The rows exist and do not fire, which is this file's own rule for an endpoint we cannot reach.
-    The way forward is to ask FDA for access. **Consequence to state plainly:** Tier D freshness for
-    the FDA cell — [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 7's
-    "track the recognition list, never the standard" — has no working path today.
+    **Consequence to state plainly:** Tier D freshness for the FDA cell —
+    [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 7's "track the
+    recognition list, never the standard" — has no working path today.
+
+    The request is drafted and **not yet sent**: [docs/fda-request/](../fda-request/README.md),
+    with the measurement behind every claim in it. The block turned out to be **FDA-wide** rather
+    than one host — `www.fda.gov` redirects too, which is why the request names the general contact
+    form: the page that would identify a CDRH technical contact cannot be read from here.
 
 18. **The seeder could disable a schedule the catalog stopped, and could not (2026-08-25).**
     Found while disabling the six: `seed_sources` deliberately left `enabled` alone on update, so

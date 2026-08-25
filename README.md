@@ -145,6 +145,7 @@ STAGE=dev docker compose --profile local-llm up -d
 | [docs/eval/README.md](docs/eval/README.md) | **Evaluation corpus** — golden sets, ground-truth markup, and the rules that make a gate number defensible |
 | [docs/executive-summary.md](docs/executive-summary.md) | 1-page leadership summary for stage-gate decisions |
 | [docs/regulation-library-structure.md](docs/regulation-library-structure.md) | Per-cell library layout |
+| [docs/fda-request/](docs/fda-request/README.md) | **Drafted, unsent** — asking FDA to allow our client, which its CDN currently blocks |
 
 ### Architecture Decision Records
 
