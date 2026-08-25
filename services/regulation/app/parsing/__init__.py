@@ -6,12 +6,13 @@ through the same profile because they are both 법령, and 화장품 안전기�
 go through the same profile because they are both 고시. A profile keyed on `samd` vs `cosmetic`
 would be the falsifier firing.
 
-There are three, and each exists because the *envelope* differs:
+There are four, and each exists because the *envelope* differs:
 
 ===================  ==================================================================
 ``law_structured``   법령 — 조문/항/호/목 arrive as XML elements; the hierarchy is given
 ``admrul_text``      고시 — flat ``조문내용`` blobs; the hierarchy must be segmented out
 ``annex``            별표/서식/별지 — a child Document, read in table, prose or form mode
+``cfr_structured``   CFR Part — ``DIV`` containers, with ``(a)(1)(i)(A)`` inline in ``<P>``
 ===================  ==================================================================
 
 Both gated cells use all three. `mfds_cosmetic` has 법령 (화장품법), 고시 (안전기준 규정) and
@@ -29,7 +30,7 @@ from defusedxml.ElementTree import fromstring as parse_xml
 
 from regops_shared.constants import DocType, DriftSignal
 
-from . import admrul, annex, law
+from . import admrul, annex, cfr, law
 from .model import ParsedClause, ParsedDocument, ParseError
 
 log = structlog.get_logger(__name__)
@@ -43,6 +44,7 @@ _BY_DOC_TYPE = {
     DocType.ENFORCEMENT_RULE: law,
     DocType.NOTICE: admrul,
     DocType.ANNEX: annex,
+    DocType.REGULATION: cfr,
 }
 
 

@@ -211,10 +211,16 @@ its open questions 6 and 7 — see *Deviations* 7.
 
 ### Parser profile — `cfr_structured`
 
-- [ ] A **fourth** profile beside `law_structured`, `admrul_text` and `annex`. CFR nests
+- [x] A **fourth** profile beside `law_structured`, `admrul_text` and `annex`. CFR nests
       Part → Subpart → Section → `(a)(1)(i)(A)`, which no existing profile segments
-- [ ] `path_segments` for that hierarchy, and a `clause_path` that renders the way a US regulatory
+      → `cfr_structured` ([cfr.py](../../services/regulation/app/parsing/cfr.py)), registered on
+      `DocType.REGULATION`. 18 unit tests
+- [x] `path_segments` for that hierarchy, and a `clause_path` that renders the way a US regulatory
       professional writes a citation — `21 CFR 820.30(a)`, not a transliteration of 조/항/호/목
+      → stores `Subpart B/820.35/(a)/(1)`. **The rendered citation is composed, not stored**: MFDS
+      stores `제7장/제43조/제1항` while a lawyer writes 화장품법 제43조제1항, and `21 CFR ` comes from
+      the Document's `canonical_key` the same way. ADR-0018 decision 1 gave the rendered form as its
+      example; this is the stored form of that address
 - [x] `DocType` mapping decided and recorded: the enum's `LAW` / `DECREE` / `ENFORCEMENT_RULE` are the
       Korean statutory ladder ([constants.py](../../shared/regops_shared/constants.py)). Either map
       CFR onto existing values or add one — but the profile keys on the value, never on the cell
@@ -225,13 +231,16 @@ its open questions 6 and 7 — see *Deviations* 7.
 - [ ] CFR appendices and tables follow [ADR-0014](../design/ADR-0014-annex-row-granularity.md)
       unchanged — a table row is a `Clause` with its columns in `row_columns`, not embedded, served by
       exact match. **`annex_rows` still does not exist**
-- [ ] `effective_date` from the Federal Register's stated date;
+- [x] `effective_date` from the Federal Register's stated date;
       [ADR-0013](../design/ADR-0013-unresolvable-effective-dates.md) applies as written — unresolvable
       stays null with the raw phrase retained. The 부칙 parser
       ([parsing/dates.py](../../services/regulation/app/parsing/dates.py)) is neither reused nor extended
-- [ ] **Falsifier.** If profile selection acquires a branch on authority or cell — anywhere —
+- [x] **Falsifier.** If profile selection acquires a branch on authority or cell — anywhere —
       [ADR-0002](../design/ADR-0002-canonical-regulation-model.md) decision 3 has failed. Escalate; do
       not work around it. This is the check the slice exists to run
+      → **not triggered.** `profile_for(doc_type)` takes one argument and the registry is keyed on
+      `DocType`; a test asserts the signature so a later branch cannot be added quietly. Re-check when
+      the connector and the extraction rules land — the profile was only the first place it could fire
 
 ### Extraction — the English rule set
 
