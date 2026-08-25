@@ -68,10 +68,27 @@ def test_seed_slugs_are_unique() -> None:
     assert len(slugs) == len(set(slugs))
 
 
-def test_seed_covers_both_gated_cells_and_nothing_else() -> None:
-    """Phase 1 gates MFDS SaMD + MFDS Cosmetic. FDA, EU and NMPA are Phase 2 and must not be
-    seeded here, or coverage metrics would count cells nobody is fetching."""
-    assert {row.cell for row in SEED} == {"mfds_samd", "mfds_cosmetic"}
+def test_seed_covers_only_cells_something_actually_fetches() -> None:
+    """The invariant is not "the gated cells" — it is **no cell nobody fetches**.
+
+    Originally this read ``== {"mfds_samd", "mfds_cosmetic"}`` because Phase 1 gated those two and
+    nothing else had a connector. The FDA cells joined on 2026-08-24 when ``ecfr_part`` shipped and
+    phase2.0a started, so the set widened — but the reason it exists did not. A seeded cell with
+    nothing able to fetch it would put a zero in a coverage denominator and call it a gap.
+
+    EU and NMPA stay out: EU is Phase 4, and NMPA has no connector.
+    """
+    seeded = {row.cell for row in SEED}
+    assert seeded == {"mfds_samd", "mfds_cosmetic", "fda_samd", "fda_cosmetic"}
+
+    fetchable = {row.cell for row in SEED if row.connector is not None}
+    assert seeded == fetchable, "a cell is seeded that nothing can fetch"
+
+
+def test_no_eu_or_nmpa_cell_is_seeded() -> None:
+    """EU moved to Phase 4 (2026-08-24) and NMPA is 2.0c — neither has a connector to fetch with."""
+    for row in SEED:
+        assert not row.cell.startswith(("eu_", "nmpa_")), f"{row.slug}: cell is not built yet"
 
 
 def test_every_seeded_connector_exists() -> None:

@@ -139,6 +139,35 @@ def _admrul(cell: str, block: SourceBlock, ordinal: int, name: str, title: str) 
     )
 
 
+def _cfr_part(
+    cell: str,
+    ordinal: int,
+    part: str,
+    title: str,
+    *,
+    block: SourceBlock = SourceBlock.REGULATIONS,
+    notes: str | None = None,
+) -> SeedSource:
+    """One CFR Part — one Document (ADR-0018 decision 1), fetched by the ``ecfr_part`` connector.
+
+    No ``url_template``: this connector composes both of its endpoints from ``title`` and ``part``
+    rather than from a template, because the body URL carries a date the connector does not know
+    until the versions endpoint has answered. A template with a ``{date}`` placeholder nothing could
+    fill would be a lie about where the URL comes from.
+    """
+    return SeedSource(
+        cell=cell,
+        block=block,
+        ordinal=ordinal,
+        name=f"cfr_{part.replace('.', '_')}",
+        title=title,
+        tier=SourceTier.A,
+        connector="ecfr_part",
+        params={"title": "21", "part": part},
+        notes=notes,
+    )
+
+
 SEED: tuple[SeedSource, ...] = (
     # --- mfds_cosmetic ------------------------------------------------------
     _law("mfds_cosmetic", 1, "cosmetics_act", "화장품법"),
@@ -330,6 +359,59 @@ SEED: tuple[SeedSource, ...] = (
         ingestible=False,
         enabled=False,
         notes="Navigation surface, not content. Reference only — no connector attached.",
+    ),
+    # --- fda_samd -----------------------------------------------------------
+    #
+    # The 13 CFR Parts import-source-map.md names for the two FDA cells, every one confirmed
+    # present and unreserved against the eCFR structure endpoint on 2026-08-24. The FD&C Act
+    # (govinfo) and the Federal Register are **not** here: the act needs its version identity
+    # settled (ADR-0018 open question 7) and the Federal Register connector does not exist yet.
+    _cfr_part("fda_samd", 1, "820", "21 CFR Part 820 — Quality Management System Regulation"),
+    _cfr_part("fda_samd", 2, "892", "21 CFR Part 892 — Radiology Devices"),
+    _cfr_part("fda_samd", 3, "860", "21 CFR Part 860 — Medical Device Classification Procedures"),
+    _cfr_part("fda_samd", 4, "11", "21 CFR Part 11 — Electronic Records; Electronic Signatures"),
+    _cfr_part("fda_samd", 5, "803", "21 CFR Part 803 — Medical Device Reporting"),
+    _cfr_part("fda_samd", 6, "806", "21 CFR Part 806 — Reports of Corrections and Removals"),
+    _cfr_part(
+        "fda_samd",
+        7,
+        "807",
+        "21 CFR Part 807 — Establishment Registration and Device Listing",
+        block=SourceBlock.REGISTRATION,
+    ),
+    _cfr_part(
+        "fda_samd",
+        8,
+        "822",
+        "21 CFR Part 822 — Postmarket Surveillance",
+        block=SourceBlock.SAFETY,
+    ),
+    _cfr_part(
+        "fda_samd",
+        9,
+        "7",
+        "21 CFR Part 7 — Enforcement Policy",
+        block=SourceBlock.SAFETY,
+    ),
+    # --- fda_cosmetic -------------------------------------------------------
+    _cfr_part("fda_cosmetic", 1, "700", "21 CFR Part 700 — Cosmetics, General"),
+    _cfr_part("fda_cosmetic", 2, "701", "21 CFR Part 701 — Cosmetic Labeling"),
+    _cfr_part(
+        "fda_cosmetic",
+        3,
+        "740",
+        "21 CFR Part 740 — Cosmetic Product Warning Statements",
+    ),
+    _cfr_part(
+        "fda_cosmetic",
+        4,
+        "710",
+        "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+        block=SourceBlock.REGISTRATION,
+        notes="Title is the authority's own and is out of step with the statute: MoCRA made "
+        "facility registration mandatory while this Part still says voluntary. Which one the cell "
+        "treats as authoritative is ADR-0018 open question 5 — a scope decision, not a connector "
+        "one. Seeded because the Part is live and unreserved; the title is not ours to correct.",
     ),
 )
 

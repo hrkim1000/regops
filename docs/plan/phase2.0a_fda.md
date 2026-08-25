@@ -208,8 +208,11 @@ its open questions 6 and 7 — see *Deviations* 7.
       yields no clauses and that is not a gap
       ([parsing/__init__.py](../../services/regulation/app/parsing/__init__.py))
 - [x] Every new connector registered by key; a seed row cannot name one that does not exist
-      → `ecfr_part` in `CONNECTOR_KEYS`, asserted by test. **Seed rows are not written yet** — the
-      connector exists, nothing points a source at it
+      → `ecfr_part` in `CONNECTOR_KEYS`, asserted by test. **13 seed rows landed 2026-08-24** — the
+      Parts the source map names for both cells, all confirmed present and unreserved against the
+      structure endpoint. Tier A, daily. Not seeded: the FD&C Act (needs
+      [ADR-0018](../design/ADR-0018-fda-source-model.md) open question 7 settled) and the Federal
+      Register (no connector yet)
 - [x] Polite fetch, backoff and `redact_url` reused unchanged. **No credential in `sources`, logs or
       fixtures**
       → `PoliteFetcher` unchanged; the eCFR needs **no credential at all**, so there is nothing to
