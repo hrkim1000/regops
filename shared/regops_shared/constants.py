@@ -527,9 +527,27 @@ PERMISSIVE_MODALS: Final[dict[str, tuple[str, ...]]] = {
 #: under ``postmarket`` would make the code's name false — worse than having no code, because a
 #: wrong label reads as information.
 #:
-#: **Cosmetic is unchanged and, honestly, unassessed.** Only Part 700 is ingested (16 obligations);
-#: 701, 740 and 710 failed to fetch, so there is no evidence to review the cosmetic taxonomy
-#: against. Absence of a change here means absence of measurement, not a verdict.
+#: **Cosmetic is unchanged, and now assessed rather than merely unmeasured** (2026-08-25, after the
+#: three Parts that had failed to fetch were re-collected). All four cosmetic Parts are ingested and
+#: the five existing codes cover every obligation in them:
+#:
+#: ======================================  =====  ==============
+#: Part                                    Obl.   Code
+#: ======================================  =====  ==============
+#: 701 cosmetic labeling                      63  ``labelling``
+#: 700 general — CFC propellants, prohibited
+#: cattle materials, sunscreen ingredients    16  ``ingredient``
+#: 740 warning statements                     12  ``labelling``
+#: 710 voluntary establishment registration    0  —
+#: ======================================  =====  ==============
+#:
+#: Part 710 yields **no obligations at all**, which is consistent rather than surprising: it is the
+#: *voluntary* registration Part, and it likewise has zero Federal Register final rules.
+#:
+#: ``claims``, ``gmp`` and ``notification`` are unexercised by this corpus and are **kept**. They
+#: exist for the MFDS cell, and MoCRA's facility-registration and product-listing duties live in the
+#: FD&C Act and Cosmetics Direct rather than in these Parts — so ``notification`` is waiting for a
+#: source that is not ingested yet, not for want of a code.
 TAXONOMY_CODES: Final[dict[Domain, tuple[str, ...]]] = {
     Domain.SAMD: (
         "design_control",

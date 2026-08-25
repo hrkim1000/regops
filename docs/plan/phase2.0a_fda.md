@@ -574,7 +574,45 @@ And the structural criteria the slice is really about:
     ingested — 701, 740 and 710 failed to fetch — so there is no FDA evidence to assess the cosmetic
     taxonomy against.
 
-14. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
+14. **A "defect" investigated and deliberately not fixed (2026-08-25).** Sampling the cosmetic
+    corpus showed obligation-bearing clauses that are children of a *Definitions* section —
+    `700.3(g)` and `700.3(n)`. The section is excluded as `DEFINITION`; its paragraphs are not,
+    because a paragraph carries no `heading` of its own and triage judges each clause on its own
+    text. That looked like a leak worth plugging by propagating the parent's role.
+
+    **Measuring it stopped the fix.** 31 clauses sit under a `DEFINITION` or `SCOPE` parent and
+    still reach the agent — 14 English, 17 Korean — and reading them shows the current behaviour is
+    right. `21 CFR 820.1(a)` sits under a section titled **Scope** and is where the QMSR's central
+    duty lives: *"…must establish and maintain a quality management system…"*. Propagating the
+    parent would have discarded it.
+
+    What remains is narrower and different in kind: `700.3(n)` reads *"…shall be applicable to such
+    terms…"* — `shall` as a declarative rather than a duty, with no bearer. That is a modal-semantics
+    case, and it is **the agent's to judge, not triage's**. Triage is deliberately over-inclusive
+    for the same reason [ADR-0003](../design/ADR-0003-ingestion-and-change-detection.md) decision 11
+    makes the discovery filter over-inclusive: something missed because the filter was clever is a
+    coverage hole, and a clause the agent sees and rejects is on the record either way.
+
+    Recorded because the fix was nearly made, and it would have removed a real obligation to tidy
+    away a borderline one.
+
+15. **Re-collecting the three failed Parts exposed the `/full/` endpoint's shape (2026-08-25).**
+    701 and 740 came back on a spaced retry; 710 failed a second time on the same URL. The obvious
+    reading — an old point-in-time date is expensive — was **wrong**: probing directly, `part=820`
+    at a *recent* date was also returning 503 after 40 s, having succeeded an hour earlier.
+
+    The endpoints separate cleanly. `titles.json` and `versions/` answered in **0.6 s** throughout,
+    while `/full/` alternated between 503 (upstream "No server is available", after 25–40 s) and
+    200. No `Retry-After`, no rate-limit header. So this is a heavy endpoint shedding load, not a
+    block aimed at us — and 710 succeeded on a later attempt with no change but timing.
+
+    **The architecture already accounts for it.** ADR-0018 decision 6 makes `versions/` the
+    detection surface and `/full/` the thing fetched only when something changed; that split was
+    argued from structure and turns out to match the operational reality — the cheap surface is the
+    reliable one. Fail-closed behaved correctly throughout: four attempts, an observation recorded,
+    a drift alert, and **no version written** from a 503.
+
+16. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
    in it carries a `utm_source=chatgpt.com` tag, and it missed the `versions` endpoint entirely while

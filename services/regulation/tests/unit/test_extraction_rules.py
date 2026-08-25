@@ -346,8 +346,15 @@ def test_the_taxonomy_carries_no_premarket_catch_all() -> None:
 
 
 def test_the_cosmetic_taxonomy_is_untouched() -> None:
-    """Only Part 700 is ingested for the cosmetic cell, so there is nothing to review against.
-    Absence of a change is absence of measurement, not a verdict."""
+    """Assessed and left alone, which is not the same as unexamined.
+
+    All four cosmetic Parts are ingested (2026-08-25) and the five codes cover every obligation:
+    ``labelling`` takes 701 (63) and 740 (12), ``ingredient`` takes 700 (16 — CFC propellants,
+    prohibited cattle materials, sunscreen ingredients). Part 710 yields none at all, consistent
+    with being the *voluntary* Part. ``claims``/``gmp``/``notification`` are unexercised here and
+    kept: they serve the MFDS cell, and MoCRA's registration duties live in the FD&C Act and
+    Cosmetics Direct rather than in these Parts.
+    """
     assert TAXONOMY_CODES[Domain.COSMETIC] == (
         "ingredient",
         "labelling",
