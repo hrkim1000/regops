@@ -29,6 +29,9 @@ Go/No-Go report.
 
 - [x] Items built per domain — **SaMD and Cosmetic scored separately.** A shared score hides one domain failing behind the other passing. **162 per cell, not 200** — see deviation 3
 - [x] Composition covers **all four axes [ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) open question 4 names** — identifier lookups, paraphrased conceptual queries, **effective-date-straddling cases**, and **deliberate mis-citation traps**. The inventory is closed in `EvaluationAxis` and the floor is enforced per axis, so a passing score cannot rest on identifier lookups
+      → **the axes are covered and the identifier axis samples one article (2026-08-26).** All 40 of
+      `mfds_samd`'s identifier items ask about **제1조**, and `mfds_cosmetic`'s split 제1조/제2조 —
+      not 40 varied citations but *article 1 of 40 documents*. Recorded, not fixed: see deviation 15
 - [x] Cross-domain questions — asked in the wrong cell, where the correct behaviour is to decline rather than answer from the neighbouring cell ([ADR-0006](../design/ADR-0006-retrieval-and-citation-enforced-generation.md) decision 9). 30 per cell, drawn from the *neighbouring* cell's real obligations, and `validate` rejects one authored with `cross_cell=true` because that defeats the item
 - [x] Known-unanswerable questions — 20 per cell, including Tier D material (ISO 13485, IEC 62304, IEC 62366, 약전), where refusing is correct **and** doubles as a Tier D check
 - [x] **Per-axis coverage stated explicitly** rather than sizing up — the option the task itself offers. `validate` prints the per-axis table and fails below `GOLDEN_SET_MIN_ITEMS_PER_AXIS`
@@ -414,3 +417,40 @@ set reported *150 harness errors* and divided its accuracy by the whole set. **S
 error** (asked, no answer came back) and **not attempted** (never asked) are now separate, and none
 may be folded into another: an error read as a refusal moves the refusal rate the healthy-looking
 way, and an unasked item read as scored puts it in a denominator it was never part of.
+
+**15. The identifier axis samples one article per instrument, so it measures a narrower thing than
+its name (2026-08-26).** Found while checking whether retrieval would benefit from graph expansion
+([ADR-0010](../design/ADR-0010-semantic-enrichment-and-graph-model.md) open question 4) — the
+measurement kept returning 목적 clauses, which turned out to be the set rather than the corpus.
+
+| cell | what its 40 identifier items ask about |
+| --- | --- |
+| `mfds_samd` | **제1조 — 100%** |
+| `mfds_cosmetic` | 제1조 50%, 제2조 50% |
+| `fda_samd` | the **first section of each Part** — `7.1` · `11.1` · `803.1` · `806.1` · `820.1` … |
+
+**The cause is a round-robin that never gets past its first pass.** `_spread` takes index 0 from
+every document, then index 1, and so on until the target is met. With 40 target items and more than
+40 documents in scope, **it stops after index 0** — one article per document, and that article is
+whichever the instrument opens with.
+
+The intent was document diversity, and the docstring says so: *"taking a contiguous block would
+make the identifier axis a test of one instrument's parse quality"*. That was achieved. **Article
+diversity was lost in the same move**, and both read as "spread", which is why it went unnoticed.
+
+**Three costs, and the third is the one that bites.**
+
+- 제1조 is the **목적** clause — excluded from extraction as `scope`, and the least substantive
+  provision in any instrument. The axis asks about the article carrying no obligation.
+- It measures *"can you find article 1"* rather than *"can you resolve an arbitrary citation"*,
+  which is what an identifier lookup is for.
+- **It silently shaped a different investigation.** ADR-0010 open question 4 asked whether answer
+  clauses cross-reference elsewhere; 15/40 and 9/40 did — and every one was a 목적 clause citing its
+  enabling provision, which is provenance rather than a content dependency. The finding was an
+  artifact of this sampling, and it is recorded there as unreliable for that reason.
+
+**Not fixed here.** The fix is to spread across article position as well as document, and it changes
+the **gated** MFDS sets — a phase 1.6 gate input — so it carries a before-and-after over the scores,
+the same discipline as [phase2.0a](phase2.0a_fda.md) *Deviations* 26, 28 and 32. Recorded so the
+next person finds a measurement rather than rediscovering it, and so no score is quoted from this
+axis without knowing what it sampled.

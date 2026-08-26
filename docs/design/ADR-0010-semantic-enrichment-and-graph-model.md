@@ -245,8 +245,13 @@ All tables belong to `regulation` and are **shared, not tenant-scoped** (ADR-000
    items that do carry references are identifier lookups, which resolve exactly by construction and
    have nothing for an expansion to add.
 
-   **The evidence is weak in one specific way, and it is the way that matters.** The curated axes
-   were hand-written by the system's own authors and are **not RA-signed**. A question whose answer
+   **The evidence is weaker than it looks, in two ways.** First, the identifier column is an
+   artifact: **every one of those referencing clauses is a 제1조 (목적)**, citing the enabling
+   provision the regulation is issued under — provenance, not a content dependency an answer would
+   need followed. That is because the identifier axis samples article 1 of each document and nothing
+   else (phase1.6 *Deviations* 15), so this row measures the golden set's construction rather than
+   the corpus. Second, the curated axes were hand-written by the system's own authors and are
+   **not RA-signed**. A question whose answer
    spans a reference is harder to write than one whose answer sits in a single clause, so 0% may be
    measuring how the set was built rather than how the corpus behaves. The FDA columns are blank for
    the same reason — those axes have no items yet.

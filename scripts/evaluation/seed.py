@@ -121,6 +121,17 @@ def _spread(articles: Sequence[Article], count: int) -> list[Article]:
 
     Round-robin by document. Taking a contiguous block would make the identifier axis a test of one
     instrument's parse quality, which is not what it is for.
+
+    **Known defect, recorded 2026-08-26 and not fixed here** — phase1.6 *Deviations* 15.
+    The round-robin takes index 0 from every document, then index 1, and so on — so when there are
+    more documents in scope than the target count, **it stops after index 0**. `mfds_samd` has 40+
+    instruments and a target of 40, so all 40 identifier items ask about **제1조**: the axis samples
+    *article 1 of 40 documents* rather than 40 varied citations, and 제1조 is the 목적 clause that
+    extraction excludes as `scope`.
+
+    Document diversity was the goal and was achieved; article diversity was lost in the same move,
+    and both read as "spread". The fix is to spread across position as well as document — it changes
+    the **gated** MFDS sets, so it carries a re-score.
     """
     by_document: dict[str, list[Article]] = {}
     for article in articles:
