@@ -252,3 +252,134 @@ def test_a_subpart_is_a_heading_and_a_provision_is_prose() -> None:
     paths = _by_path(_parse(PART_XML))
     assert paths["Subpart A"].kind is ClauseKind.HEADING
     assert paths["Subpart A/820.35/(a)"].kind is ClauseKind.PROSE
+
+
+# --- tables (ADR-0014) ------------------------------------------------------------------------
+
+#: 21 CFR 820.10, cut to its table. The caption names the paragraph the table belongs to, and the
+#: table sits between `(c)(2)` and `(d)` — so position and caption agree, which is what lets the
+#: position be trusted for the two tables in scope that carry no caption.
+TABLE_XML = """<?xml version="1.0"?>
+<DIV8 N="820.10" TYPE="SECTION">
+<HEAD>&#xA7; 820.10 Requirements for a quality management system.</HEAD>
+<P>(c) The following are exempt:</P>
+<P>(1) Devices automated with computer software; and</P>
+<P>(2) The devices listed in the following table:</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE class="gpo_table">
+<CAPTION><P class="title">Table 1 to Paragraph (<E T="01">c</E>)(2)</P></CAPTION>
+<THEAD><TR><TH>Section</TH><TH>Device</TH></TR></THEAD>
+<TBODY>
+<TR><TD>868.6810</TD><TD>Catheter, Tracheobronchial Suction.</TD></TR>
+<TR><TD>892.5740</TD><TD>Source, Radionuclide Teletherapy.</TD></TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+<P>(d) A manufacturer must keep records.</P>
+</DIV8>
+"""
+
+#: 21 CFR 701.30. No caption, and the chemical formulas carry `<sub>` markup that is content.
+FORMULA_XML = """<?xml version="1.0"?>
+<DIV8 N="701.30" TYPE="SECTION">
+<HEAD>&#xA7; 701.30 Established names for ingredients.</HEAD>
+<P>The following names are established:</P>
+<DIV class="gpotbl_div">
+<TABLE class="gpo_table">
+<THEAD><TR><TH>Chemical name or description</TH><TH>Chemical formula</TH></TR></THEAD>
+<TBODY>
+<TR><TD>Trichlorofluoromethane</TD><TD>CCl<sub>3</sub> F</TD></TR>
+</TBODY>
+</TABLE>
+</DIV>
+</DIV8>
+"""
+
+#: 21 CFR 822.19. Its first column *opens with paragraph designators* — "(a) Should result in…".
+#: This is the fixture that matters: flattened into the paragraph run, those would be read as
+#: designators and open phantom levels that swallow the rest of the section.
+DESIGNATOR_CELL_XML = """<?xml version="1.0"?>
+<DIV8 N="822.19" TYPE="SECTION">
+<HEAD>&#xA7; 822.19 What will FDA do?</HEAD>
+<P>We will respond as follows:</P>
+<DIV class="gpotbl_div">
+<TABLE class="gpo_table">
+<THEAD><TR><TH>If your plan:</TH><TH>Then we will send you:</TH></TR></THEAD>
+<TBODY>
+<TR><TD>(a) Should result in the collection of useful data</TD><TD>An approval order</TD></TR>
+<TR><TD>(b) Should result in useful data after revisions</TD><TD>An approvable letter</TD></TR>
+</TBODY>
+</TABLE>
+</DIV>
+<P>(a) You must begin surveillance within 15 days.</P>
+</DIV8>
+"""
+
+
+def test_a_table_row_is_a_clause_carrying_its_columns() -> None:
+    """*ADR-0014 decisions 1 and 4, unchanged.* A row is a `Clause` in the one clause store, with
+    its cells in `row_columns` against the header captured on the table clause. `annex_rows` still
+    does not exist, and nothing here is the second store that would have been."""
+    paths = _by_path(_parse(TABLE_XML))
+
+    table = paths["820.10/(c)/(2)/Table 1"]
+    assert table.kind is ClauseKind.TABLE
+    assert table.row_columns == ["Section", "Device"]
+
+    row = paths["820.10/(c)/(2)/Table 1/Row 1"]
+    assert row.kind is ClauseKind.TABLE_ROW
+    assert row.row_columns == {
+        "Section": "868.6810",
+        "Device": "Catheter, Tracheobronchial Suction.",
+    }
+    # Readable from its own text, without a client that understands the column map.
+    assert "Section: 868.6810" in row.text
+
+
+def test_a_table_hangs_off_the_paragraph_it_follows() -> None:
+    """Position is the attachment, and the authority's own caption is the check on it: the table
+    sits between `(c)(2)` and `(d)`, and calls itself *"Table 1 to Paragraph (c)(2)"*. Two of the
+    three tables in title 21's in-scope Parts carry no caption, so position has to carry it."""
+    paths = _by_path(_parse(TABLE_XML))
+    assert "820.10/(c)/(2)/Table 1" in paths
+    assert paths["820.10/(c)/(2)/Table 1"].heading == "Table 1 to Paragraph (c)(2)"
+    # The paragraph after the table is unaffected — the table did not consume or shift it.
+    assert "820.10/(d)" in paths
+
+
+def test_a_caption_becomes_the_heading_and_its_absence_falls_back_to_the_header() -> None:
+    paths = _by_path(_parse(FORMULA_XML))
+    table = paths["701.30/Table 1"]
+    assert table.heading == "Chemical name or description | Chemical formula"
+
+
+def test_markup_inside_a_cell_is_content_and_survives() -> None:
+    """`CCl<sub>3</sub> F` read as element text alone is `CCl F` — a different compound. Cells are
+    taken with `itertext`, so the subscript digits stay in the cited value."""
+    paths = _by_path(_parse(FORMULA_XML))
+    row = paths["701.30/Table 1/Row 1"]
+    assert row.row_columns["Chemical formula"] == "CCl3 F"
+
+
+def test_a_cell_that_looks_like_a_designator_never_reaches_the_ladder() -> None:
+    """**The reason tables are extracted rather than flattened.** 21 CFR 822.19's first column opens
+    `(a) Should result in…`. In the paragraph run those parse as designators, opening levels that
+    the rest of the section then nests under — so the section's real `(a)` would be displaced and
+    every clause after it would be addressed wrongly."""
+    paths = _by_path(_parse(DESIGNATOR_CELL_XML))
+
+    # The section's own (a) is the real one: prose, directly under the section.
+    assert paths["822.19/(a)"].kind is ClauseKind.PROSE
+    assert paths["822.19/(a)"].text.startswith("(a) You must begin surveillance")
+
+    # The cell text exists only inside its row.
+    assert paths["822.19/Table 1/Row 1"].row_columns["If your plan:"].startswith("(a) Should")
+    assert not [path for path in paths if path.startswith("822.19/(a)/")]
+
+
+def test_a_row_is_not_prose_so_the_differ_can_never_pair_it_with_an_article() -> None:
+    """`_best_match` restricts pairing to the same `ClauseKind`, which is what stops an annex or
+    table row being reported as a renumbered prose provision however similar the strings look."""
+    rows = [c for c in _parse(TABLE_XML).clauses if c.kind is ClauseKind.TABLE_ROW]
+    assert len(rows) == 2
+    assert all(row.kind is ClauseKind.TABLE_ROW for row in rows)

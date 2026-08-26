@@ -265,9 +265,17 @@ its open questions 6 and 7 — see *Deviations* 7.
       [0007](../../shared/alembic/versions/0007_fda_source_model.py) (2026-08-24). `ENFORCEMENT_RULE`
       was rejected: it names a rung of the Korean ladder and a CFR Part has no 시행령 tier above it.
       The same migration adds `ExclusionReason.NON_BINDING` for the guidance rule (decision 9)
-- [ ] CFR appendices and tables follow [ADR-0014](../design/ADR-0014-annex-row-granularity.md)
+- [x] CFR appendices and tables follow [ADR-0014](../design/ADR-0014-annex-row-granularity.md)
       unchanged — a table row is a `Clause` with its columns in `row_columns`, not embedded, served by
       exact match. **`annex_rows` still does not exist**
+      → **done 2026-08-26, and the row asked for more than title 21 contains.** Measured across all
+      13 in-scope Parts: **no appendix at all**, and the tables are **HTML-shaped**
+      (`TABLE`/`THEAD`/`TBODY`/`TR`/`TD`), not GPO `GPOTABLE`/`BOXHD`/`ROW`/`ENT` — three tables,
+      17 rows, in 701.30, 820.10 and 822.19. They were being **silently dropped**: `_section` read
+      only `<P>` children. Now a `TABLE` clause carrying the header plus one `TABLE_ROW` per row,
+      hung off the paragraph the table follows. `assistant` needed no change — the
+      not-embedded rule is keyed on `ClauseKind`, so the CFR rows inherit it; verified over Part 820
+      (5 rows, 0 passage roots, no cell text in any passage). See *Deviations* 29
 - [x] `effective_date` from the Federal Register's stated date;
       [ADR-0013](../design/ADR-0013-unresolvable-effective-dates.md) applies as written — unresolvable
       stays null with the raw phrase retained. The 부칙 parser
@@ -956,3 +964,42 @@ And the structural criteria the slice is really about:
     what those cells diff needs a before-and-after over the phase 1.6 golden sets, not an edit made
     while writing a test for something else. That is the same refusal as *Deviations* 26, for the
     same reason. Recorded so the next person finds a measurement instead of rediscovering it.
+
+29. **The CFR carries no appendices and no GPO tables, and its tables were being dropped
+    (2026-08-26).** The row above assumed the MFDS shape would recur. Measured over all 13 in-scope
+    Parts before writing anything:
+
+    - **Zero appendices.** `cfr_structured` already treats `APPENDIX` as a container level, and
+      nothing in title 21's in-scope Parts exercises it. That half of the row is satisfied by having
+      nothing to do, which is worth recording so nobody looks for the missing work later.
+    - **Zero `GPOTABLE`.** The eCFR serves HTML tables — `TABLE` / `THEAD` / `TBODY` / `TR` / `TD` /
+      `TH` — while carrying `class="gpo_table"`, which is the trap: the class name says GPO and the
+      markup is not. Three tables, 17 rows, in 701.30, 820.10 and 822.19.
+    - **They reached the store as nothing.** `_section` collected `[child for child in node if
+      child.tag == "P"]`, and a table sits inside a `<DIV class="gpotbl_div">` wrapper. So the
+      obligation in 21 CFR 820.10's exemption table — five device types exempt from a QMS
+      requirement — was not in the clause store at all, and no citation could resolve to it.
+
+    **ADR-0014 is unchanged and now shared rather than described as shared.** `_table` moved out of
+    `annex.py` into `tables.py` as `table_clauses`, parameterized on the segment labels — `표1`/`행3`
+    for a 별표, `Table 1`/`Row 3` for a CFR section. The structure is one implementation; only the
+    naming belongs to the instrument, which is the same split
+    [ladder.py](../../services/regulation/app/parsing/ladder.py) already makes and the same reuse
+    *Deviations* 22 recorded. The MFDS tests pass unchanged.
+
+    **A table hangs off the paragraph it follows, and the authority checks our work.** 21 CFR 820.10
+    puts its table between `(c)(2)` and `(d)` *and* captions it *"Table 1 to Paragraph (c)(2)"* — so
+    position and caption agree, which is what licenses trusting position for the two tables that
+    carry no caption. `segment_paragraphs` now returns the clause index each paragraph produced,
+    because the mapping is not the identity: a compound run like `(3)(A)` emits two clauses from one
+    paragraph.
+
+    **Why extraction rather than flattening, stated because it is not obvious.** 21 CFR 822.19's
+    first column *opens with paragraph designators* — `(a) Should result in…`, `(b) …`. Appended to
+    the paragraph run those parse as designators, open two phantom levels under the section, and
+    every later paragraph nests under them — including the section's real `(a)`. A test pins it.
+
+    **Found and not fixed:** parsing 21 CFR Part 701 logs three `parse.duplicate_clause_path`
+    warnings (`701.3/(a)`, `(b)`, `(c)`, occurrence 2). **Pre-existing** — reproduced on the parser
+    as it stood before this change — so it is a separate defect in how that section restarts its
+    designators, not a regression here. Recorded rather than folded in silently.

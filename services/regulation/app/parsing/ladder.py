@@ -209,19 +209,26 @@ class Ladder:
 
     def segment_paragraphs(
         self, paragraphs: list[str], *, prefix: tuple[str, ...], clauses: list[ParsedClause]
-    ) -> None:
+    ) -> list[int]:
         """Turn a flat run of paragraph texts into a nested clause tree, by designator sequence.
 
         A paragraph with no designator is not an error: a section commonly opens with an unlabelled
         paragraph, and 21 CFR 820.35 does.
+
+        Returns the index into ``clauses`` of the **innermost** clause each input paragraph
+        produced, so a caller can attach something to the paragraph it followed. It is not the
+        identity: a compound run like ``(3)(A)`` opens two levels and emits two clauses from one
+        paragraph, which is why this is returned rather than recomputed by counting.
         """
         #: (path segment, style, index into ``clauses``) per open level, outermost first.
         stack: list[tuple[str, str, int]] = []
+        produced: list[int] = []
 
         for text in paragraphs:
             tokens = designator_run(text)
             if not tokens:
                 _append_unlabelled(text, prefix=prefix, stack=stack, clauses=clauses)
+                produced.append(len(clauses) - 1)
                 continue
 
             for position, token in enumerate(tokens):
@@ -244,6 +251,9 @@ class Ladder:
                     )
                 )
                 stack.append((segment, self.style_at(len(stack)), len(clauses) - 1))
+            produced.append(len(clauses) - 1)
+
+        return produced
 
 
 def _append_unlabelled(

@@ -27,10 +27,15 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
+from xml.etree.ElementTree import Element
 
+from regops_shared.constants import ClauseKind
+
+from ..canonicalize import normalize_text
 from .layout import join_cell
+from .model import ParsedClause
 
 #: Whitespace between two East Asian Wide characters. Korean table headers are letter-spaced for
 #: visual justification — ``원    료    명`` is 원료명 — so the gaps are typography, not content.
@@ -230,4 +235,91 @@ def render_row(mapping: dict[str, str]) -> str:
     return "\n".join(f"{label}: {value}" for label, value in mapping.items() if value.strip())
 
 
-__all__ = ["Table", "find_tables", "is_rule", "render_row"]
+def html_tables(node: Element) -> list[Table]:
+    """Tables from HTML-shaped markup — ``TABLE`` / ``THEAD`` / ``TBODY`` / ``TR`` / ``TD``.
+
+    The eCFR serves them this way and **not** as GPO ``GPOTABLE`` / ``BOXHD`` / ``ROW`` / ``ENT``,
+    despite the ``class="gpo_table"`` the elements carry. Measured across the 13 in-scope title-21
+    Parts on 2026-08-26: three tables, twenty rows, zero ``GPOTABLE``.
+
+    So this is a second *extractor* feeding the one :class:`Table` shape, not a second table model —
+    the same split :mod:`.ladder` makes, where the CFR and the USC disagree about designators and
+    agree about everything after. Box-drawing (:func:`find_tables`) has real work to do because a
+    logical row spans physical lines; HTML states its own rows and needs none of that.
+
+    Cell text is taken with ``itertext``, because the markup inside a cell is content: a chemical
+    formula in 21 CFR 701.30 is ``CCl<sub>3</sub> F``, and reading only the element's ``text`` would
+    cite ``CCl F`` — a different compound.
+    """
+    out: list[Table] = []
+    for element in node.iter("TABLE"):
+        header = [normalize_label(_cell_text(cell)) for cell in element.iter("TH")]
+        rows: list[list[str]] = []
+        for tr in element.iter("TR"):
+            cells = [_cell_text(cell) for cell in tr if cell.tag == "TD"]
+            if cells:
+                rows.append(cells)
+        if header or rows:
+            out.append(Table(header=header, rows=rows))
+    return out
+
+
+def _cell_text(cell: Element) -> str:
+    return normalize_text("".join(cell.itertext()))
+
+
+def table_clauses(
+    parent: tuple[str, ...],
+    table: Table,
+    *,
+    table_segment: str,
+    row_segment: Callable[[int], str],
+    base: int,
+    heading: str | None = None,
+    parent_index: int | None = None,
+) -> list[ParsedClause]:
+    """One table clause carrying the column map, then one clause per row (ADR-0014 decisions 1, 4).
+
+    Segment labels are supplied by the caller rather than fixed here — ``표1``/``행3`` for a 별표,
+    ``Table 1``/``Row 3`` for a CFR section — for the same reason :mod:`.ladder` is parameterized:
+    the *shape* is one decision and the naming convention belongs to the instrument. The structure
+    below is identical for both, which is what "ADR-0014 unchanged" has to mean to be worth saying.
+
+    ``base`` is the table clause's index in the document being built, so each row points its
+    ``parent_index`` at its own table rather than at whatever sat at index 0.
+    """
+    table_segments = (*parent, table_segment)
+    header = " | ".join(table.header)
+    clauses = [
+        ParsedClause(
+            path_segments=table_segments,
+            text=heading or header,
+            kind=ClauseKind.TABLE,
+            heading=heading or header or None,
+            # The ordered header labels — the schema every row below is read against.
+            row_columns=list(table.header),
+            parent_index=parent_index,
+        )
+    ]
+    for ordinal, row in enumerate(table.rows, start=1):
+        mapping = table.as_mapping(row)
+        clauses.append(
+            ParsedClause(
+                path_segments=(*table_segments, row_segment(ordinal)),
+                text=render_row(mapping),
+                kind=ClauseKind.TABLE_ROW,
+                row_columns=mapping,
+                parent_index=base,
+            )
+        )
+    return clauses
+
+
+__all__ = [
+    "Table",
+    "find_tables",
+    "html_tables",
+    "is_rule",
+    "render_row",
+    "table_clauses",
+]

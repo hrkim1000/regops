@@ -35,6 +35,7 @@ from regops_shared.constants import ClauseKind, DriftSignal
 from ..canonicalize import normalize_text
 from .ladder import CFR as _LADDER
 from .model import ParsedClause, ParsedDocument, ParseError
+from .tables import Table, html_tables, table_clauses
 
 PROFILE = "cfr_structured"
 
@@ -128,8 +129,80 @@ def _section(
             source_ref=_citation_of(node),
         )
     )
-    paragraphs = [text for child in node if child.tag == "P" and (text := _element_text(child))]
-    _LADDER.segment_paragraphs(paragraphs, prefix=section_prefix, clauses=clauses)
+    section_index = len(clauses) - 1
+    paragraphs, pending = _paragraphs_and_tables(node)
+    produced = _LADDER.segment_paragraphs(paragraphs, prefix=section_prefix, clauses=clauses)
+    _attach_tables(
+        pending,
+        produced,
+        clauses=clauses,
+        section_prefix=section_prefix,
+        section_index=section_index,
+    )
+
+
+def _paragraphs_and_tables(node: Element) -> tuple[list[str], list[tuple[int, Table, str | None]]]:
+    """Section children in document order: the paragraph texts, and where each table sits.
+
+    A table's position **is** its attachment. 21 CFR 820.10 carries its table between ``(c)(2)`` and
+    ``(d)``, and its own caption agrees — *"Table 1 to Paragraph (c)(2)"* — so the preceding
+    paragraph identifies the owner without parsing that prose, which two of the three tables in
+    scope do not have anyway.
+
+    The table is **not** flattened into the paragraph run, and that is load-bearing rather than
+    tidy: the first column of 21 CFR 822.19's table is literally ``(a) Should result in…``,
+    ``(b) …``. Fed to the ladder those read as paragraph designators and would open two phantom
+    levels under the section, taking the rest of the section's paragraphs with them.
+    """
+    paragraphs: list[str] = []
+    tables: list[tuple[int, Table, str | None]] = []
+    for child in node:
+        if child.tag == "P":
+            if text := _element_text(child):
+                paragraphs.append(text)
+            continue
+        for table in html_tables(child):
+            tables.append((len(paragraphs), table, _caption(child)))
+    return paragraphs, tables
+
+
+def _caption(node: Element) -> str | None:
+    """``<CAPTION>`` text — *"Table 1 to Paragraph (c)(2)"* — where the table names itself."""
+    caption = next(node.iter("CAPTION"), None)
+    return normalize_text("".join(caption.itertext())) or None if caption is not None else None
+
+
+def _attach_tables(
+    pending: list[tuple[int, Table, str | None]],
+    produced: list[int],
+    *,
+    clauses: list[ParsedClause],
+    section_prefix: tuple[str, ...],
+    section_index: int,
+) -> None:
+    """Emit each table under the paragraph it followed, numbered within its section.
+
+    A table before the section's first paragraph hangs off the section itself — there is no
+    preceding paragraph to own it, and inventing one would put a table under a provision that does
+    not exist.
+    """
+    for number, (after, table, caption) in enumerate(pending, start=1):
+        if after > 0 and produced:
+            parent_index = produced[min(after, len(produced)) - 1]
+            parent = clauses[parent_index].path_segments
+        else:
+            parent_index, parent = section_index, section_prefix
+        clauses.extend(
+            table_clauses(
+                tuple(parent),
+                table,
+                table_segment=f"Table {number}",
+                row_segment=lambda ordinal: f"Row {ordinal}",
+                base=len(clauses),
+                heading=caption,
+                parent_index=parent_index,
+            )
+        )
 
 
 def _walk(

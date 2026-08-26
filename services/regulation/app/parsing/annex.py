@@ -35,7 +35,7 @@ from .dates import annex_effective_dates, enforcement_phrase, envelope_effective
 from .markers import match_marker
 from .model import ParsedClause, ParsedDocument, ParseError
 from .outline import Ladder, segment_outline
-from .tables import Table, find_tables, is_rule, render_row
+from .tables import Table, find_tables, is_rule, table_clauses
 
 PROFILE = "annex"
 
@@ -162,33 +162,16 @@ def _table_end(lines: list[str], start: int) -> int:
 def _table(segment: str, number: int, table: Table, *, base: int) -> list[ParsedClause]:
     """One ``표`` clause carrying the column map, then one ``행`` clause per logical row.
 
-    ``base`` is the table clause's index in the document being built, so each row can point its
-    ``parent_index`` at the table it belongs to rather than at whatever sat at index 0.
+    The structure lives in :func:`table_clauses`, shared with ``cfr_structured``; what stays here is
+    the naming convention, which belongs to the instrument (ADR-0014 decision 3).
     """
-    table_segments = (segment, f"표{number}")
-    header = " | ".join(table.header)
-    clauses = [
-        ParsedClause(
-            path_segments=table_segments,
-            text=header,
-            kind=ClauseKind.TABLE,
-            heading=header or None,
-            # The ordered header labels — the schema every row below is read against.
-            row_columns=list(table.header),
-        )
-    ]
-    for ordinal, row in enumerate(table.rows, start=1):
-        mapping = table.as_mapping(row)
-        clauses.append(
-            ParsedClause(
-                path_segments=(*table_segments, f"행{ordinal}"),
-                text=render_row(mapping),
-                kind=ClauseKind.TABLE_ROW,
-                row_columns=mapping,
-                parent_index=base,
-            )
-        )
-    return clauses
+    return table_clauses(
+        (segment,),
+        table,
+        table_segment=f"표{number}",
+        row_segment=lambda ordinal: f"행{ordinal}",
+        base=base,
+    )
 
 
 def _prose(segment: str, lines: list[str], *, prefix: tuple[str, ...]) -> list[ParsedClause]:
