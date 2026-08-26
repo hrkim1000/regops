@@ -32,6 +32,7 @@ from typing import Any
 from regops_shared.constants import Role
 from regops_shared.db import sync_session
 
+from . import cells as cells_config
 from . import client, corpus, measure, report, seed, worksheet
 from . import run as runner
 from . import score as scoring
@@ -59,8 +60,33 @@ GOLDEN_DIR = EVAL_DIR / "golden"
 GROUND_TRUTH_DIR = EVAL_DIR / "ground_truth"
 RUNS_DIR = EVAL_DIR / "runs"
 
-#: Both gated cells. The Cosmetic/SaMD pairing is also the cross-domain source for each other.
-GATED = {"mfds_samd": "mfds_cosmetic", "mfds_cosmetic": "mfds_samd"}
+
+def cell_config() -> dict[str, cells_config.CellConfig]:
+    """Which cells the harness measures, from ``docs/eval/cells.json``.
+
+    Read through a function rather than bound at import: a module-level constant would be resolved
+    before ``REGOPS_EVAL_DIR`` could point somewhere else, which is exactly how the map that used
+    to live here went stale without anybody noticing.
+    """
+    return cells_config.for_dir(EVAL_DIR)
+
+
+def configured_cells() -> list[str]:
+    """Every cell the harness can be pointed at."""
+    return sorted(cell_config())
+
+
+def default_cells() -> list[str]:
+    """The cells a command runs on when none is named — the **gated** ones.
+
+    Not every configured cell. ``validate`` / ``run`` / ``score`` / ``gates`` are the phase 1.6 gate
+    operations, and widening their default to four would quietly change what a documented command
+    measures. A Phase 2 cell is opted into by name (``--cells fda_samd``) until it is gated, at
+    which point the default follows the configuration on its own.
+    """
+    gated = [slug for slug, cell in cell_config().items() if cell.gated]
+    return sorted(gated) or configured_cells()
+
 
 #: Whose principal the harness acts as. A real ``users`` row, so ``queries.asked_by`` references a
 #: person and the audit trail is not written by a synthetic id.
@@ -82,6 +108,22 @@ def artifact_path(cell: str) -> Path:
 # --- commands ----------------------------------------------------------------------------------
 
 
+def load_golden(cell: str) -> GoldenSet:
+    """The cell's golden set, or an exit that says what is missing and how to make it.
+
+    A configured cell is not a seeded one — the FDA cells are in ``cells.json`` and have no set yet.
+    Letting that surface as a ``FileNotFoundError`` traceback would be the harness failing in the
+    style it exists to prevent everywhere else.
+    """
+    path = golden_path(cell)
+    if not path.exists():
+        raise SystemExit(
+            f"{cell}: no golden set at {path}. It is configured but not seeded — "
+            f"run `seed --cells {cell}` first."
+        )
+    return load(path)
+
+
 def cmd_seed(args: argparse.Namespace) -> int:
     with sync_session() as session:
         for cell in args.cells:
@@ -97,7 +139,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
             built = seed.build(
                 session,
                 cell=cell,
-                neighbour_cell=GATED[cell],
+                neighbour_cells=cell_config()[cell].neighbours,
                 curated_path=curated_path(cell),
                 set_version=args.set_version,
             )
@@ -114,7 +156,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     with sync_session() as session:
         registry = corpus.cells(session)
         for cell in args.cells:
-            golden = load(golden_path(cell))
+            golden = load_golden(cell)
             composition = validate_composition(golden)
             index = corpus.article_index(session, registry[cell].id)
             everywhere = {article for articles in index.values() for article in articles}
@@ -175,7 +217,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     services = client.connect(user_id=principal[0], email=args.email, role=Role(principal[1]))
     for cell in args.cells:
-        golden = load(golden_path(cell))
+        golden = load_golden(cell)
         items = [item for item in golden.items if not args.axis or item.axis.value in args.axis]
         if args.per_axis:
             # A bare --limit takes the first N in id order, which is one axis' worth. A bounded
@@ -205,7 +247,7 @@ def cmd_score(args: argparse.Namespace) -> int:
     lines: list[str] = []
     citable = True
     for cell in args.cells:
-        golden = load(golden_path(cell))
+        golden = load_golden(cell)
         artifact = runner.RunArtifact.load(artifact_path(cell))
         if artifact is None:
             print(f"{cell}: no run artifact — run first", file=sys.stderr)
@@ -332,7 +374,7 @@ def cmd_worksheet(args: argparse.Namespace) -> int:
             if artifact is None:
                 print(f"{cell}: no run artifact", file=sys.stderr)
                 return 2
-            golden = load(golden_path(cell))
+            golden = load_golden(cell)
             rows, used = worksheet.build(
                 session,
                 artifact,
@@ -617,7 +659,7 @@ def _answer_gates(cell: str) -> list[report.GateResult]:
             ),
         ]
 
-    golden = load(golden_path(cell))
+    golden = load_golden(cell)
     scored = scoring.score_queries(cell, golden.items, runner.observations_from(artifact))
     unsigned = (
         ""
@@ -754,7 +796,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     def with_cells(node: argparse.ArgumentParser) -> argparse.ArgumentParser:
-        node.add_argument("--cells", nargs="+", default=sorted(GATED), choices=sorted(GATED))
+        node.add_argument("--cells", nargs="+", default=default_cells(), choices=configured_cells())
         return node
 
     seed_cmd = with_cells(sub.add_parser("seed", help="propose a golden set from the clause store"))

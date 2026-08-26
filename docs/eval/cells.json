@@ -1,0 +1,37 @@
+{
+  "$comment": [
+    "Which cells the evaluation harness measures, and which cell supplies each one's",
+    "'asked in the wrong cell' items. This lived as a dict in scripts/evaluation/cli.py while",
+    "there were two cells; phase2.0a takes it to four, which is where a hardcoded map stops",
+    "being cheaper than the file. JSON has no comments, so the reasoning travels in `note` —",
+    "the neighbour choice is a decision and it should be readable where it is made, not only",
+    "in the plan file.",
+    "",
+    "`gated` is whether the four per-cell trust gates are claimed for this cell, and it is not",
+    "the same question as whether the harness can measure it. The FDA cells are measurable and",
+    "NOT gated: Phase 1 Go is still required before any Phase 2 cell is declared gated",
+    "(phase2.0a Deviations 4)."
+  ],
+  "cells": {
+    "mfds_samd": {
+      "gated": true,
+      "neighbours": ["mfds_cosmetic"],
+      "note": "Unchanged. The cross-domain neighbour it has always had — this cell is gated and its golden set is a phase 1.6 gate input, so its composition does not move as a side effect of adding FDA."
+    },
+    "mfds_cosmetic": {
+      "gated": true,
+      "neighbours": ["mfds_samd"],
+      "note": "Unchanged, for the same reason as mfds_samd."
+    },
+    "fda_samd": {
+      "gated": false,
+      "neighbours": ["fda_cosmetic", "mfds_samd"],
+      "note": "Both, deliberately. fda_cosmetic is the cross-DOMAIN neighbour: same authority, same language, and the two FDA cells already share Parts 7 and 11, so declining requires respecting the cell scope rather than noticing a change of subject. mfds_samd is the cross-AUTHORITY neighbour: same subject, so retrieval will find topically similar in-scope clauses and answer a Korean question out of US law — a confident wrong answer with the wrong jurisdiction's numbers, which is the one that would actually hurt a customer. They are different failure modes and picking one leaves the other unmeasured."
+    },
+    "fda_cosmetic": {
+      "gated": false,
+      "neighbours": ["fda_samd", "mfds_cosmetic"],
+      "note": "Both, for the same reasons as fda_samd."
+    }
+  }
+}

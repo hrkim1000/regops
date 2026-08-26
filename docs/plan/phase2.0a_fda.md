@@ -433,15 +433,22 @@ Not planned when this slice was written: the FD&C Act was expected to reuse a pr
 ### Evaluation
 
 - [ ] Golden sets for both cells, six axes, same composition rules as the MFDS pair
-- [ ] **The neighbour-cell pairing is a decision, not a default.** The harness hardcodes
+- [x] **The neighbour-cell pairing is a decision, not a default.** The harness hardcodes
       `GATED = {"mfds_samd": "mfds_cosmetic", …}`
       ([scripts/evaluation/cli.py](../../scripts/evaluation/cli.py)), where the neighbour supplies the
       "asked in the wrong cell" axis. For an FDA cell the cross-**domain** neighbour (`fda_cosmetic`)
       and the cross-**authority** neighbour (`mfds_samd`) are different failure modes, and answering a
       US question out of Korean law is the one that would actually hurt a customer. Pick deliberately
       and record why
-- [ ] The gated-cell map moves out of the harness source into configuration — four cells is where a
+      → **decided 2026-08-26: both, and the axis budget splits between them.** They fail
+      differently, so choosing one leaves the other unmeasured. The reason travels in
+      [cells.json](../eval/cells.json)'s own `note`, beside the value rather than only here
+- [x] The gated-cell map moves out of the harness source into configuration — four cells is where a
       hardcoded dict stops being cheaper than the config
+      → [docs/eval/cells.json](../eval/cells.json) + [cells.py](../../scripts/evaluation/cells.py).
+      **No fallback map in the source**, deliberately: a default would be the hardcoded dict one
+      import away, and it is what would run the day the file was mis-mounted. **The gated pair does
+      not move** — both MFDS sets rebuild byte-identical, 162 items each. See *Deviations* 31
 - [ ] RA sign-off on both sets before any score is reported as a gate measurement
 
 ## Acceptance criteria
@@ -1057,3 +1064,42 @@ And the structural criteria the slice is really about:
 
     One `subsection-head` is still misplaced (`350k/(a)/(1)`, filed a level deep) and is left as
     measured rather than rounded off.
+
+31. **The gated-cell map was one dict doing two jobs, and the second only became visible at four
+    cells (2026-08-26).** `GATED = {"mfds_samd": "mfds_cosmetic", …}` named *which cells the harness
+    measures* **and** *which cell supplies each one's wrong-cell items*. With two cells each was the
+    other's only option, so the two questions could not be told apart. They separate now.
+
+    **`gated` is not "measurable".** The FDA cells are configured and **not gated**: Phase 1 Go is
+    still required before any Phase 2 cell is declared gated (*Deviations* 4). So the `--cells`
+    **choices** are all four and the **default stays the gated pair** — widening the default would
+    have quietly changed what every documented command in CLAUDE.md measures. A Phase 2 cell is
+    opted into by name until it is gated, at which point the default follows the file on its own.
+
+    **The neighbour decision: both, budget split evenly.** The two are different failure modes and
+    the row asked for a deliberate choice rather than a default:
+
+    - **Cross-domain** (`fda_samd` ← `fda_cosmetic`): same authority, same language, and the two FDA
+      cells already share Parts 7 and 11. Declining therefore requires respecting the **cell scope**
+      rather than noticing a change of subject — the sharper test of the boundary itself.
+    - **Cross-authority** (`fda_samd` ← `mfds_samd`): same subject, so retrieval finds topically
+      similar in-scope clauses and can answer a Korean question out of US law — a confident wrong
+      answer carrying the wrong jurisdiction's numbers — the one that would reach a customer.
+
+    Picking either alone leaves the other unmeasured, so `neighbours` is a list and
+    `generate_cross_domain` divides the axis target between them rather than doubling or halving it.
+    A neighbour with no usable article is skipped rather than consuming its share.
+
+    **The gated pair does not move, and it is measured rather than argued:** both MFDS sets rebuild
+    **byte-identical** — 162 items, same ids, axes and questions — because a single neighbour takes
+    the whole budget exactly as the scalar did. Same discipline as *Deviations* 26 and 28, and here
+    it was cheap to honour rather than a reason to defer.
+
+    **No fallback map in `cells.py`.** A default there would be the hardcoded dict again, one import
+    away, and it would be what ran the day the file was mis-mounted — silently measuring a different
+    set of cells than the operator believed. A missing file is an error naming where it looked.
+
+    Validation refuses the one mistake that would not fail on its own: **a cell listing itself as a
+    neighbour**. Those items expect `needs verification`, but answering them is correct in their own
+    cell, so every one would score as a failure and the axis would report the opposite of what it
+    measures. A missing golden set is now a sentence rather than a `FileNotFoundError`.

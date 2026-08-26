@@ -246,30 +246,49 @@ def generate_mis_citation(prefix: str, articles: Sequence[Article]) -> list[Gold
 
 
 def generate_cross_domain(
-    prefix: str, neighbour_articles: Sequence[Article], neighbour_cell: str
+    prefix: str, neighbours: Sequence[tuple[str, Sequence[Article]]]
 ) -> list[GoldenItem]:
-    """Real obligations from the neighbouring cell, asked here with cross-cell off.
+    """Real obligations from the neighbouring cells, asked here with cross-cell off.
 
     The correct behaviour is to decline. Answering a cosmetic question out of device regulation is
     a *confident* wrong answer, which is the one failure mode worse than an empty one.
+
+    **More than one neighbour is allowed and the budget is split evenly between them.** A
+    cross-domain neighbour and a cross-authority one fail differently — the first tests that the
+    cell scope holds between two corpora in the same language that already share Parts, the second
+    that a question is not answered out of the wrong jurisdiction's law — and the axis measures
+    whichever it is given. Which neighbours a cell has is configuration (``docs/eval/cells.json``),
+    not a default reached for here.
     """
-    usable = [article for article in neighbour_articles if article.usable]
+    usable = [
+        (slug, [article for article in articles if article.usable]) for slug, articles in neighbours
+    ]
+    usable = [(slug, articles) for slug, articles in usable if articles]
+    if not usable:
+        return []
+
+    total = TARGETS[EvaluationAxis.CROSS_DOMAIN]
+    #: Split evenly, with the remainder going to the earliest neighbours so the count is exactly
+    #: `total` however many neighbours there are — a short axis is a weaker denominator, and the
+    #: whole reason the targets exist is that a per-axis score should not rest on a handful.
+    share, extra = divmod(total, len(usable))
     items: list[GoldenItem] = []
-    for index, article in enumerate(_spread(usable, TARGETS[EvaluationAxis.CROSS_DOMAIN])):
-        items.append(
-            GoldenItem(
-                id=f"{prefix}-cross-{index + 1:03d}",
-                axis=EvaluationAxis.CROSS_DOMAIN,
-                question=CROSS_DOMAIN_TEMPLATE.format(
-                    title=article.document, article=article.article, heading=article.heading
-                ),
-                expected_outcome=ExpectedOutcome.NEEDS_VERIFICATION,
-                expected_document=None,
-                cross_cell=False,
-                expected_answer="확인 필요 — 이 셀의 규정이 아님",
-                notes=f"Belongs to {neighbour_cell}. Declining is correct (ADR-0006 decision 9).",
+    for position, (slug, articles) in enumerate(usable):
+        for article in _spread(articles, share + (1 if position < extra else 0)):
+            items.append(
+                GoldenItem(
+                    id=f"{prefix}-cross-{len(items) + 1:03d}",
+                    axis=EvaluationAxis.CROSS_DOMAIN,
+                    question=CROSS_DOMAIN_TEMPLATE.format(
+                        title=article.document, article=article.article, heading=article.heading
+                    ),
+                    expected_outcome=ExpectedOutcome.NEEDS_VERIFICATION,
+                    expected_document=None,
+                    cross_cell=False,
+                    expected_answer="확인 필요 — 이 셀의 규정이 아님",
+                    notes=f"Belongs to {slug}. Declining is correct (ADR-0006 decision 9).",
+                )
             )
-        )
     return items
 
 
@@ -277,7 +296,7 @@ def build(
     session: Session,
     *,
     cell: str,
-    neighbour_cell: str,
+    neighbour_cells: Sequence[str],
     curated_path: Path,
     set_version: str,
 ) -> GoldenSet:
@@ -287,17 +306,18 @@ def build(
     templated items and leaves hand-authored ones exactly as written.
     """
     registry = corpus.cells(session)
-    if cell not in registry or neighbour_cell not in registry:
-        raise SystemExit(f"unknown cell: {cell} / {neighbour_cell}")
+    unknown = [slug for slug in (cell, *neighbour_cells) if slug not in registry]
+    if unknown:
+        raise SystemExit(f"unknown cell: {', '.join(unknown)}")
 
     prefix = "samd" if registry[cell].domain == Domain.SAMD.value else "cos"
     articles = read_articles(session, registry[cell].id)
-    neighbour = read_articles(session, registry[neighbour_cell].id)
+    neighbours = [(slug, read_articles(session, registry[slug].id)) for slug in neighbour_cells]
 
     items = [
         *generate_identifier(prefix, articles),
         *generate_mis_citation(prefix, articles),
-        *generate_cross_domain(prefix, neighbour, neighbour_cell),
+        *generate_cross_domain(prefix, neighbours),
     ]
     if curated_path.exists():
         items.extend(load(curated_path).items)
