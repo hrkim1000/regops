@@ -1,4 +1,4 @@
-# Phase 2.3 — Product registries: 510(k) · PMA · UDI · MDR, and the channel they travel
+# Phase 2.3 — Product registries and safety surfaces, and the channel they travel
 
 - **Roadmap:** Phase 2 (M5–12) · **Status:** ⬜ planned
 - **Governed by:** [ADR-0018](../design/ADR-0018-fda-source-model.md) *Alternatives rejected*
@@ -30,8 +30,15 @@ where before anyone writes a connector.
 
 ## Scope
 
-**In:** the nine `device` endpoints openFDA publishes, split by what each is *for*; the acquisition
-route; and the ownership decision.
+**In:** the nine `device` endpoints openFDA publishes, **plus the two FDA safety surfaces that are
+not on openFDA at all** — Warning Letters and Import Alerts — split by what each is *for*; the
+acquisition route; and the ownership decision.
+
+The scope is **product- and firm-level regulatory fact, wherever published**, not "whatever openFDA
+serves". A warning letter is enforcement against a named firm and an import alert is a detention
+list: neither is regulation text, both are exactly the kind of thing this slice exists to route.
+They arrived here from [phase2.0a](phase2.0a_fda.md), which had been carrying them since W0 on the
+assumption that a change signal about a product belongs beside the regulations it concerns.
 
 **Out:** the regulation corpus (that is [phase2.0a](phase2.0a_fda.md)), tenant product profiles (that
 is [phase2.2](phase2.2_compliance.md)), and guidance
@@ -108,8 +115,17 @@ and is why the table below splits by purpose rather than by endpoint.
       a UDI is queried for one device at a time and almost never scanned.
 - [ ] **Safety signals — `recall`, `enforcement`, `event`.** These belong to pillar 01 and to
       `monitoring`, not to the product half. `event` is 25.7M rows and must not be ingested whole.
-      Related: [phase2.0a](phase2.0a_fda.md) row *Safety surfaces*, probed 2026-08-26 (*Deviations*
-      36) — all three answer 200.
+      Probed 2026-08-26 ([phase2.0a](phase2.0a_fda.md) *Deviations* 36) — all three answer 200.
+- [ ] **Safety signals not on openFDA — Warning Letters and Import Alerts.** Same family, different
+      acquisition, and they are the reason this slice's scope is "wherever published" rather than
+      "whatever openFDA serves".
+      - **Warning Letters** — `www.fda.gov`, **HTTP 200 and server-rendered** (11 table rows in the
+        HTML), so enumerable without a browser. `robots.txt` permits it and asks
+        **`Crawl-Delay: 30`**, which the current fetcher would exceed by 30×. A per-host interval
+        override is a prerequisite, not a nicety (*Deviations* 37).
+      - **Import Alerts** — `accessdata.fda.gov`, **refused**: Akamai redirects to
+        `abuse-detection-apology.html`. The same host blocks the Recognized Consensus Standards
+        list, and the access request in [docs/fda-request](../fda-request/README.md) covers both.
 
 ## Tasks
 
@@ -174,7 +190,13 @@ and is why the table below splits by purpose rather than by endpoint.
 
 ## Deviations & decisions
 
-1. **Written before anything was built, and before the owner was decided (2026-08-26).** Prompted by
+1. **Warning Letters and Import Alerts moved here from [phase2.0a](phase2.0a_fda.md) on the day this
+   file was written (2026-08-26).** Its *Safety surfaces* row had carried all four since W0.
+   Once the openFDA half moved here, splitting the row would have left two plans claiming the same
+   work — and the split would have been by *publisher* rather than by *what the thing is*. All four
+   are product- or firm-level fact, so all four travel together.
+
+2. **Written before anything was built, and before the owner was decided (2026-08-26).** Prompted by
    the observation that 510(k), PMA, MDR and UDI do not belong in the regulation library — the same
    reasoning [ADR-0021](../design/ADR-0021-guidance-leaves-the-regulation-library.md) applied to
    guidance, arriving one surface later.

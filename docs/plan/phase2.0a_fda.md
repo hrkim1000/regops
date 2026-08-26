@@ -230,7 +230,7 @@ its open questions 6 and 7 — see *Deviations* 7.
       Honouring all three is authority-neutral and is a no-op for MFDS, which uses `<th>` and none
       of them. Six seed rows written, records verified correct against the live page — and **all six
       seeded disabled**, because FDA's CDN refuses our agent. See *Deviations* 16 and 17
-- [ ] Safety surfaces — Warning Letters, Import Alerts, recalls, MAUDE — as change signals. A feed
+- [x] Safety surfaces — Warning Letters, Import Alerts, recalls, MAUDE — as change signals. A feed
       yields no clauses and that is not a gap
       ([parsing/__init__.py](../../services/regulation/app/parsing/__init__.py))
       → **probed 2026-08-26, and three of the four are reachable.** Nothing built; this is the
@@ -240,6 +240,12 @@ its open questions 6 and 7 — see *Deviations* 7.
       `www.fda.gov` answers 200 and is **server-rendered** (11 table rows in the HTML), so it is
       enumerable without a browser. **Import Alerts** is the one that stays out —
       `accessdata.fda.gov` redirects to Akamai's `abuse-detection-apology.html`. See *Deviations* 36
+      → **moved out of this slice 2026-08-26, all four of them, to
+      [phase2.3](phase2.3_product_registries.md).** Not deferred and not blocked — **re-homed**: a
+      recall, an adverse-event report, a warning letter and an import alert are product- and
+      firm-level fact, and this slice is the regulation corpus. Splitting the row would have left
+      two plans claiming the same work, and would have split it by *publisher* rather than by what
+      the thing is. See *Deviations* 39
 - [x] Every new connector registered by key; a seed row cannot name one that does not exist
       → `ecfr_part` in `CONNECTOR_KEYS`, asserted by test. **13 seed rows landed 2026-08-24** — the
       Parts the source map names for both cells, all confirmed present and unreserved against the
@@ -1463,3 +1469,23 @@ And the structural criteria the slice is really about:
     the source map too, and the same reasoning covers them. The blocks stay in
     [import-source-map.md](../import-source-map.md): they are a true inventory of what exists, and
     deleting real sources to reflect a routing decision would make the single catalog lie.
+
+39. **The safety surfaces are re-homed, not deferred (2026-08-26).** The row had carried Warning
+    Letters, Import Alerts, recalls and MAUDE since W0, on the unexamined assumption that a change
+    signal about a product belongs beside the regulations it concerns.
+
+    It does not, and the reasoning is
+    [ADR-0021](../design/ADR-0021-guidance-leaves-the-regulation-library.md)'s one surface on:
+    **this slice is the regulation corpus.** A recall is a fact about a product, an adverse-event report about an incident, a warning letter about a firm, an import
+    alert about a shipment. None is regulation text and none has a clause to cite.
+
+    All four go to [phase2.3](phase2.3_product_registries.md) together. **Splitting was the tempting
+    wrong answer**: recalls and MAUDE are on openFDA and the other two are not, so a split would
+    have divided the row by *publisher* — leaving 2.0a holding two surfaces for no reason but where
+    FDA happens to serve them, and leaving two plans claiming the same work.
+
+    Nothing is lost by the move and something is gained: 2.3 already has to answer *is a registry
+    row citable at all*, which is the same question these four raise and which this slice had
+    nowhere to put. What the probe found travels with them — three of four reachable, `Crawl-Delay: 30` on
+    `www.fda.gov`, Import Alerts behind the same Akamai block as the Recognized Consensus Standards
+    list (*Deviations* 36, 37).
