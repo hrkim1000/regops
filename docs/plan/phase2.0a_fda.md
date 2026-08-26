@@ -233,6 +233,13 @@ its open questions 6 and 7 — see *Deviations* 7.
 - [ ] Safety surfaces — Warning Letters, Import Alerts, recalls, MAUDE — as change signals. A feed
       yields no clauses and that is not a gap
       ([parsing/__init__.py](../../services/regulation/app/parsing/__init__.py))
+      → **probed 2026-08-26, and three of the four are reachable.** Nothing built; this is the
+      reconnaissance the row needed before anyone priced it. `api.fda.gov` — a **different host**
+      from the two that refuse us — answers 200 on `device/recall.json`, `device/event.json`
+      (MAUDE), `device/enforcement.json` and `device/classification.json`. **Warning Letters** on
+      `www.fda.gov` answers 200 and is **server-rendered** (11 table rows in the HTML), so it is
+      enumerable without a browser. **Import Alerts** is the one that stays out —
+      `accessdata.fda.gov` redirects to Akamai's `abuse-detection-apology.html`. See *Deviations* 36
 - [x] Every new connector registered by key; a seed row cannot name one that does not exist
       → `ecfr_part` in `CONNECTOR_KEYS`, asserted by test. **13 seed rows landed 2026-08-24** — the
       Parts the source map names for both cells, all confirmed present and unreserved against the
@@ -874,6 +881,22 @@ And the structural criteria the slice is really about:
     **The request is still worth sending** and is no longer blocking: it is drafted, unsent, and
     the six seed rows sit disabled behind it.
 
+    > **Annotation, 2026-08-26 — half of this is wrong, and the decision still stands.** The
+    > sentence *"The block is FDA-wide, not one host"* does not survive a probe. `www.fda.gov`
+    > answers **200** with 48–77 KB of real content, including the guidance search page and the
+    > Warning Letters index. Only **`accessdata.fda.gov`** refuses us, and it refuses specifically:
+    > `AkamaiGHost` redirects to `/apology_objects/abuse-detection-apology.html`.
+    >
+    > What this changes and what it does not. The **Tier D freshness** deferral is unaffected — the
+    > Recognized Consensus Standards list is on the blocked host. The **Guidance** deferral survives
+    > for a *different reason than the one recorded here*: the corpus is reachable and the search
+    > page is **JS-driven**, so there are no document links in the HTML to enumerate. That is the
+    > open question *"how is the guidance corpus enumerated?"*, which was already open and is now
+    > the only thing in the way.
+    >
+    > Recorded as an annotation rather than an edit: the decision was right, the reason given for
+    > half of it was not, and a plan that quietly corrects its own reasoning teaches nobody.
+
 21. **The `docs/reference/` FDA research was read as spike input, by explicit request (2026-08-24).**
    `CLAUDE.md` marks that directory do-not-consult, so this is a one-off exception and not a
    precedent. It earned its keep as a source-landscape sketch and failed as evidence — every citation
@@ -1328,3 +1351,36 @@ And the structural criteria the slice is really about:
     Neither is in any row of this plan. Left as an open question above rather than fixed here,
     because "run the embeddings" and "decide what a language mismatch should do" are different
     decisions and only the first is mechanical.
+
+36. **Three of the four safety surfaces are reachable, and the FDA block is one host rather than
+    FDA-wide (2026-08-26).** A probe, not a build. The row had been carried since W0 with nobody
+    having asked whether the surfaces answer at all.
+
+    | surface | host | result |
+    | --- | --- | --- |
+    | Recalls | `api.fda.gov/device/recall.json` | **200** |
+    | MAUDE | `api.fda.gov/device/event.json` | **200** |
+    | Enforcement | `api.fda.gov/device/enforcement.json` | **200** |
+    | Classification | `api.fda.gov/device/classification.json` | **200** |
+    | Warning Letters | `www.fda.gov` | **200**, server-rendered, 11 table rows |
+    | Import Alerts | `accessdata.fda.gov` | **refused** — Akamai `abuse-detection-apology.html` |
+    | Guidance index | `www.fda.gov` | **200**, but JS-driven: no links in the HTML |
+
+    Probed with our own identified `User-Agent` and a delay between requests — the same client the
+    blocked host objects to, which is what makes the comparison mean anything.
+
+    **openFDA is a *signal* source here and still not a regulation source.**
+    [ADR-0018](../design/ADR-0018-fda-source-model.md) rejects it as the latter because it carries
+    regulatory data and no regulation text. That rejection is untouched: a recall is a change signal
+    about a product, and this row was always about signals — *"a feed yields no clauses and that is
+    not a gap"*.
+
+    **The correction matters more than the probe.** *Deviations* 20 recorded the block as
+    *"FDA-wide, not one host"*, and built two deferrals on it. One of those reasons was wrong:
+    `www.fda.gov` was never refusing us. The Guidance deferral survives on the enumeration problem
+    instead, which was already an open question. Annotated at *Deviations* 20 rather than edited.
+
+    Nothing is built and no seed row is added. What the row needs next is a decision about **what a
+    safety signal is for** — an alert with no clause to cite is a different object from an amendment
+    (ADR-0006's citation contract has nothing to bind it to), and that is worth settling before a
+    connector exists rather than after.
