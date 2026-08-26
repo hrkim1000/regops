@@ -34,11 +34,14 @@ down, and decision 1 separates them.
 
 ### 1. `semantic enrichment` is the layer; `interpretation` is not its name
 
-[memo/agent.md](../memo/agent.md) § agent 정리 defines Interpretation Agent as *structuring a
-requirement's meaning into obligation, bearer, scope and evidence*. That is IR extraction — ADR-0004
-decision 1 already produces exactly those fields — so it is **absorbed into the requirement agent,
-not renamed into this ADR** (ADR-0008 decision 6). This ADR covers the *other* thing the name was
-carrying: the vocabulary and edges beneath obligations.
+An earlier draft carried an *Interpretation Agent* that would structure a requirement's meaning into
+obligation, bearer, scope and evidence. That is IR extraction — ADR-0004 decision 1 already produces
+exactly those fields — so it is **absorbed into the requirement agent, not renamed into this ADR**
+(ADR-0008 decision 6). This ADR covers the *other* thing the name was carrying: the vocabulary and
+edges beneath obligations.
+
+*(The draft was `docs/memo/`, which is superseded material and authoritative for nothing — CLAUDE.md
+§ Read-only directories. It is not cited here; the argument below does not rest on it.)*
 
 The name is independently unusable. In regulatory practice **interpretation is a legal act** —
 issued by an authority or a qualified person, and carrying liability. Naming an LLM component for it
@@ -179,10 +182,21 @@ All tables belong to `regulation` and are **shared, not tenant-scoped** (ADR-000
 
 ## Open questions
 
-1. **Concept identity across versions.** When an amendment rewrites a definition, is that the same
-   concept with a new defining clause, or a new concept superseding the old? ADR-0004 decision 5
-   chose supersede-never-mutate for IRs; consistency argues for the same here, at the cost of
-   concept churn on every definitional amendment.
+1. ~~**Concept identity across versions.**~~ **Closed 2026-08-26 — there is no cross-version concept
+   identity, because none is asserted.** A concept is pinned to the version that defines it, which
+   `concepts.definition_document_version_id` already records. When an amendment rewrites a
+   definition, the new version simply has its own concept row; nothing claims it is *the same
+   concept* as the one before.
+
+   The question assumed we owed an answer to "same or superseding". We do not, and asserting either
+   would be a claim about legal continuity that no one has checked — the same objection this ADR
+   already makes on the jurisdiction axis, where cross-region equivalence is *"a claim with a
+   confidence, never an identity"*. Applied to the time axis it reads identically.
+
+   This also removes the cost the question named. **Concept churn on every definitional amendment
+   stops being a problem**, because churn is only a problem if something is trying to hold identity
+   across the change. Concepts behave like clauses: each version has its own, and continuity is a
+   question a reader asks, not a row the system asserts.
 2. **Does enrichment run per language or per version group?** ADR-0002 decision 5 computes diffs in
    one authoritative language per cell. Concepts are language-spanning by construction
    (`concept_labels`), so the two do not align cleanly. Not exercised in Phase 1 — both gated cells
