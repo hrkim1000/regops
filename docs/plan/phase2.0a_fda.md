@@ -473,18 +473,44 @@ Per cell, both cells, independently — the Phase 1 thresholds do not retire at 
 
 And the structural criteria the slice is really about:
 
-- [ ] **No authority- or domain-conditional branch in profile selection, parsing, or the clause
+- [x] **No authority- or domain-conditional branch in profile selection, parsing, or the clause
       schema** — grep-able, and asserted by a test
-- [ ] The FD&C Act exists as **one** `Document` with two `document_cells` rows, and its change events
-      reach both cells and no third
-- [ ] An English document is extracted under an English rule set, and a missing rule set **raises**
+      → **met, and re-checked after every profile landed (2026-08-26).** Selection is `_BY_DOC_TYPE`
+      keyed on `DocType` alone across all five profiles, and
+      `test_profile_selection_has_no_authority_or_cell_input` asserts
+      `signature(profile_for) == ["doc_type"]` so a later argument cannot be added quietly. Grepped:
+      **no conditional on authority or cell anywhere in `app/parsing/`** — every match for those
+      words is docstring prose. `Clause` carries no domain or authority column
+      (`authority_changed` is *whether the authority stated a move*, not which authority).
+      The two places it could have fired and did not are recorded: `usc_text` needed a fifth profile
+      and got one on `doc_type` (*Deviations* 22), and `cfr_structured` shares its paragraph ladder
+      with it by parameterization rather than a branch
+- [x] The FD&C Act exists as **one** `Document` with two `document_cells` rows, and its change
+      events reach both cells and no third
+      → **met, live and in test (2026-08-26).** In the store: `fda:usc:21-9` is **1 document with 2
+      claiming cells**, `fda_samd` and `fda_cosmetic`. Both halves are covered by
+      the 2.0a acceptance suite —
+      `test_two_cells_two_sources_one_document` for the shape,
+      `test_an_amendment_to_the_shared_act_fans_out_to_both_fda_cells_and_no_others` for fan-out.
+      The claim path is what actually broke here and is regression-tested too (*Deviations* 23)
+- [x] An English document is extracted under an English rule set, and a missing rule set **raises**
       rather than silently extracting nothing
-- [ ] No Tier D body text — CI scan green. **Amended 2026-08-25**: this read "…with the Recognized
+      → **met (2026-08-26).** `extract` selects `rule_set_for(domain, version.language)`, so the
+      language comes off the version rather than a caller's guess. Exercised for real: Part 700 is
+      an `en` version whose run produced 21 IRs on English modals, and the inventory was verified
+      over 2,039 CFR clauses (*Deviations* 13). The refusal is unit-tested: `rule_set_for(SAMD,
+      "fr")` raises `ValueError("No modal inventory")` rather than returning an empty set, which
+      would have extracted nothing and reported full coverage
+- [x] No Tier D body text — CI scan green. **Amended 2026-08-25**: this read "…with the Recognized
       Consensus Standards list **live**", and that cannot be met while `accessdata.fda.gov` refuses
       us. The scan still runs and is still green; what it no longer proves is that the rule holds
       with a live Tier D source attached. That proof moves with the source (*Deviations* 20), and
       saying so is the point — a criterion quietly reworded to be passable is worse than one that
       names what it stopped covering
+      → **checked as amended, not as originally written (2026-08-26).** `tier_d_scan.py` is green
+      over 433 files and runs in CI. What that proves is the rule holds across everything ingested;
+      what it still does not prove is that it holds with a live Tier D source attached, and that
+      half moves with the access request
 - [ ] The MFDS golden sets score no worse after the full-text change than before it
 
 ## Risks & open questions
