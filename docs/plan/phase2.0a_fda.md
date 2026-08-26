@@ -470,6 +470,13 @@ And the structural criteria the slice is really about:
   cannot show future text at all. And FDA states *removal* but not *movement*, so CFR redesignation
   falls to ADR-0002 decision 7's content-similarity fallback, which has never been the load-bearing
   path in a gated cell. Both need tests before either cell is gated.
+  → **tested 2026-08-26** — seven integration tests against the real parse and diff stages, in
+  [test_risk_1a.py](../../services/regulation/tests/integration/test_risk_1a.py).
+  The pending half held as written: a future-effective rule lands as an announcement linked to its
+  Part, creates no `DocumentVersion`, moves no in-force text, and no FDA version carries a future
+  `effective_date`. The redesignation half did **not** — writing the tests turned up a mitigation
+  that had never been connected, and a second one that does not reach this authority. See
+  *Deviations* 27 and 28.
 - **Risk 2 — a second authority's parser profile is not a connector.** The undecomposed 2.0 priced six
   cells as six checkbox rows. `cfr_structured` is a phase-1.1-sized piece of work on its own, and
   pricing it as a connector is how the M8 checkpoint gets missed.
@@ -889,3 +896,63 @@ And the structural criteria the slice is really about:
     change to make in passing while building an English corpus. Recorded so the next person finds a
     measurement instead of rediscovering it: the fix is `extract_identifier_paths` extended to the
     Korean patterns, and the proof is the phase 1.6 golden sets re-scored either side of it.
+
+27. **ADR-0018 decision 8's mitigation was computed and then dropped (2026-08-26).** The decision
+    accepts a cost and names the thing that limits it in the same breath: *"the `removed` flag
+    helps: it distinguishes 'the authority deleted this' from 'our differ lost it', which MFDS never
+    had to."* It did not help, because nothing read it. `ecfr.py` wrote `removed_sections` into
+    `FetchedArtifact.meta`, meta reaches nothing durable (*Deviations* 10), and the only consumer
+    `grep` could find was one assertion in a connector test.
+
+    That matters at the numbers involved. `RENUMBER_MATCH_RATIO` is **0.60** and CFR prose is
+    boilerplate — *"Each manufacturer shall maintain records of … including the name of the device,
+    the date …"* opens both a complaint-records section and a servicing one. A section the authority
+    **deleted** need only resemble some survivor by 60% to be absorbed as a renumber, and a deletion
+    reported as a renumber is an alert the subscriber never receives. Measured on the fixture: 0.69.
+
+    **The fix raises the bar; it does not close the door**, and that distinction is the design.
+    FDA writes a redesignation as *"§ 820.25 removed"* plus *"§ 820.35 added"*, so the sections
+    carrying a stated removal are exactly the ones most likely to be renumbers — vetoing them would
+    manufacture the delete+add that ADR-0002 decision 7 exists to prevent. So a stated-removed
+    clause must clear `RENUMBER_CONFIDENT_RATIO` (0.90) instead of 0.60, and whatever it pairs to
+    is flagged `needs_review` however high the score, because we contradict the authority about what
+    happened to a provision. Below that bar it stays unpaired and is a `REMOVED` — which is what the
+    authority said. Byte-identical text is exempt: that arm infers nothing.
+
+    Migration `0011` — `document_versions.authority_removed_paths` (`jsonb`), and
+    `clause_diffs.match_basis` widened 16 → 32 for the new basis value `similarity_contested`. A
+    **named column rather than a generic `meta` blob**, on the ADR-0019 precedent: the generic
+    connector-meta gap stays open and stays recorded rather than being widened into a place to put
+    anything. Null and empty are kept apart on the way in — null is *"this source has no removal
+    signal"*, empty is *"it reported and removed nothing"* — so silence can never read as a report.
+
+    **Nothing on the MFDS path moves.** law.go.kr states 조문이동이전 / 조문이동이후, so a Korean
+    renumber is resolved by `_authority_renumbers` and never reaches this fallback; a source that
+    states no removal keeps the 0.60 floor it always had, and a test pins that half too. No new ADR:
+    decision 8 already decided this behaviour, and this is its implementation.
+
+    Found on the way: `amendment_announcements` and `announcement_documents` are listed under
+    `regulation` in CLAUDE.md § Table ownership but were never re-exported from `app/models.py`.
+    Added, rather than importing around the boundary.
+
+28. **The CFR embeds its section number in the clause text, and the existing remedy is Korean-only
+    (2026-08-26).** Found by a test that asserted the wrong thing and was right to fail. A pure
+    redesignation with an unchanged body does **not** hit the free exact-hash arm, because a section
+    clause's text opens `§ 820.35 Records.` — so the hash moves with the number.
+
+    This is the 조문내용 phenomenon exactly, and phase 1.1 already solved it: `_same_but_for_its_number`
+    strips the leading article number before comparing. But it strips it with `^제\d+조(?:의\d+)?`,
+    and it is called from `_authority_renumbers` — a Korean regex on a path this authority never
+    reaches. So FDA has no equivalent at all.
+
+    **Consequence, stated rather than absorbed:** every CFR redesignation lands on the similarity
+    arm, and over a stated removal every one is `needs_review`. Correct, and not free — the QMSR
+    issue flagged 27 removed sections in Part 820 alone, so one Part rewrite could put 27 items in a
+    review queue that has no FDA-side `ra` behind it (*Prerequisites*).
+
+    **Not fixed in passing, deliberately.** The fix is to key the strip on the clause's own
+    `path_segments[-1]` rather than on a numbering convention, which is authority-neutral and would
+    serve both — but `_same_but_for_its_number` is on the **gated** MFDS pair's path, and changing
+    what those cells diff needs a before-and-after over the phase 1.6 golden sets, not an edit made
+    while writing a test for something else. That is the same refusal as *Deviations* 26, for the
+    same reason. Recorded so the next person finds a measurement instead of rediscovering it.

@@ -29,6 +29,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SAEnum,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from regops_shared.constants import AttachmentKind, DocType
@@ -145,6 +146,22 @@ class DocumentVersion(UUIDPrimaryKey, Base):
     #: of the Citation tuple, and a low-confidence date there is indistinguishable from an
     #: authoritative one downstream.
     effective_date_phrase: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    #: Section identifiers the **authority itself** stated it removed in this issue — eCFR
+    #: ``versions[].removed``, 27 of 72 rows for part 820 (ADR-0018 decision 8). Null where the
+    #: source states nothing, which is every MFDS version: law.go.kr supplies 조문이동이전/이후, so
+    #: a move there is stated and this fallback is not needed.
+    #:
+    #: It exists because FDA states *removal* and states no *move*, which drops CFR redesignation
+    #: onto ADR-0002 decision 7's content-similarity fallback. Without this, a section the authority
+    #: deleted is indistinguishable from one our differ merely failed to pair, and
+    #: ``RENUMBER_MATCH_RATIO`` is low enough that a deletion can be reported as a renumber — losing
+    #: the alert entirely. Stored as identifiers (``820.25``), matched against ``path_segments``.
+    #:
+    #: One named column rather than a generic ``meta`` blob, on the ADR-0019 precedent: the
+    #: connector-meta gap (phase2.0a *Deviations* 10) stays open, and a decided need gets a typed
+    #: home instead of widening it.
+    authority_removed_paths: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
 
     parser_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     fetch_observation_id: Mapped[uuid.UUID | None] = mapped_column(

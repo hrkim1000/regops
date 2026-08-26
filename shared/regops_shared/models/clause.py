@@ -170,9 +170,16 @@ class ClauseDiff(UUIDPrimaryKey, Base):
     #: Content similarity in ``[0, 1]`` for the pair. Null where the match came from the authority's
     #: own 조문이동 fields, because then nothing was inferred.
     similarity: Mapped[float | None] = mapped_column(Float, nullable=True)
-    #: How the pairing was established — ``authority`` or ``similarity``. Kept because the two carry
-    #: very different confidence and the detection-coverage audit needs to tell them apart.
-    match_basis: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    #: How the pairing was established — ``path``, ``authority``, ``content_hash``, ``similarity``,
+    #: or ``similarity_contested``. Kept because they carry very different confidence and the
+    #: detection-coverage audit needs to tell them apart.
+    #:
+    #: ``similarity_contested`` is the last of these and the least comfortable: content similarity
+    #: paired two clauses the authority had *stated* it removed (eCFR ``versions[].removed``,
+    #: ADR-0018 decision 8). Such a pairing must clear ``RENUMBER_CONFIDENT_RATIO`` rather than
+    #: ``RENUMBER_MATCH_RATIO`` and is always ``needs_review``, because we are contradicting the
+    #: authority about what happened to a provision.
+    match_basis: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     #: A low-confidence renumber match is written *and* queued: dropping it would lose the change,
     #: and accepting it silently would assert an identity nobody checked.

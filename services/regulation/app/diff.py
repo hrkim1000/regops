@@ -167,8 +167,18 @@ def _build(
     # 2. The authority's own move signal, before anything is inferred.
     diffs.extend(_authority_renumbers(diff, leftover_old, leftover_new, matched_old, matched_new))
 
-    # 3. Content similarity for whatever is still unpaired.
-    diffs.extend(_similarity_renumbers(diff, leftover_old, leftover_new, matched_old, matched_new))
+    # 3. Content similarity for whatever is still unpaired, with the authority's own removal
+    #    statement raising the bar where it made one (ADR-0018 decision 8).
+    diffs.extend(
+        _similarity_renumbers(
+            diff,
+            leftover_old,
+            leftover_new,
+            matched_old,
+            matched_new,
+            _authority_removed(version),
+        )
+    )
 
     diffs.extend(
         diff(
@@ -260,12 +270,34 @@ def _similarity_renumbers(
     new: list[Clause],
     matched_old: set[uuid.UUID],
     matched_new: set[uuid.UUID],
+    authority_removed: frozenset[str] = frozenset(),
 ) -> list[ClauseDiff]:
     """Fallback pairing for sources that publish no move signal.
 
     Exact content-hash equality is tried first and is free: a clause whose text is byte-identical at
     a different path is a renumber, full stop. Only what survives that goes through
     ``SequenceMatcher``.
+
+    ``authority_removed`` carries the identifiers the source itself stated it removed in this issue
+    — eCFR ``versions[].removed`` (ADR-0018 decision 8). It **raises the bar rather than closing the
+    door**, and the distinction is the whole design:
+
+    - Closing the door would re-create the failure ADR-0002 decision 7 forbids. FDA writes a
+      redesignation as *"§ 820.25 removed"* plus *"§ 820.35 added"*, so the sections most likely to
+      carry a stated removal are exactly the ones most likely to be renumbers. Refusing to pair them
+      would emit delete+add for the real case.
+    - Leaving it alone wastes the signal. ``RENUMBER_MATCH_RATIO`` is 0.60, so a genuinely deleted
+      section need only resemble some survivor by 60% to be absorbed as a renumber — and a deletion
+      reported as a renumber is an alert the subscriber never gets.
+
+    So a stated-removed clause must clear ``RENUMBER_CONFIDENT_RATIO`` instead, and whatever it
+    pairs to is flagged ``needs_review`` however high the score. That is decision 7's own remedy —
+    *"reviewed by RA when confidence is low"* — applied where the authority has contradicted us.
+    Below that bar it stays unpaired and falls through to ``REMOVED``, which is what the authority
+    said in the first place.
+
+    Byte-identical text is exempt: that arm infers nothing, and two clauses agreeing exactly are the
+    same provision whatever the compilation called the operation.
     """
     out: list[ClauseDiff] = []
     candidates_old = [clause for clause in old if clause.id not in matched_old]
@@ -300,8 +332,10 @@ def _similarity_renumbers(
     for old_clause in candidates_old:
         if old_clause.id in matched_old:
             continue
+        stated_removed = _states_removal(old_clause, authority_removed)
+        floor = RENUMBER_CONFIDENT_RATIO if stated_removed else RENUMBER_MATCH_RATIO
         best, score = _best_match(old_clause, remaining_new)
-        if best is None or score < RENUMBER_MATCH_RATIO:
+        if best is None or score < floor:
             continue
         matched_old.add(old_clause.id)
         matched_new.add(best.id)
@@ -314,13 +348,40 @@ def _similarity_renumbers(
                 from_clause_id=old_clause.id,
                 to_clause_id=best.id,
                 similarity=score,
-                match_basis="similarity",
+                match_basis="similarity_contested" if stated_removed else "similarity",
                 # A low-confidence match is a claim about clause identity. It is kept, because
                 # dropping it loses the change — and flagged, because nobody has checked it.
-                needs_review=score < RENUMBER_CONFIDENT_RATIO,
+                # A pairing that contradicts a stated removal is always such a claim, however high
+                # the score: the authority said this provision went away and we are saying it moved.
+                needs_review=stated_removed or score < RENUMBER_CONFIDENT_RATIO,
             )
         )
     return out
+
+
+def _authority_removed(version: DocumentVersion) -> frozenset[str]:
+    """Identifiers the authority stated it removed in this issue.
+
+    Null and empty are different claims and are kept apart upstream (``ingest._removed_paths``):
+    null means the source has no removal signal at all, empty means it reported this issue and
+    removed nothing. Both arrive here as an empty set because both mean *"nothing is vetoed"* — the
+    distinction matters for reading the row, not for this decision.
+    """
+    return frozenset(version.authority_removed_paths or ())
+
+
+def _states_removal(clause: Clause, removed: frozenset[str]) -> bool:
+    """Did the authority state that *this* clause's provision was removed?
+
+    Matched against ``path_segments`` rather than ``clause_path``, because the authority names the
+    section (``820.25``) while the store holds a full path (``Subpart B/820.25/(a)``). Segment
+    equality catches the section and every paragraph under it, and — unlike a substring test — will
+    not let ``820.2`` claim ``820.25``. That is the ``scope``/``endoscope`` bug of phase2.0a
+    *Deviations* 11, in a place where it would suppress real change events.
+    """
+    if not removed:
+        return False
+    return any(segment in removed for segment in clause.path_segments)
 
 
 def _relocation_kind(old: Clause, new: Clause) -> ChangeKind:

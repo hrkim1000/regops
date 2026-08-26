@@ -6,11 +6,14 @@ that needs to read across the boundary uses raw SQL rather than importing anothe
 Phase 1.0 covered the L1 subset: the registry, the archive-backed versions, and Tier D metadata.
 Phase 1.1 added the clause store — ``clauses``, ``clause_diffs``, ``change_events`` — plus the
 ``irs`` / ``ir_citations`` shell the diff stage only supersedes. Phase 1.2 fills that shell and adds
-``extraction_runs``, ``clause_classifications`` and ``ir_standard_citations``.
+``extraction_runs``, ``clause_classifications`` and ``ir_standard_citations``. Phase 2.0a adds the
+announcement pair (ADR-0019) — ``amendment_announcements`` and ``announcement_documents``.
 """
 
 from regops_shared.models import (
     IR,
+    AmendmentAnnouncement,
+    AnnouncementDocument,
     Attachment,
     Cell,
     ChangeEvent,
@@ -33,6 +36,8 @@ from regops_shared.models import (
 
 __all__ = [
     "IR",
+    "AmendmentAnnouncement",
+    "AnnouncementDocument",
     "Attachment",
     "Cell",
     "ChangeEvent",

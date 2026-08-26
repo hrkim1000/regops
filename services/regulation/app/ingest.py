@@ -19,6 +19,7 @@ The two outcomes that matter for the detection gates:
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
@@ -314,6 +315,11 @@ def _apply_artifact(
         published_at=artifact.published_at,
         # effective_date and effective_date_phrase stay null: they are parse outputs, written by
         # phase 1.1 (ADR-0003 decision 5, ADR-0013).
+        # `authority_removed_paths` is the one exception to that split, and deliberately so: it is a
+        # *fetch* output that parse cannot re-derive. The eCFR states removal in its `versions`
+        # payload, which is a different response from the body we archive, so by parse time the
+        # evidence is gone. ADR-0018 decision 8 needs the differ to have it.
+        authority_removed_paths=_removed_paths(artifact.meta),
         fetch_observation_id=observation.id,
     )
     session.add(version)
@@ -576,6 +582,20 @@ def _coerce_status(value: str) -> StandardStatus:
         return StandardStatus(value)
     except ValueError:
         return StandardStatus.UNKNOWN
+
+
+def _removed_paths(meta: Mapping[str, str]) -> list[str] | None:
+    """The section identifiers the authority stated it removed in this issue.
+
+    ``None`` rather than ``[]`` when the source says nothing at all, because the two are different
+    claims: an empty list is *"the authority reported this issue and removed nothing"*, and null is
+    *"this source has no removal signal"*. The differ must not read silence as a report — every
+    MFDS version lands here with null and keeps the stated-move path it already had.
+    """
+    raw = meta.get("removed_sections")
+    if raw is None:
+        return None
+    return [part for part in (chunk.strip() for chunk in raw.split(",")) if part]
 
 
 def _coerce_date(value: str | None) -> date | None:

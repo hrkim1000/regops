@@ -636,7 +636,7 @@ CREATE TABLE public.clause_diffs (
     from_clause_id uuid,
     to_clause_id uuid,
     similarity double precision,
-    match_basis character varying(16),
+    match_basis character varying(32),
     needs_review boolean DEFAULT false NOT NULL,
     reviewed_at timestamp with time zone,
     reviewed_by uuid,
@@ -723,6 +723,7 @@ CREATE TABLE public.document_versions (
     published_at timestamp with time zone,
     effective_date date,
     effective_date_phrase text,
+    authority_removed_paths jsonb,
     parser_version character varying(32),
     fetch_observation_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL
