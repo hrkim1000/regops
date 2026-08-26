@@ -118,6 +118,27 @@ joining language variants of the same act. **Diffs are computed within one langu
 authoritative one per cell (EN for EU, KO for MFDS, ZH for NMPA, EN for FDA). Other languages are
 retained for citation display and source-alongside rendering, not for change detection.
 
+> **Annotation, 2026-08-26 — the decision stands; its realisation is currently indistinguishable
+> from a no-op.** Measured while closing
+> [ADR-0010](ADR-0010-semantic-enrichment-and-graph-model.md) open question 2, and recorded because
+> the machinery reads as multilingual when nothing has exercised it:
+>
+> - **`version_group_id` carries no information today.** 556 distinct groups against 556 distinct
+>   documents; no group spans more than one document and no document has more than one group. It is
+>   `document_id` under a second name.
+> - **`_version_group_for(session, document, language)` never reads `language`** — it looks the
+>   group up by `document_id` alone. The unused argument is the clearest surviving hint of the
+>   intent below.
+> - **`AUTHORITATIVE_LANGUAGE` has no consumer.** *"Diffs are computed within one language"* holds
+>   today because every cell happens to be single-language, not because anything enforces it.
+>
+> None of that is wrong yet, and which way it resolves is a real question this annotation does not
+> answer: if language variants are **versions of one Document**, `document_id` already joins them
+> and `version_group_id` is redundant; if they are **separate Documents** — EU publishes each
+> language at its own ELI URL, which would give each its own `canonical_key` — then the group is the
+> only join and must span documents, which the current code cannot do. The EU cells moved to Phase 4
+> and NMPA (2.0c) is Chinese-only, so the case that would decide it has no scheduled arrival.
+
 ### 6. WORM archive is content-addressed; re-fetch with an unchanged hash creates nothing
 
 `raw_object_key = sha256(bytes)`. A `DocumentVersion` references the blob; the blob is written once

@@ -197,10 +197,28 @@ All tables belong to `regulation` and are **shared, not tenant-scoped** (ADR-000
    stops being a problem**, because churn is only a problem if something is trying to hold identity
    across the change. Concepts behave like clauses: each version has its own, and continuity is a
    question a reader asks, not a row the system asserts.
-2. **Does enrichment run per language or per version group?** ADR-0002 decision 5 computes diffs in
-   one authoritative language per cell. Concepts are language-spanning by construction
-   (`concept_labels`), so the two do not align cleanly. Not exercised in Phase 1 — both gated cells
-   are Korean-only.
+2. ~~**Does enrichment run per language or per version group?**~~ **Closed 2026-08-26 — the two
+   units are the same unit, and stay so for the whole current roadmap.** A cell holds exactly one
+   language today: `mfds_*` is `ko` (537 documents), `fda_*` is `en` (27). So *per language*, *per
+   version group* and *per cell* all name the same partition, and enrichment produces identical
+   output whichever it is written against.
+
+   The question becomes real only when **one cell holds two languages**, and nothing on the roadmap
+   creates that. EU — the 24-language case this was written for — moved to Phase 4, and the first
+   multilingual exercise is now NMPA in 2.0c, which is Chinese-only. A second language *inside* one
+   cell has no scheduled arrival.
+
+   So this is not "unexercised, decide later"; it is "the distinction has no referent yet". When one
+   appears, the choice is already narrowed by open question 1: a concept is pinned to the version
+   that defines it, and a `version_group` is a set of versions — so the group is not a natural unit
+   for a concept, and *per language* is the shape that fits.
+
+   > **Recorded because it is what made this look live.** Three things in the current implementation
+   > suggest a multilingual mechanism that is not there yet, and none is a defect while every cell
+   > is single-language — see [ADR-0002](ADR-0002-canonical-regulation-model.md) decision 5's
+   > annotation. In short: `version_group_id` is 1:1 with `document_id` (556 of each, no group spans
+   > a document), `_version_group_for` takes a `language` argument it never reads, and
+   > `AUTHORITATIVE_LANGUAGE` has **no consumer in the codebase**.
 3. **Confidence threshold and sampling rate** for decision 5's middle tier. Needs golden-set
    evidence; unset until Phase 2.
 4. **Does retrieval actually use enrichment edges?** ADR-0006 specifies hybrid search plus graph
