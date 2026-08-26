@@ -1,0 +1,1453 @@
+{
+  "schema_version": "1.0",
+  "cell": "fda_cosmetic",
+  "domain": "cosmetic",
+  "set_version": "2026-08-26",
+  "authored_at": "2026-08-26",
+  "ra_signed_off": false,
+  "signed_off_by": null,
+  "signed_off_at": null,
+  "notes": "Seeded, not signed. Identifier, mis-citation and cross-domain items are generated from the clause store; conceptual, effective-date and unanswerable items are hand-authored in the .curated.json beside this file. No run over this set may be quoted against a Go/No-Go gate until an RA reviews every item and sets ra_signed_off.",
+  "items": [
+    {
+      "id": "cos-cross-001",
+      "axis": "cross_domain",
+      "question": "What is required by 11.1 of 21 CFR Part 11 — Electronic Records; Electronic Signatures (Scope)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-002",
+      "axis": "cross_domain",
+      "question": "What is required by 7.1 of 21 CFR Part 7 — Enforcement Policy (Scope)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-003",
+      "axis": "cross_domain",
+      "question": "What is required by 803.1 of 21 CFR Part 803 — Medical Device Reporting (What does this part cover?)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-004",
+      "axis": "cross_domain",
+      "question": "What is required by 806.1 of 21 CFR Part 806 — Reports of Corrections and Removals (Scope)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-005",
+      "axis": "cross_domain",
+      "question": "What is required by 807.3 of 21 CFR Part 807 — Establishment Registration and Device Listing (Definitions)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-006",
+      "axis": "cross_domain",
+      "question": "What is required by 820.1 of 21 CFR Part 820 — Quality Management System Regulation (Scope)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-007",
+      "axis": "cross_domain",
+      "question": "What is required by 822.1 of 21 CFR Part 822 — Postmarket Surveillance (What does this part cover?)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-008",
+      "axis": "cross_domain",
+      "question": "What is required by 860.1 of 21 CFR Part 860 — Medical Device Classification Procedures (Scope)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-009",
+      "axis": "cross_domain",
+      "question": "What is required by 892.1 of 21 CFR Part 892 — Radiology Devices (Scope)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-010",
+      "axis": "cross_domain",
+      "question": "What is required by 11.2 of 21 CFR Part 11 — Electronic Records; Electronic Signatures (Implementation)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-011",
+      "axis": "cross_domain",
+      "question": "What is required by 7.3 of 21 CFR Part 7 — Enforcement Policy (Definitions)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-012",
+      "axis": "cross_domain",
+      "question": "What is required by 803.3 of 21 CFR Part 803 — Medical Device Reporting (How does FDA define the terms used in this part?)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-013",
+      "axis": "cross_domain",
+      "question": "What is required by 806.2 of 21 CFR Part 806 — Reports of Corrections and Removals (Definitions)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-014",
+      "axis": "cross_domain",
+      "question": "What is required by 807.20 of 21 CFR Part 807 — Establishment Registration and Device Listing (Who must register and submit a device list?)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-015",
+      "axis": "cross_domain",
+      "question": "What is required by 820.3 of 21 CFR Part 820 — Quality Management System Regulation (Definitions)?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to fda_samd. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-016",
+      "axis": "cross_domain",
+      "question": "「기능성화장품 기준 및 시험방법」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-017",
+      "axis": "cross_domain",
+      "question": "「기능성화장품 심사에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-018",
+      "axis": "cross_domain",
+      "question": "「맞춤형화장품판매업자의 준수사항에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-019",
+      "axis": "cross_domain",
+      "question": "「수입화장품 품질검사 면제에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-020",
+      "axis": "cross_domain",
+      "question": "「영유아 또는 어린이 사용 화장품 안전성 자료의 작성·보관에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-021",
+      "axis": "cross_domain",
+      "question": "「우수화장품 제조 및 품질관리기준」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-022",
+      "axis": "cross_domain",
+      "question": "「의약품등의 타르색소 지정과 기준 및 시험방법」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-023",
+      "axis": "cross_domain",
+      "question": "「인체적용제품의 위해성평가에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-024",
+      "axis": "cross_domain",
+      "question": "「화장품 가격표시제 실시요령」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-025",
+      "axis": "cross_domain",
+      "question": "「화장품 바코드 표시 및 관리요령」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-026",
+      "axis": "cross_domain",
+      "question": "「화장품 사용할 때의 주의사항 및 알레르기 유발성분 표시에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-027",
+      "axis": "cross_domain",
+      "question": "「화장품 안전기준 등에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-028",
+      "axis": "cross_domain",
+      "question": "「화장품 안전성 정보관리 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-029",
+      "axis": "cross_domain",
+      "question": "「화장품 원료 사용금지 해제·변경 및 사용기준 지정·변경 심사에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-cross-030",
+      "axis": "cross_domain",
+      "question": "「화장품 표시·광고 실증에 관한 규정」 제1조(목적)에 따른 의무는 무엇입니까?",
+      "expected_outcome": "needs_verification",
+      "expected_document": null,
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — not a regulation of this cell",
+      "authored_by": "seed-generated",
+      "notes": "Belongs to mfds_cosmetic. Declining is correct (ADR-0006 decision 9)."
+    },
+    {
+      "id": "cos-ident-001",
+      "axis": "identifier",
+      "question": "What does 700.3 of 21 CFR Part 700 — Cosmetics, General require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart A/700.3"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Definitions",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-002",
+      "axis": "identifier",
+      "question": "What is set out in 701.1 of 21 CFR Part 701 — Cosmetic Labeling (Misbranding)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart A/701.1"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Misbranding",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-003",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 710.1 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.1"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Who should register",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-004",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 740 — Cosmetic Product Warning Statements, what does 740.1 provide on Establishment of warning statements?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart A/740.1"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Establishment of warning statements",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-005",
+      "axis": "identifier",
+      "question": "What does 301 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter I/301"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Short title",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-006",
+      "axis": "identifier",
+      "question": "What is set out in 700.11 of 21 CFR Part 700 — Cosmetics, General (Cosmetics containing bithionol)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart B/700.11"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Cosmetics containing bithionol",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-007",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 701.2 of 21 CFR Part 701 — Cosmetic Labeling.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart A/701.2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Form of stating labeling requirements",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-008",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments, what does 710.2 provide on Time for registration?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Time for registration",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-009",
+      "axis": "identifier",
+      "question": "What does 740.2 of 21 CFR Part 740 — Cosmetic Product Warning Statements require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart A/740.2"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Conspicuousness of warning statements",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-010",
+      "axis": "identifier",
+      "question": "What is set out in 321 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act (Definitions; generally)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter II/321"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Definitions; generally",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-011",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 700.13 of 21 CFR Part 700 — Cosmetics, General.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart B/700.13"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Use of mercury compounds in cosmetics including use as skinbleaching agents in cosmetic preparations also regarded as drugs",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-012",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 701 — Cosmetic Labeling, what does 701.3 provide on Designation of ingredients?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart A/701.3"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Designation of ingredients",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-013",
+      "axis": "identifier",
+      "question": "What does 710.3 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.3"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning How and where to register",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-014",
+      "axis": "identifier",
+      "question": "What is set out in 740.10 of 21 CFR Part 740 — Cosmetic Product Warning Statements (Labeling of cosmetic products for which adequate substantiation of safety has not been obtained)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart B/740.10"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Labeling of cosmetic products for which adequate substantiation of safety has not been obtained",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-015",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 321a of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act.",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter II/321a"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning \"Butter\" defined",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-016",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 700 — Cosmetics, General, what does 700.14 provide on Use of vinyl chloride as an ingredient, including propellant of cosmetic aerosol products?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart B/700.14"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Use of vinyl chloride as an ingredient, including propellant of cosmetic aerosol products",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-017",
+      "axis": "identifier",
+      "question": "What does 701.9 of 21 CFR Part 701 — Cosmetic Labeling require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart A/701.9"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Exemptions from labeling requirements",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-018",
+      "axis": "identifier",
+      "question": "What is set out in 710.4 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments (Information requested)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.4"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Information requested",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-019",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 740.11 of 21 CFR Part 740 — Cosmetic Product Warning Statements.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart B/740.11"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Cosmetics in self-pressurized containers",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-020",
+      "axis": "identifier",
+      "question": "Under 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act, what does 321b provide on \"Package\" defined?",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter II/321b"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning \"Package\" defined",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-021",
+      "axis": "identifier",
+      "question": "What does 700.15 of 21 CFR Part 700 — Cosmetics, General require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart B/700.15"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Use of certain halogenated salicylanilides as ingredients in cosmetic products",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-022",
+      "axis": "identifier",
+      "question": "What is set out in 701.10 of 21 CFR Part 701 — Cosmetic Labeling (Principal display panel)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart B/701.10"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Principal display panel",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-023",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 710.5 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.5"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Amendments to registration",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-024",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 740 — Cosmetic Product Warning Statements, what does 740.12 provide on Feminine deodorant sprays?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart B/740.12"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Feminine deodorant sprays",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-025",
+      "axis": "identifier",
+      "question": "What does 321c of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter II/321c"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Nonfat dry milk; \"milk\" defined",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-026",
+      "axis": "identifier",
+      "question": "What is set out in 700.16 of 21 CFR Part 700 — Cosmetics, General (Use of aerosol cosmetic products containing zirconium)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart B/700.16"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Use of aerosol cosmetic products containing zirconium",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-027",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 701.11 of 21 CFR Part 701 — Cosmetic Labeling.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart B/701.11"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Identity labeling",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-028",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments, what does 710.6 provide on Notification of registrant; cosmetic product establishment registration number?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.6"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Notification of registrant; cosmetic product establishment registration number",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-029",
+      "axis": "identifier",
+      "question": "What does 740.17 of 21 CFR Part 740 — Cosmetic Product Warning Statements require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart B/740.17"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Foaming detergent bath products",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-030",
+      "axis": "identifier",
+      "question": "What is set out in 321d of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act (Market names for catfish and ginseng)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter II/321d"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Market names for catfish and ginseng",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-031",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 700.18 of 21 CFR Part 700 — Cosmetics, General.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart B/700.18"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Use of chloroform as an ingredient in cosmetic products",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-032",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 701 — Cosmetic Labeling, what does 701.12 provide on Name and place of business of manufacturer, packer, or distributor?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart B/701.12"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Name and place of business of manufacturer, packer, or distributor",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-033",
+      "axis": "identifier",
+      "question": "What does 710.7 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.7"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Inspection of registrations",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-034",
+      "axis": "identifier",
+      "question": "What is set out in 740.18 of 21 CFR Part 740 — Cosmetic Product Warning Statements (Coal tar hair dyes posing a risk of cancer)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart B/740.18"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Coal tar hair dyes posing a risk of cancer",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-035",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 331 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act.",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter III/331"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Prohibited acts",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-036",
+      "axis": "identifier",
+      "question": "Under 21 CFR Part 700 — Cosmetics, General, what does 700.19 provide on Use of methylene chloride as an ingredient of cosmetic products?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [
+        "Subpart B/700.19"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Use of methylene chloride as an ingredient of cosmetic products",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-037",
+      "axis": "identifier",
+      "question": "What does 701.13 of 21 CFR Part 701 — Cosmetic Labeling require?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [
+        "Subpart B/701.13"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Declaration of net quantity of contents",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-038",
+      "axis": "identifier",
+      "question": "What is set out in 710.8 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments (Misbranding by reference to registration or to registration number)?",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [
+        "710.8"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Misbranding by reference to registration or to registration number",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-039",
+      "axis": "identifier",
+      "question": "Summarise the requirements of 740.19 of 21 CFR Part 740 — Cosmetic Product Warning Statements.",
+      "expected_outcome": "answered",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [
+        "Subpart B/740.19"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Suntanning preparations",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-ident-040",
+      "axis": "identifier",
+      "question": "Under 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act, what does 332 provide on Injunction proceedings?",
+      "expected_outcome": "answered",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [
+        "Subchapter III/332"
+      ],
+      "forbidden_clause_paths": [],
+      "cross_cell": false,
+      "expected_answer": "Provision concerning Injunction proceedings",
+      "authored_by": "seed-generated",
+      "notes": "Identifier lookup: must resolve exactly, not fuzzily."
+    },
+    {
+      "id": "cos-mis-001",
+      "axis": "mis_citation",
+      "question": "What standard does 700.46 of 21 CFR Part 700 — Cosmetics, General set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "700.46"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 700 — Cosmetics, General ends at 700.35 (35); 700.46 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-002",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 700.62 of 21 CFR Part 700 — Cosmetics, General?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "700.62"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 700 — Cosmetics, General ends at 700.35 (35); 700.62 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-003",
+      "axis": "mis_citation",
+      "question": "What standard does 700.78 of 21 CFR Part 700 — Cosmetics, General set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "700.78"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 700 — Cosmetics, General ends at 700.35 (35); 700.78 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-004",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 700.94 of 21 CFR Part 700 — Cosmetics, General?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "700.94"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 700 — Cosmetics, General ends at 700.35 (35); 700.94 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-005",
+      "axis": "mis_citation",
+      "question": "What standard does 700.106 of 21 CFR Part 700 — Cosmetics, General set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "700.106"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 700 — Cosmetics, General ends at 700.35 (35); 700.106 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-006",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 700.122 of 21 CFR Part 700 — Cosmetics, General?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 700 — Cosmetics, General",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "700.122"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 700 — Cosmetics, General ends at 700.35 (35); 700.122 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-007",
+      "axis": "mis_citation",
+      "question": "What standard does 701.41 of 21 CFR Part 701 — Cosmetic Labeling set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "701.41"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 701 — Cosmetic Labeling ends at 701.30 (30); 701.41 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-008",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 701.57 of 21 CFR Part 701 — Cosmetic Labeling?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "701.57"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 701 — Cosmetic Labeling ends at 701.30 (30); 701.57 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-009",
+      "axis": "mis_citation",
+      "question": "What standard does 701.73 of 21 CFR Part 701 — Cosmetic Labeling set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "701.73"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 701 — Cosmetic Labeling ends at 701.30 (30); 701.73 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-010",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 701.89 of 21 CFR Part 701 — Cosmetic Labeling?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "701.89"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 701 — Cosmetic Labeling ends at 701.30 (30); 701.89 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-011",
+      "axis": "mis_citation",
+      "question": "What standard does 701.101 of 21 CFR Part 701 — Cosmetic Labeling set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "701.101"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 701 — Cosmetic Labeling ends at 701.30 (30); 701.101 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-012",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 701.117 of 21 CFR Part 701 — Cosmetic Labeling?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 701 — Cosmetic Labeling",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "701.117"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 701 — Cosmetic Labeling ends at 701.30 (30); 701.117 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-013",
+      "axis": "mis_citation",
+      "question": "What standard does 710.20 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "710.20"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments ends at 710.9 (9); 710.20 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-014",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 710.36 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "710.36"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments ends at 710.9 (9); 710.36 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-015",
+      "axis": "mis_citation",
+      "question": "What standard does 710.52 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "710.52"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments ends at 710.9 (9); 710.52 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-016",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 710.68 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "710.68"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments ends at 710.9 (9); 710.68 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-017",
+      "axis": "mis_citation",
+      "question": "What standard does 710.80 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "710.80"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments ends at 710.9 (9); 710.80 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-018",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 710.96 of 21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "710.96"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 710 — Voluntary Registration of Cosmetic Product Establishments ends at 710.9 (9); 710.96 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-019",
+      "axis": "mis_citation",
+      "question": "What standard does 740.30 of 21 CFR Part 740 — Cosmetic Product Warning Statements set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "740.30"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 740 — Cosmetic Product Warning Statements ends at 740.19 (19); 740.30 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-020",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 740.46 of 21 CFR Part 740 — Cosmetic Product Warning Statements?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "740.46"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 740 — Cosmetic Product Warning Statements ends at 740.19 (19); 740.46 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-021",
+      "axis": "mis_citation",
+      "question": "What standard does 740.62 of 21 CFR Part 740 — Cosmetic Product Warning Statements set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "740.62"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 740 — Cosmetic Product Warning Statements ends at 740.19 (19); 740.62 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-022",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 740.78 of 21 CFR Part 740 — Cosmetic Product Warning Statements?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "740.78"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 740 — Cosmetic Product Warning Statements ends at 740.19 (19); 740.78 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-023",
+      "axis": "mis_citation",
+      "question": "What standard does 740.90 of 21 CFR Part 740 — Cosmetic Product Warning Statements set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "740.90"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 740 — Cosmetic Product Warning Statements ends at 740.19 (19); 740.90 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-024",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 740.106 of 21 CFR Part 740 — Cosmetic Product Warning Statements?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 CFR Part 740 — Cosmetic Product Warning Statements",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "740.106"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 CFR Part 740 — Cosmetic Product Warning Statements ends at 740.19 (19); 740.106 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-025",
+      "axis": "mis_citation",
+      "question": "What standard does 410 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "410"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act ends at 399 (399); 410 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-026",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 426 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "426"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act ends at 399 (399); 426 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-027",
+      "axis": "mis_citation",
+      "question": "What standard does 442 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "442"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act ends at 399 (399); 442 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-028",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 458 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "458"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act ends at 399 (399); 458 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-029",
+      "axis": "mis_citation",
+      "question": "What standard does 470 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act set?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "470"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act ends at 399 (399); 470 was never enacted. Answering confirms a premise that is false."
+    },
+    {
+      "id": "cos-mis-030",
+      "axis": "mis_citation",
+      "question": "What must be submitted under 486 of 21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act?",
+      "expected_outcome": "needs_verification",
+      "expected_document": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act",
+      "expected_clause_paths": [],
+      "forbidden_clause_paths": [
+        "486"
+      ],
+      "cross_cell": false,
+      "expected_answer": "Needs verification — no such provision",
+      "authored_by": "seed-generated",
+      "notes": "21 U.S.C. chapter 9 — Federal Food, Drug, and Cosmetic Act ends at 399 (399); 486 was never enacted. Answering confirms a premise that is false."
+    }
+  ]
+}

@@ -433,6 +433,12 @@ Not planned when this slice was written: the FD&C Act was expected to reuse a pr
 ### Evaluation
 
 - [ ] Golden sets for both cells, six axes, same composition rules as the MFDS pair
+      → **the three generated axes are seeded (2026-08-26); the three hand-authored ones are not.**
+      100 items per cell — identifier 40, mis_citation 30, cross_domain 30 — and `validate` reports
+      `structurally valid: False` for exactly the right reason: `conceptual`, `effective_date` and
+      `unanswerable` are 0, and a template cannot write them — the
+      [seed](../../scripts/evaluation/seed.py) docstring says which and why. Those need a person,
+      as they did for the MFDS pair. See *Deviations* 32
 - [x] **The neighbour-cell pairing is a decision, not a default.** The harness hardcodes
       `GATED = {"mfds_samd": "mfds_cosmetic", …}`
       ([scripts/evaluation/cli.py](../../scripts/evaluation/cli.py)), where the neighbour supplies the
@@ -1103,3 +1109,54 @@ And the structural criteria the slice is really about:
     neighbour**. Those items expect `needs verification`, but answering them is correct in their own
     cell, so every one would score as a failure and the axis would report the opposite of what it
     measures. A missing golden set is now a sentence rather than a `FileNotFoundError`.
+
+32. **The seeder was written against one corpus and had inherited its shape without saying so
+    (2026-08-26).** Pointed at an FDA cell it did not fail — it produced **nothing**, because
+    `corpus.articles` matched a 조-only pattern and no CFR path is a 조. Four things were Korean,
+    and only one of them was the templates.
+
+    The seam is **the version's `language`**, not the cell — the same one `rule_set_for(domain,
+    language)` and the per-language full-text configuration already use. Keying on authority would
+    have put a branch on who *wrote* the instrument, which is what the falsifier watches for. Two
+    English cells share [phrasing.py](../../scripts/evaluation/phrasing.py); a third needs no
+    change, and an unknown language **raises rather than falling back**, on `rule_set_for`'s
+    precedent.
+
+    What is per-language and not merely translated:
+
+    - **The citable unit.** A CFR and a USC section are both path segments *beginning with a
+      digit* — `820.35`, `351`, `350a–1`. Containers begin with a letter, paragraphs with `(`.
+    - **A vacated provision.** 삭제 · `[Reserved]` · `Repealed.` · `Omitted` · `Transferred`,
+      measured against the live corpus rather than guessed.
+    - **A provably absent identifier.** `제{highest+11}조` counts upward; a CFR section must keep
+      its Part, because `56` is not a section and `831.45` is a *different Part that exists* — which
+      would turn a trap about a non-existent provision into a question about a real one.
+    - **The heading.** A CFR heading repeats its own number (`§ 820.35 Control of records.`), so the
+      identifier is stripped for display or the question says it twice.
+
+    **Two defects surfaced that are not about language, and one is in a gated set.**
+
+    - **The harness scoped more narrowly than the product.** `in_force_versions` took only versions
+      whose effective date had arrived, while `assistant`'s `versions_in_scope` falls back to the
+      nearest pending version and then to the most recently retrieved. Invisible while every MFDS
+      version carried a 부칙 date; **9 of 13 CFR Parts and the FD&C Act state none**, because the
+      Federal Register's `effective_on` still does not reach `document_versions` (*Deviations* 10).
+      `fda_cosmetic` seeded **zero** identifier items against four Parts. The harness now uses
+      `assistant`'s ladder — measuring a corpus the product does not answer from is a defect in
+      the measurement, not a conservative choice.
+    - **The cross-cell axis drew from documents the asking cell also claims.** `document_cells` is
+      M:N over *documents*, so an item from the FD&C Act marked "declining is correct" scores a
+      **correct** answer as a failure — *Deviations* 25, now enforced in the generator rather than
+      left as a criterion. It was reaching 3 of `fda_samd`'s 30 cross items.
+
+    **In the stored, gated `mfds_samd` set, 2 of 30 cross-cell items have this defect today**: they
+    are drawn from 「인체적용제품의 위해성평가에 관한 규정」, which that cell also claims.
+    The set is **not regenerated here** — it is a phase 1.6 gate input and the stored JSON is the
+    source of truth, so correcting it is a change with a re-score behind it — *Deviations* 26 and
+    28, again.
+    Recorded with its size so the next person finds a measurement: up to 6.7 points of that cell's
+    cross-domain axis is currently scored against itself.
+
+    The seeder now also drifts from both stored MFDS sets for a second, benign reason — the wider
+    in-force ladder makes more documents visible, which changes which ones feed each axis. Neither
+    difference is applied.

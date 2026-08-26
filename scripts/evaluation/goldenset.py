@@ -270,14 +270,23 @@ def article_of(clause_path: str) -> str:
     in different instruments; and a citation to 제5조제2항 supports an expectation recorded at
     제5조, while demanding an exact match would score a *correct* citation as a miss.
 
-    A path with no 조 segment (an annex row, say) returns its last segment, so exact-match lookups
-    are still comparable.
+    **The English corpora are the same shape with a different alphabet.** A CFR section and a USC
+    section are path segments beginning with a digit — ``Subpart A/820.35/(a)`` records at
+    ``820.35`` — while containers begin with a letter (``Subpart A``, ``Subchapter V``) and
+    paragraphs with ``(``. Tried after 조 rather than instead of it, so a Korean path cannot be
+    claimed by the digit rule and nothing about the gated cells moves.
+
+    A path with neither (an annex row, say) returns its last segment, so exact-match lookups are
+    still comparable.
     """
     segments = [segment for segment in clause_path.split("/") if segment]
     if not segments:
         return clause_path
     for segment in segments:
         if segment.endswith("조") or "조의" in segment:
+            return segment
+    for segment in segments:
+        if segment[0].isdigit():
             return segment
     return segments[-1]
 

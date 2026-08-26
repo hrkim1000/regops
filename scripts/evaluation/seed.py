@@ -39,18 +39,20 @@ measures the harness rather than the product.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Final
 
 from sqlalchemy.orm import Session
 
 from regops_shared.constants import Domain, EvaluationAxis, ExpectedOutcome
 
 from . import corpus
+from . import phrasing as phrasing_module
 from .goldenset import GoldenItem, GoldenSet, article_of, load
+from .phrasing import Phrasing
 
 #: How many of each generated axis. Enough that a per-axis score has a real denominator rather
 #: than a token one; the hard axes are hand-authored and counted separately.
@@ -60,25 +62,11 @@ TARGETS = {
     EvaluationAxis.CROSS_DOMAIN: 30,
 }
 
-#: Rotated so the set does not measure one phrasing. Not paraphrase — these are all identifier
-#: lookups, and pretending otherwise is what the conceptual axis exists to prevent.
-IDENTIFIER_TEMPLATES = (
-    "「{title}」 {article}은(는) 무엇을 규정하고 있습니까?",
-    "「{title}」 {article}({heading})의 내용을 알려주세요.",
-    "「{title}」 {article}에 규정된 사항은 무엇입니까?",
-    "{heading}에 관한 「{title}」 {article}의 규정 내용은?",
-)
-
-MISSING_TEMPLATES = (
-    "「{title}」 {article}에 따른 제출 의무는 무엇입니까?",
-    "「{title}」 {article}이(가) 정하는 기준을 알려주세요.",
-)
-
-DELETED_TEMPLATE = "「{title}」 {article}은(는) 어떤 의무를 정하고 있습니까?"
-
-CROSS_DOMAIN_TEMPLATE = "「{title}」 {article}({heading})에 따른 의무는 무엇입니까?"
-
-_ARTICLE_NUMBER = re.compile(r"^제(\d+)조")
+#: How far past an instrument's last provision a fabricated identifier is placed. Several, because
+#: the axis is filled per *document* and a cell with few instruments would otherwise come up short —
+#: `fda_cosmetic` holds four CFR Parts and reached 17 of 30 on a pair of offsets. Every one of them
+#: is past the end, so each is as provably absent as the first; what varies is only how far.
+_ABSENT_OFFSETS: Final[tuple[int, ...]] = (11, 27, 43, 59, 71, 87)
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,16 +77,17 @@ class Article:
     article: str
     heading: str | None
     ordinal: int
+    #: How this instrument is numbered and worded (:mod:`.phrasing`), from its version's language.
+    phrasing: Phrasing = phrasing_module.KOREAN
 
     @property
     def number(self) -> int:
-        match = _ARTICLE_NUMBER.match(self.article)
-        return int(match.group(1)) if match else 0
+        return self.phrasing.number_of(self.article)
 
     @property
     def usable(self) -> bool:
-        """A 삭제 clause has no content to ask about — trap material, not lookup material."""
-        return bool(self.heading) and "삭제" not in (self.heading or "")
+        """A 삭제 or ``[Reserved]`` clause has no content to ask about — trap, not lookup."""
+        return not self.phrasing.vacant(self.heading)
 
 
 def read_articles(session: Session, cell_id) -> list[Article]:
@@ -110,7 +99,9 @@ def read_articles(session: Session, cell_id) -> list[Article]:
     """
     out: list[Article] = []
     for title, version in corpus.in_force_versions(session, cell_id).items():
-        for ordinal, (path, heading) in enumerate(corpus.articles(session, version.id)):
+        phrasing = phrasing_module.for_language(version.language)
+        rows = corpus.articles(session, version.id, article_pattern=phrasing.article_pattern)
+        for ordinal, (path, heading) in enumerate(rows):
             out.append(
                 Article(
                     document=title,
@@ -119,6 +110,7 @@ def read_articles(session: Session, cell_id) -> list[Article]:
                     article=article_of(path),
                     heading=heading,
                     ordinal=ordinal,
+                    phrasing=phrasing,
                 )
             )
     return out
@@ -148,18 +140,23 @@ def generate_identifier(prefix: str, articles: Sequence[Article]) -> list[Golden
     usable = [article for article in articles if article.usable]
     items: list[GoldenItem] = []
     for index, article in enumerate(_spread(usable, TARGETS[EvaluationAxis.IDENTIFIER])):
-        template = IDENTIFIER_TEMPLATES[index % len(IDENTIFIER_TEMPLATES)]
+        phrasing = article.phrasing
+        template = phrasing.identifier_templates[index % len(phrasing.identifier_templates)]
         items.append(
             GoldenItem(
                 id=f"{prefix}-ident-{index + 1:03d}",
                 axis=EvaluationAxis.IDENTIFIER,
                 question=template.format(
-                    title=article.document, article=article.article, heading=article.heading
+                    title=article.document,
+                    article=article.article,
+                    heading=phrasing.display_heading(article.heading),
                 ),
                 expected_outcome=ExpectedOutcome.ANSWERED,
                 expected_document=article.document,
                 expected_clause_paths=(article.clause_path,),
-                expected_answer=f"{article.heading}에 관한 규정",
+                expected_answer=phrasing.answer_for(
+                    phrasing.display_heading(article.heading) or article.article
+                ),
                 notes="Identifier lookup: must resolve exactly, not fuzzily.",
             )
         )
@@ -186,28 +183,30 @@ def generate_mis_citation(prefix: str, articles: Sequence[Article]) -> list[Gold
     index = 0
     for document in sorted(by_document):
         rows = by_document[document]
-        highest = max((row.number for row in rows), default=0)
-        if highest < 5:
+        phrasing = rows[0].phrasing
+        highest_row = max(rows, key=lambda row: row.number, default=None)
+        if highest_row is None or highest_row.number < 5:
             continue
-        for offset in (11, 27):
+        highest = highest_row.number
+        for offset in _ABSENT_OFFSETS:
             index += 1
             if index > TARGETS[EvaluationAxis.MIS_CITATION]:
                 break
-            fake = f"제{highest + offset}조"
+            fake = phrasing.absent_article(highest_row.article, offset)
             items.append(
                 GoldenItem(
                     id=f"{prefix}-mis-{index:03d}",
                     axis=EvaluationAxis.MIS_CITATION,
-                    question=MISSING_TEMPLATES[index % len(MISSING_TEMPLATES)].format(
-                        title=document, article=fake
-                    ),
+                    question=phrasing.missing_templates[
+                        index % len(phrasing.missing_templates)
+                    ].format(title=document, article=fake),
                     expected_outcome=ExpectedOutcome.NEEDS_VERIFICATION,
                     expected_document=document,
                     forbidden_clause_paths=(fake,),
-                    expected_answer="확인 필요 — 해당 조문이 존재하지 않음",
+                    expected_answer=phrasing.absent_answer,
                     notes=(
-                        f"{document} ends at 제{highest}조; {fake} was never enacted. Answering "
-                        f"confirms a premise that is false."
+                        f"{document} ends at {highest_row.article} ({highest}); {fake} was never "
+                        f"enacted. Answering confirms a premise that is false."
                     ),
                 )
             )
@@ -231,13 +230,15 @@ def generate_mis_citation(prefix: str, articles: Sequence[Article]) -> list[Gold
                 GoldenItem(
                     id=f"{prefix}-mis-{index:03d}",
                     axis=EvaluationAxis.MIS_CITATION,
-                    question=DELETED_TEMPLATE.format(title=document, article=article.article),
+                    question=article.phrasing.deleted_template.format(
+                        title=document, article=article.article
+                    ),
                     expected_outcome=ExpectedOutcome.NEEDS_VERIFICATION,
                     expected_document=document,
                     forbidden_clause_paths=tuple(neighbours),
-                    expected_answer="확인 필요 — 삭제된 조문",
+                    expected_answer=article.phrasing.vacant_answer,
                     notes=(
-                        "Deleted article. The failure mode is answering from the neighbouring "
+                        "Vacated provision. The failure mode is answering from the neighbouring "
                         "articles, whose citations resolve perfectly well and are still wrong."
                     ),
                 )
@@ -246,7 +247,10 @@ def generate_mis_citation(prefix: str, articles: Sequence[Article]) -> list[Gold
 
 
 def generate_cross_domain(
-    prefix: str, neighbours: Sequence[tuple[str, Sequence[Article]]]
+    prefix: str,
+    neighbours: Sequence[tuple[str, Sequence[Article]]],
+    asking: Phrasing = phrasing_module.KOREAN,
+    shared_documents: frozenset[str] = frozenset(),
 ) -> list[GoldenItem]:
     """Real obligations from the neighbouring cells, asked here with cross-cell off.
 
@@ -261,7 +265,15 @@ def generate_cross_domain(
     not a default reached for here.
     """
     usable = [
-        (slug, [article for article in articles if article.usable]) for slug, articles in neighbours
+        (
+            slug,
+            [
+                article
+                for article in articles
+                if article.usable and article.document not in shared_documents
+            ],
+        )
+        for slug, articles in neighbours
     ]
     usable = [(slug, articles) for slug, articles in usable if articles]
     if not usable:
@@ -279,13 +291,15 @@ def generate_cross_domain(
                 GoldenItem(
                     id=f"{prefix}-cross-{len(items) + 1:03d}",
                     axis=EvaluationAxis.CROSS_DOMAIN,
-                    question=CROSS_DOMAIN_TEMPLATE.format(
-                        title=article.document, article=article.article, heading=article.heading
+                    question=article.phrasing.cross_template.format(
+                        title=article.document,
+                        article=article.article,
+                        heading=article.phrasing.display_heading(article.heading),
                     ),
                     expected_outcome=ExpectedOutcome.NEEDS_VERIFICATION,
                     expected_document=None,
                     cross_cell=False,
-                    expected_answer="확인 필요 — 이 셀의 규정이 아님",
+                    expected_answer=asking.wrong_cell_answer,
                     notes=f"Belongs to {slug}. Declining is correct (ADR-0006 decision 9).",
                 )
             )
@@ -313,11 +327,17 @@ def build(
     prefix = "samd" if registry[cell].domain == Domain.SAMD.value else "cos"
     articles = read_articles(session, registry[cell].id)
     neighbours = [(slug, read_articles(session, registry[slug].id)) for slug in neighbour_cells]
+    #: The asking cell's own phrasing, taken from what it actually holds rather than from its slug —
+    #: a cell is not annotated with a language and the versions under it are.
+    asking = articles[0].phrasing if articles else phrasing_module.KOREAN
+    #: Titles this cell claims itself. A neighbour's copy of one of these is not a wrong-cell
+    #: question — it is this cell's own governing text seen from the other side of an M:N row.
+    shared = frozenset(article.document for article in articles)
 
     items = [
         *generate_identifier(prefix, articles),
         *generate_mis_citation(prefix, articles),
-        *generate_cross_domain(prefix, neighbours),
+        *generate_cross_domain(prefix, neighbours, asking, shared),
     ]
     if curated_path.exists():
         items.extend(load(curated_path).items)

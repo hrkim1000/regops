@@ -40,6 +40,14 @@ class VersionRow:
     doc_type: str
     effective_date: str | None
     clause_count: int
+    #: Tie-breaker when no version of a document states an effective date, which most FDA versions
+    #: do not — the Federal Register's `effective_on` does not reach `document_versions`
+    #: (phase2.0a *Deviations* 10).
+    retrieved_at: str | None = None
+    #: Which phrasing a golden item about this instrument is written in (:mod:`.phrasing`). A
+    #: property of the version, not of the cell: the FD&C Act is claimed by both FDA cells and is
+    #: one English document either way.
+    language: str = "ko"
 
 
 def cells(session: Session) -> dict[str, CellRow]:
@@ -59,7 +67,8 @@ def cell_versions(session: Session, cell_id: uuid.UUID) -> list[VersionRow]:
         text(
             """
             SELECT dv.id, d.id, d.title, d.doc_type::text, dv.effective_date::text,
-                   (SELECT count(*) FROM clauses c WHERE c.document_version_id = dv.id)
+                   (SELECT count(*) FROM clauses c WHERE c.document_version_id = dv.id),
+                   dv.retrieved_at::text, dv.language
             FROM document_versions dv
             JOIN documents d ON d.id = dv.document_id
             JOIN document_cells dc ON dc.document_id = d.id
@@ -73,27 +82,53 @@ def cell_versions(session: Session, cell_id: uuid.UUID) -> list[VersionRow]:
 
 
 def in_force_versions(session: Session, cell_id: uuid.UUID) -> dict[str, VersionRow]:
-    """One version per document title: the latest whose effective date has arrived.
+    """One version per document title, chosen the way retrieval chooses it.
 
     Derived, never stored (ADR-0016 decision 6), and computed over the whole version set because
     "which one is in force" is a property of the set rather than of a row.
+
+    **The ladder is `assistant`'s, deliberately** — latest effective date that has arrived, else the
+    nearest pending one, else the most recently retrieved (``store.versions_in_scope``). This used
+    to stop at the first rung and drop everything else, which was invisible while every MFDS version
+    carried a 부칙 date and is not invisible now: **9 of 13 CFR Parts and the FD&C Act state no
+    effective date at all**, because the Federal Register's `effective_on` does not reach
+    `document_versions` (phase2.0a *Deviations* 10). Seeding `fda_cosmetic` produced **zero**
+    identifier items against a corpus of four Parts.
+
+    A harness that scopes more narrowly than the product measures a corpus the product does not
+    answer from, which is a defect in the measurement rather than a conservative choice.
     """
-    latest: dict[str, VersionRow] = {}
     today = datetime.now(UTC).date().isoformat()
+    by_title: dict[str, list[VersionRow]] = {}
     for row in cell_versions(session, cell_id):
-        if row.effective_date is None or row.effective_date > today:
-            continue
-        held = latest.get(row.title)
-        if held is None or (row.effective_date or "") > (held.effective_date or ""):
-            latest[row.title] = row
-    return latest
+        by_title.setdefault(row.title, []).append(row)
+
+    chosen: dict[str, VersionRow] = {}
+    for title, rows in by_title.items():
+        arrived = [r for r in rows if r.effective_date is not None and r.effective_date <= today]
+        pending = [r for r in rows if r.effective_date is not None and r.effective_date > today]
+        if arrived:
+            chosen[title] = max(arrived, key=lambda r: r.effective_date or "")
+        elif pending:
+            chosen[title] = min(pending, key=lambda r: r.effective_date or "")
+        else:
+            chosen[title] = max(rows, key=lambda r: r.retrieved_at or "")
+    return chosen
 
 
-def articles(session: Session, version_id: uuid.UUID) -> list[tuple[str, str | None]]:
-    """``(clause_path, heading)`` for every 조 in a version, in document order.
+def articles(
+    session: Session, version_id: uuid.UUID, *, article_pattern: str
+) -> list[tuple[str, str | None]]:
+    """``(clause_path, heading)`` for every citable provision in a version, in document order.
 
     Matched on the path rather than on ``level``: the corpus nests some 조 under 절 and some
-    directly under 장, so a level filter drops a whole chapter — 화장품법 제3장 among them.
+    directly under 장, so a level filter drops a whole chapter — 화장품법 제3장 among them. The same
+    is true of the CFR, where part 710 has sections directly under the Part and the other twelve
+    in scope nest them under a Subpart.
+
+    The pattern comes from the version's :mod:`.phrasing` rather than being fixed here. It used to
+    be the 조 regex inline, which returned **nothing at all** for an FDA version and left every
+    generated axis silently empty.
     """
     rows = session.execute(
         text(
@@ -101,17 +136,21 @@ def articles(session: Session, version_id: uuid.UUID) -> list[tuple[str, str | N
             SELECT clause_path, heading FROM clauses
             WHERE document_version_id = :version_id
               AND kind = 'prose'
-              AND clause_path ~ '(^|/)제[0-9]+조(의[0-9]+)?$'
+              AND clause_path ~ :article_pattern
             ORDER BY ordinal
             """
         ),
-        {"version_id": version_id},
+        {"version_id": version_id, "article_pattern": article_pattern},
     )
     return [(row[0], row[1]) for row in rows]
 
 
 def article_index(session: Session, cell_id: uuid.UUID) -> dict[str, set[str]]:
     """``{document title: {제5조, 제5조의2, …}}`` across every version the cell claims.
+
+    The pattern is the union of both conventions rather than one selected by language: this is an
+    index of *what exists* and is checked against expectations a person wrote, so a cell holding
+    documents in two languages must not have half of them silently missing from it.
 
     Across versions on purpose: a golden item may pin an expectation to a clause that only exists
     in a not-yet-in-force version, which is exactly what the effective-date axis is for.
@@ -125,7 +164,7 @@ def article_index(session: Session, cell_id: uuid.UUID) -> dict[str, set[str]]:
             JOIN documents d ON d.id = dv.document_id
             JOIN document_cells dc ON dc.document_id = d.id
             WHERE dc.cell_id = :cell_id
-              AND c.clause_path ~ '(^|/)제[0-9]+조(의[0-9]+)?$'
+              AND c.clause_path ~ '(^|/)(제[0-9]+조(의[0-9]+)?|[0-9][^/]*)$'
             """
         ),
         {"cell_id": cell_id},
