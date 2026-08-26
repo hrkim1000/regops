@@ -27,7 +27,9 @@ from sqlalchemy.orm import aliased
 from regops_shared.api import Meta, ok
 from regops_shared.auth import Principal, get_current_principal
 from regops_shared.constants import (
+    ADMIN_RULE_DOC_TYPES,
     DOC_CATEGORY_ORDER,
+    STATUTE_DOC_TYPES,
     DocCategory,
     VersionStatus,
     doc_category,
@@ -58,11 +60,17 @@ _Parent = aliased(Document, name="parent_doc")
 #: SQL mirror of :func:`doc_category`, so ordering happens in the database rather than over a page
 #: that has already been sliced. The Python function stays the single definition of the *rule*; this
 #: expression exists only because ``ORDER BY`` cannot call it.
+#:
+#: The membership sets are **imported, not restated**. They used to be inline literals here, which
+#: is a copy that only stays true while nobody adds a ``doc_type`` — and adding two (``regulation``,
+#: ``codified_statute``) is exactly what made every FDA document sort as ``other`` while the Python
+#: side was being corrected. ``sorted()`` only fixes the emitted parameter order so the SQL is
+#: stable to read in a log.
 _CATEGORY_SQL = case(
-    (Document.doc_type.in_(("law", "decree", "enforcement_rule")), DocCategory.STATUTE.value),
-    (Document.doc_type == "notice", DocCategory.ADMIN_RULE.value),
+    (Document.doc_type.in_(sorted(STATUTE_DOC_TYPES)), DocCategory.STATUTE.value),
+    (Document.doc_type.in_(sorted(ADMIN_RULE_DOC_TYPES)), DocCategory.ADMIN_RULE.value),
     (
-        and_(Document.doc_type == "annex", _Parent.doc_type == "notice"),
+        and_(Document.doc_type == "annex", _Parent.doc_type.in_(sorted(ADMIN_RULE_DOC_TYPES))),
         DocCategory.ADMIN_RULE_ANNEX.value,
     ),
     (Document.doc_type == "annex", DocCategory.STATUTE_ANNEX.value),

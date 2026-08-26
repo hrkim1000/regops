@@ -5,14 +5,20 @@ export type DocType =
   | 'decree'
   | 'enforcement_rule'
   | 'notice'
+  | 'regulation'
+  | 'codified_statute'
   | 'annex'
   | 'guidance'
   | 'feed';
 
 /**
- * 국가법령정보's top-level taxonomy. Derived server-side from `doc_type` plus, for an annex, the
- * *parent's* `doc_type` — 별표 of a 법령 and 별표 of a 고시 are different categories and the annex
- * row cannot tell them apart on its own.
+ * Which rung of the legal ladder a document sits on — an instrument the legislature enacted, or a
+ * rule an agency issued under delegated power. Derived server-side from `doc_type` plus, for an
+ * annex, the *parent's* `doc_type` — 별표 of a 법령 and 별표 of a 고시 are different categories and
+ * the annex row cannot tell them apart on its own.
+ *
+ * The values are unchanged; what changed is that they are no longer read as 국가법령정보's own
+ * buckets. `other` means unclassified, not non-Korean.
  */
 export type DocCategory =
   | 'statute'

@@ -14,11 +14,12 @@ import type { Cell, DocCategory, DocumentSummary } from '@/types/regulation';
 export const dynamic = 'force-dynamic';
 
 /**
- * Documents in the active cell, grouped the way the authority groups its own holdings.
+ * Documents in the active cell, grouped by where each sits on the legal ladder.
  *
- * 국가법령정보 files everything as 현행법령 · 현행 행정규칙 · 법령 별표·서식 · 행정규칙 별표·서식,
- * so "법령 3건, 고시 17건" reads the way the source does — where a flat count of "20 본문" says
- * nothing about what kind of instrument they are.
+ * "법률·법령 3건, 하위 규정 17건" says what kind of instrument they are, where a flat "20 본문" does
+ * not. The grouping began as 국가법령정보's own filing (현행법령 · 현행 행정규칙 · …) and now names
+ * the distinction instead, because it is the one every authority in scope makes — the same headers
+ * have to hold a 고시 and a C.F.R. Part without either looking like an exception.
  *
  * Annexes are excluded from the *list* (`parent_only`): under ADR-0012 a 고시 with four 별표 is five
  * `documents` rows, so listing them flat would read as five instruments. They are still **counted**

@@ -128,26 +128,36 @@ class DocType(StrEnum):
 
 
 class DocCategory(StrEnum):
-    """The authority's own top-level taxonomy, which is how an RA already thinks about the corpus.
+    """The rung of the legal ladder a document sits on — enacted instrument, or subordinate rule.
 
-    국가법령정보 groups its holdings as 현행법령 · 현행 행정규칙 · 법령 별표·서식 · 행정규칙
-    별표·서식 (and 법령해석, which RegOps does not ingest). Grouping the browser this way rather
-    than by our ``doc_type`` means "9 법령, 59 고시" reads the way the source does.
+    It began as 국가법령정보's own taxonomy (현행법령 · 현행 행정규칙 · 법령 별표·서식 · 행정규칙
+    별표·서식), on the argument that grouping the browser the way the source does means "9 법령,
+    59 고시" reads the way an RA already thinks. That held while the corpus was one authority's.
+
+    **It is now the distinction itself rather than one authority's name for it**, because the
+    distinction is what every authority in scope actually makes: an instrument the legislature
+    enacts, and a rule an agency issues under delegated power. 법률 and the U.S. Code are the first;
+    고시 and a C.F.R. Part are the second. The buckets did not change — only the claim about whose
+    vocabulary names them, and the labels moved with it (frontend ``DOC_CATEGORY_LABEL``).
+
+    ``OTHER`` therefore means *"unclassified"* and not *"foreign"*. Every FDA document landing in it
+    was the symptom that forced this: 21 C.F.R. Part 700 is subordinate legislation by any
+    authority's reckoning, and calling it 기타 said the taxonomy did not reach it.
 
     It is **derived, never stored**: a category is ``doc_type`` plus, for an annex, the *parent's*
     ``doc_type``. Storing it would be a third copy of a fact ``documents`` already holds twice.
     """
 
-    STATUTE = "statute"  # 1. 현행법령 — 법률 · 시행령 · 시행규칙
-    ADMIN_RULE = "admin_rule"  # 2. 현행 행정규칙 — 고시
+    STATUTE = "statute"  # 1. 법률·법령 — 법률 · 시행령 · 시행규칙 · U.S.C.
+    ADMIN_RULE = "admin_rule"  # 2. 하위 규정 — 고시 · C.F.R.
     STATUTE_ANNEX = "statute_annex"  # 3. 법령 별표·서식
-    ADMIN_RULE_ANNEX = "admin_rule_annex"  # 4. 행정규칙 별표·서식
+    ADMIN_RULE_ANNEX = "admin_rule_annex"  # 4. 하위 규정 별표·서식
     FEED = "feed"  # not part of the taxonomy — a change signal, not a holding
-    OTHER = "other"
+    OTHER = "other"  # 분류 미정 — genuinely uncategorised, never "not Korean"
 
 
-#: Display order. 법령 before 행정규칙 before their annexes — the authority's own ordering, and the
-#: same priority the source map's blocks descend in.
+#: Display order. Enacted instruments before subordinate rules before their annexes — the ladder's
+#: own descent, and the same priority the source map's blocks are written in.
 DOC_CATEGORY_ORDER: Final[tuple[DocCategory, ...]] = (
     DocCategory.STATUTE,
     DocCategory.ADMIN_RULE,
@@ -157,24 +167,34 @@ DOC_CATEGORY_ORDER: Final[tuple[DocCategory, ...]] = (
     DocCategory.OTHER,
 )
 
-_STATUTE_TYPES: Final[frozenset[str]] = frozenset({"law", "decree", "enforcement_rule"})
+#: Enacted instruments. ``codified_statute`` is a U.S.C. chapter — a statute rearranged by subject,
+#: which is a publishing format and not a different rung (ADR-0018 decision 12).
+STATUTE_DOC_TYPES: Final[frozenset[str]] = frozenset(
+    {"law", "decree", "enforcement_rule", "codified_statute"}
+)
+
+#: Rules an agency issues under delegated power. A C.F.R. Part is 고시's counterpart, not 법률's:
+#: ``DocType.REGULATION``'s own docstring says it exists because a CFR Part has no 시행령 tier above
+#: it, which is the same observation from the other side.
+ADMIN_RULE_DOC_TYPES: Final[frozenset[str]] = frozenset({"notice", "regulation"})
 
 
 def doc_category(doc_type: str, parent_doc_type: str | None = None) -> DocCategory:
-    """Which taxonomy bucket a document falls in.
+    """Which rung of the ladder a document sits on.
 
     ``parent_doc_type`` is required for an annex and ignored otherwise: 별표 of a 법령 and 별표 of a
-    고시 are *different categories* to the authority, and the annex row itself cannot tell them
-    apart — ``doc_type`` is ``annex`` for both.
+    고시 are *different categories*, and the annex row itself cannot tell them apart — ``doc_type``
+    is ``annex`` for both. A C.F.R. appendix follows its Part down to ``ADMIN_RULE_ANNEX`` for the
+    same reason 고시's 별표 does, without a branch of its own.
     """
-    if doc_type in _STATUTE_TYPES:
+    if doc_type in STATUTE_DOC_TYPES:
         return DocCategory.STATUTE
-    if doc_type == "notice":
+    if doc_type in ADMIN_RULE_DOC_TYPES:
         return DocCategory.ADMIN_RULE
     if doc_type == "annex":
         return (
             DocCategory.ADMIN_RULE_ANNEX
-            if parent_doc_type == "notice"
+            if parent_doc_type in ADMIN_RULE_DOC_TYPES
             else DocCategory.STATUTE_ANNEX
         )
     if doc_type == "feed":

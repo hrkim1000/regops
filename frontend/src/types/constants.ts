@@ -23,31 +23,47 @@ export const SECTION_ROOTS = ['/monitoring', '/qa', '/regulations'] as const;
 /** httpOnly — set by /session, read by middleware and Server Components, never by client JS. */
 export const ACCESS_TOKEN_COOKIE = 'regops_access_token';
 
-/** Human labels for the document kinds the ingest pipeline produces. */
+/**
+ * Human labels for the document kinds the ingest pipeline produces.
+ *
+ * The two FDA types keep their **own** vocabulary — `C.F.R. Part`, not 시행규칙 — because a
+ * `doc_type` names the instrument as its authority issues it. Only the *category* above them is
+ * neutral, and that is the division of labour: the ladder is shared, the instruments are not.
+ */
 export const DOC_TYPE_LABEL: Record<string, string> = {
   law: '법률',
   decree: '시행령',
   enforcement_rule: '시행규칙',
   notice: '고시',
+  regulation: 'C.F.R. Part',
+  codified_statute: 'U.S. Code',
   annex: '별표',
   guidance: '가이드',
   feed: '피드',
 };
 
 /**
- * 국가법령정보's own top-level taxonomy — the way the authority groups its holdings, and so the
- * way an RA already reads them. Labels mirror the source's wording rather than our `doc_type`.
+ * Which rung of the legal ladder a document sits on — enacted instrument, or subordinate rule.
+ *
+ * **These labels were 국가법령정보's own wording** (현행법령 · 현행 행정규칙 · …), on the argument
+ * that the browser should read the way the source does. That was right while the corpus was one
+ * authority's, and it put every FDA document under `기타` — which said the taxonomy did not reach
+ * them, when in fact a C.F.R. Part is subordinate legislation by anyone's reckoning.
+ *
+ * So the names are now the distinction rather than one authority's word for it, and `기타` becomes
+ * **분류 미정**: it means *unclassified*, never *foreign*. A bucket that quietly means "not Korean"
+ * is one that grows with every cell we add.
  *
  * Order matches `DOC_CATEGORY_ORDER` in the API; the server sorts by it, so the client only has to
  * render a header when the category changes.
  */
 export const DOC_CATEGORY_LABEL: Record<string, string> = {
-  statute: '현행법령',
-  admin_rule: '현행 행정규칙',
+  statute: '법률·법령',
+  admin_rule: '하위 규정',
   statute_annex: '법령 별표·서식',
-  admin_rule_annex: '행정규칙 별표·서식',
+  admin_rule_annex: '하위 규정 별표·서식',
   feed: '변경 신호 (RSS)',
-  other: '기타',
+  other: '분류 미정',
 };
 
 /** Categories whose members are annexes — listed under their parent, not as instruments. */

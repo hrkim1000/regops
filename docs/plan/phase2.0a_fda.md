@@ -1476,8 +1476,9 @@ And the structural criteria the slice is really about:
 
     It does not, and the reasoning is
     [ADR-0021](../design/ADR-0021-guidance-leaves-the-regulation-library.md)'s one surface on:
-    **this slice is the regulation corpus.** A recall is a fact about a product, an adverse-event report about an incident, a warning letter about a firm, an import
-    alert about a shipment. None is regulation text and none has a clause to cite.
+    **this slice is the regulation corpus.** A recall is a fact about a product, an adverse-event
+    report about an incident, a warning letter about a firm, an import alert about a shipment. None
+    is regulation text and none has a clause to cite.
 
     All four go to [phase2.3](phase2.3_product_registries.md) together. **Splitting was the tempting
     wrong answer**: recalls and MAUDE are on openFDA and the other two are not, so a split would
@@ -1486,6 +1487,46 @@ And the structural criteria the slice is really about:
 
     Nothing is lost by the move and something is gained: 2.3 already has to answer *is a registry
     row citable at all*, which is the same question these four raise and which this slice had
-    nowhere to put. What the probe found travels with them — three of four reachable, `Crawl-Delay: 30` on
-    `www.fda.gov`, Import Alerts behind the same Akamai block as the Recognized Consensus Standards
-    list (*Deviations* 36, 37).
+    nowhere to put. What the probe found travels with them — three of four reachable,
+    `Crawl-Delay: 30` on `www.fda.gov`, Import Alerts behind the same Akamai block as the
+    Recognized Consensus Standards list (*Deviations* 36, 37).
+
+40. **`기타` was not a label problem, and every FDA cell was reading as empty (2026-08-26).** The
+    browser groups documents by `DocCategory`, and both FDA `doc_type`s — `regulation` and
+    `codified_statute` — fell through `doc_category()` to `OTHER`. The visible symptom was 15
+    documents filed under 기타; the one that mattered was not visible at all.
+
+    `list_cells` computes `document_count` as `STATUTE + ADMIN_RULE`, so **the ScopeBar showed
+    `fda_samd 0` and `fda_cosmetic 0`** while the store held 10 and 5 instruments. The cell badge
+    said no connector reaches those cells yet, which is precisely the claim the badge exists to
+    make truthfully, and it was false for a fortnight.
+
+    Three options were weighed: map the two types onto the existing rungs (A); do that and rename
+    the rungs so neither authority's vocabulary is privileged (B); or give each authority its own
+    buckets (C). **B was chosen.** A alone leaves a C.F.R. Part filed under **현행 행정규칙** —
+    correct placement under a heading that names a Korean instrument class, so the reader has to
+    know it is a translation. C preserves each authority's real vocabulary and multiplies the
+    buckets by authority, which is the grouping the browser exists to avoid.
+
+    So the categories are now the **distinction** rather than one authority's name for it:
+    `법률·법령` (법률·시행령·시행규칙 · U.S.C.) and `하위 규정` (고시 · C.F.R. Part). The rungs did
+    not move, only the claim about whose vocabulary names them. `doc_type` labels stay
+    authority-specific — a C.F.R. Part is shown as **C.F.R. Part**, never as 시행규칙 — because a
+    `doc_type` names the instrument as its issuer issues it. The ladder is shared; the instruments
+    are not.
+
+    **`other` now means 분류 미정 and never "not Korean."** A bucket that quietly means *foreign*
+    grows with every cell added, and it is the shape this defect had.
+
+    This amends [phase1.5](phase1.5_frontend.md)'s *"grouped by the authority's own taxonomy"*
+    (2026-08-06). That was right for a one-authority corpus and would have been wrong to generalise
+    in advance — the FDA corpus is what made the second reading available.
+
+    Two things kept it from recurring rather than one. `_CATEGORY_SQL` in `documents.py` mirrors
+    `doc_category()` for `ORDER BY` and **restated the membership as inline literals**; it now
+    imports `STATUTE_DOC_TYPES` / `ADMIN_RULE_DOC_TYPES`, so a new `doc_type` cannot be added to one
+    and forgotten in the other. And `test_every_doc_type_maps_to_a_category` passed throughout —
+    `OTHER` is a member of `DOC_CATEGORY_ORDER`, so a fall-through satisfied it. The new
+    `test_no_storable_doc_type_lands_in_other` is the assertion that fails, with `guidance` its one
+    exemption by decision ([ADR-0021](../design/ADR-0021-guidance-leaves-the-regulation-library.md)
+    keeps it out of `documents` entirely) rather than by omission.
