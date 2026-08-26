@@ -14,6 +14,7 @@ from __future__ import annotations
 import pytest
 
 from app.extraction.rules import (
+    INHERITABLE_REASONS,
     found_modals,
     has_permissive,
     rule_set_for,
@@ -375,3 +376,109 @@ def test_adding_codes_did_not_touch_the_modal_inventory() -> None:
     """*Whether* a clause bears an obligation is unchanged; only the label it can carry moved."""
     assert rule_set_for(Domain.SAMD, "en").modals == MODAL_INVENTORY["en"]
     assert rule_set_for(Domain.SAMD, "ko").modals == MODAL_INVENTORY["ko"]
+
+
+# --- a heading must BE the role, not mention it ---------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("heading", "reason"),
+    [
+        ("정의", ExclusionReason.DEFINITION),
+        ("용어의 정의", ExclusionReason.DEFINITION),
+        ("목적", ExclusionReason.SCOPE),
+        ("적용범위", ExclusionReason.SCOPE),
+        ("적용 범위", ExclusionReason.SCOPE),
+    ],
+)
+def test_a_korean_role_heading_is_still_excluded(heading, reason) -> None:
+    """Anchoring must not cost the genuine ones. These four are every role heading in the gated
+    corpus, measured rather than imagined."""
+    assert _triage("어떤 내용이든 상관없다.", heading=heading).reason is reason
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "지정의 취소 등",
+        "적합성인정의 취소 등",
+        "사용목적",
+        "전시 목적 의료기기의 진열 승인 등",
+        "임상시험용 의료기기의 치료목적 사용",
+        "쉬운 용어",
+        "번호 | 분류번호 | 품목명 | 등급 | 정의",
+    ],
+)
+def test_a_korean_word_containing_the_role_does_not_exclude_the_clause(heading) -> None:
+    """**The Korean half of the `endoscope` bug, and it was live.** The ASCII needles were guarded
+    with `\b`; Hangul has no word boundary for `\b` to find, so the Korean ones fell through to
+    plain containment — 지**정의**, 적합성인**정의**, 사용**목적** — and excluded obligation-bearing
+    articles that then never reached the agent, while coverage counted them as examined.
+
+    Every heading here is real: taken from the gated corpus on 2026-08-26, and the last one is a
+    table header row.
+    """
+    verdict = _triage("제조업자는 그 기록을 3년간 보관하여야 한다.", heading=heading)
+    assert verdict.kind is ClassificationKind.OBLIGATION_BEARING
+
+
+# --- a sub-provision keeps the role of the provision above it -------------------------------------
+
+
+def _inherited(text: str, *, path: str, inherited: ExclusionReason | None):
+    return triage(
+        clause_kind=ClauseKind.PROSE,
+        clause_path=path,
+        path_segments=path.split("/"),
+        heading=None,
+        text=text,
+        rules=SAMD,
+        inherited=inherited,
+    )
+
+
+def test_a_paragraph_of_a_definitions_article_is_a_definition() -> None:
+    """A definitions article states its heading once and its 호 simply define terms, so reading each
+    clause alone sends them to the agent. That is how 21 CFR 700.3(g) — *"The term chemical
+    description means…"* — produced an IR asserting an obligation a definition cannot impose."""
+    verdict = _inherited(
+        '2. "의료기기 고유식별자"란 제품별로 고유하게 생성되는 숫자 또는 문자의 조합을 말한다.',
+        path="제2조/제2호",
+        inherited=ExclusionReason.DEFINITION,
+    )
+    assert verdict.kind is ClassificationKind.EXCLUDED
+    assert verdict.reason is ExclusionReason.DEFINITION
+
+
+def test_a_modal_inside_an_inherited_definition_does_not_rescue_it() -> None:
+    """The same ordering the article-level test already relies on: a definition that happens to
+    contain 하여야 한다 is still a definition, and that holds one level down too."""
+    verdict = _inherited(
+        '3. "표시"란 용기에 기재하여야 하는 사항을 말한다.',
+        path="제2조/제3호",
+        inherited=ExclusionReason.DEFINITION,
+    )
+    assert verdict.reason is ExclusionReason.DEFINITION
+
+
+def test_structure_still_wins_over_an_inherited_role() -> None:
+    """An empty stub inside a definitions article is empty, not a definition. The inheritance is
+    checked after the structural tests for exactly this reason."""
+    verdict = _inherited("", path="제2조/제4호", inherited=ExclusionReason.DEFINITION)
+    assert verdict.reason is ExclusionReason.EMPTY
+
+
+def test_nothing_is_inherited_when_the_provision_above_carries_no_role() -> None:
+    verdict = _inherited(
+        "제조업자는 그 기록을 3년간 보관하여야 한다.", path="제5조/제1항", inherited=None
+    )
+    assert verdict.kind is ClassificationKind.OBLIGATION_BEARING
+
+
+def test_only_role_reasons_are_inheritable() -> None:
+    """`permissive`, `delegation` and the rest describe *this clause*. A sub-clause of a permissive
+    paragraph can carry a duty of its own, and inheriting the parent's verdict would bury it."""
+    assert ExclusionReason.PERMISSIVE not in INHERITABLE_REASONS
+    assert ExclusionReason.DELEGATION not in INHERITABLE_REASONS
+    assert ExclusionReason.NO_OBLIGATION not in INHERITABLE_REASONS
+    assert frozenset({ExclusionReason.DEFINITION, ExclusionReason.SCOPE}) == INHERITABLE_REASONS

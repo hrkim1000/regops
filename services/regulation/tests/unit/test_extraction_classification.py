@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.extraction.agent import AgentResult, Proposal
-from app.extraction.extract import ExtractionResult, _process
+from app.extraction.extract import ExtractionResult, _process, _RoleTrail
 from app.extraction.rules import rule_set_for
 from regops_shared.constants import ClassificationKind, Domain, ExclusionReason
 
@@ -90,6 +90,7 @@ def _run_process(monkeypatch, captured, agent: AgentResult, *, written: int, rej
         document=SimpleNamespace(id="d1"),
         version=SimpleNamespace(id="v1", effective_date=None),
         result=result,
+        roles=_RoleTrail(),
     )
     return captured[-1]
 

@@ -55,7 +55,7 @@ from regops_shared.models import (
 from regops_shared.models.base import utcnow
 
 from .agent import AgentResult, Proposal, extract_clause
-from .rules import RuleSet, Triage, rule_set_for, triage
+from .rules import INHERITABLE_REASONS, RuleSet, Triage, rule_set_for, triage
 
 log = structlog.get_logger(__name__)
 
@@ -119,6 +119,9 @@ def extract_version(
     _clear_previous_drafts(session, version, domain=domain)
 
     bound = log.bind(version=str(version.id), domain=domain.value, run=str(run.id))
+    #: Paths whose role a child inherits, accumulated as we go. Clauses arrive in document order, so
+    #: a provision is always classified before anything beneath it — no second pass and no query.
+    roles = _RoleTrail()
     try:
         for index, clause in enumerate(clauses, start=1):
             _process(
@@ -130,6 +133,7 @@ def extract_version(
                 document=document,
                 version=version,
                 result=result,
+                roles=roles,
             )
             if index % EXTRACTION_COMMIT_EVERY == 0:
                 _checkpoint(session, run, result)
@@ -176,6 +180,36 @@ def domains_for(session: Session, document_id: uuid.UUID) -> list[Domain]:
 # --- one clause ------------------------------------------------------------------------------
 
 
+class _RoleTrail:
+    """Which provisions carry a role their sub-clauses keep, by path prefix.
+
+    A definitions article states its heading once and its 호 / paragraphs say nothing about being
+    definitions — they simply define terms. Reading each clause alone therefore sends them to the
+    agent, which is how 21 CFR 700.3(g) produced an IR asserting an obligation a definition cannot
+    impose.
+
+    Prefix matching on ``clause_path`` rather than ``parent_clause_id``: the role descends the whole
+    subtree, not one level, and the path already encodes ancestry. The ``/`` is required in the
+    comparison so ``제2조`` does not claim ``제20조`` — the same over-match that
+    :func:`~app.extraction.rules._role_of` guards against in headings.
+    """
+
+    __slots__ = ("_prefixes",)
+
+    def __init__(self) -> None:
+        self._prefixes: dict[str, ExclusionReason] = {}
+
+    def role_above(self, clause_path: str) -> ExclusionReason | None:
+        for prefix, reason in self._prefixes.items():
+            if clause_path.startswith(f"{prefix}/"):
+                return reason
+        return None
+
+    def record(self, clause_path: str, reason: ExclusionReason | None) -> None:
+        if reason is not None and reason in INHERITABLE_REASONS:
+            self._prefixes[clause_path] = reason
+
+
 def _process(
     session: Session,
     clause: Clause,
@@ -186,6 +220,7 @@ def _process(
     document: Document,
     version: DocumentVersion,
     result: ExtractionResult,
+    roles: _RoleTrail,
 ) -> None:
     """Classify one clause and, if it bears obligations, write the IRs it yields."""
     result.clauses_seen += 1
@@ -197,7 +232,9 @@ def _process(
         heading=clause.heading,
         text=clause.text,
         rules=rules,
+        inherited=roles.role_above(clause.clause_path),
     )
+    roles.record(clause.clause_path, verdict.reason)
 
     if not verdict.needs_agent:
         _classify(session, clause, run=run, rules=rules, verdict=verdict, result=result)

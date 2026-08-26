@@ -78,8 +78,38 @@ _PERMISSIVE_PATTERNS: Final[dict[str, str]] = {
 
 #: Headings that mark a clause as definitional or scope-setting whatever its body says. Matched
 #: against the clause heading, and against the parenthetical title 조문내용 embeds — "제2조(정의)".
-_DEFINITION_HEADINGS: Final[tuple[str, ...]] = ("정의", "용어", "definitions")
-_SCOPE_HEADINGS: Final[tuple[str, ...]] = ("목적", "적용범위", "적용 범위", "purpose", "scope")
+#:
+#: **Anchored, not substring, and the reason is measured.** These used to be needles tested with
+#: containment, which the module already knew was wrong for ASCII — ``scope`` inside ``endoscope``
+#: — and guarded with ````. Hangul has no ````, so the Korean needles kept the containment
+#: path and it fired exactly as predicted. Across the gated corpus on 2026-08-26, ``정의`` matched
+#: **지정의 취소 등** and **적합성인정의 취소 등**, and ``목적`` matched **사용목적** and
+#: **전시 목적 의료기기의 진열 승인 등** — obligation-bearing articles, excluded as definitions and
+#: never shown to the agent, while coverage recorded them as examined. That is the quietest way to
+#: lose an obligation, which is the failure the role test was written to prevent.
+#:
+#: A heading must therefore **be** the role rather than mention it. Every genuine one in the corpus
+#: is covered: 정의 · 용어의 정의 · 목적 · 적용범위. A trailing 등 is allowed because Korean article
+#: headings take it freely; a leading ``§ 820.35`` is stripped because a CFR heading repeats its own
+#: number.
+_ROLE_PATTERNS: Final[tuple[tuple[re.Pattern[str], ExclusionReason], ...]] = (
+    (
+        re.compile(r"^(?:용어의?\s*)?(?:정의|뜻)(?:\s*등)?$|^definitions?$", re.IGNORECASE),
+        ExclusionReason.DEFINITION,
+    ),
+    (
+        re.compile(
+            r"^(?:목적|적용\s*범위|목적\s*및\s*적용\s*범위)(?:\s*등)?$"
+            r"|^(?:purpose|scope)$|^scope\s+and\s+purpose$",
+            re.IGNORECASE,
+        ),
+        ExclusionReason.SCOPE,
+    ),
+)
+
+#: A CFR heading opens with its own section number — ``§ 820.35 Control of records.`` — so the role
+#: test would never see ``Definitions`` on its own.
+_HEADING_NUMBER: Final[re.Pattern[str]] = re.compile(r"^\s*§+\s*[0-9][^\s]*(?:\s+to\s+\S+)?\s*")
 
 #: "…는 총리령으로 정한다" — the clause defers the duty to another instrument rather than stating
 #: one. Extracting an IR here would assert an obligation whose content lives somewhere else.
@@ -204,6 +234,15 @@ class Triage:
         return self.kind is ClassificationKind.OBLIGATION_BEARING
 
 
+#: Roles a child provision inherits from the provision above it. Both describe what the *provision*
+#: is rather than what this clause says, and a paragraph of a definitions article is still a
+#: definition however it is worded. The others are properties of the clause itself — a heading is a
+#: heading, an empty stub is empty — and inheriting them would be nonsense.
+INHERITABLE_REASONS: Final[frozenset[ExclusionReason]] = frozenset(
+    {ExclusionReason.DEFINITION, ExclusionReason.SCOPE}
+)
+
+
 def triage(
     *,
     clause_kind: ClauseKind,
@@ -212,6 +251,7 @@ def triage(
     heading: str | None,
     text: str,
     rules: RuleSet,
+    inherited: ExclusionReason | None = None,
 ) -> Triage:
     """Classify a clause without an LLM, and say whether the agent should see it.
 
@@ -223,6 +263,16 @@ def triage(
     clause's own role (definition, scope, delegation, transitional), then the modal test. Testing
     modals first would classify "제2조(정의) … 하여야 한다" as obligation-bearing on the strength of
     a modal inside a definition of a term.
+
+    ``inherited`` carries the role of the provision **above** this clause, where that role is one a
+    child keeps (:data:`INHERITABLE_REASONS`). The role test used to read only this clause's own
+    heading, and a definitions article states its heading once: 21 CFR 700.3 is excluded as
+    ``definition`` while ``700.3(g)`` — *"The term chemical description means…"* — reached the agent
+    and produced an IR asserting an obligation that a definition cannot impose. Korean 정의 조항 are
+    the same shape, with 제2조(정의) and its 호 beneath it.
+
+    It is checked **after** the structural tests and before the clause's own role, because structure
+    still wins: an empty stub inside a definitions article is empty, not a definition.
     """
     body = (text or "").strip()
 
@@ -243,11 +293,17 @@ def triage(
             note=f"{clause_path} is transitional; conditions here are cited from the operative IR",
         )
 
+    if inherited is not None and inherited in INHERITABLE_REASONS:
+        return Triage(
+            ClassificationKind.EXCLUDED,
+            inherited,
+            note=f"inherited from the provision above {clause_path}",
+        )
+
     title = _title(heading, body)
-    if _matches(title, _DEFINITION_HEADINGS):
-        return Triage(ClassificationKind.EXCLUDED, ExclusionReason.DEFINITION, note=title)
-    if _matches(title, _SCOPE_HEADINGS):
-        return Triage(ClassificationKind.EXCLUDED, ExclusionReason.SCOPE, note=title)
+    role = _role_of(title)
+    if role is not None:
+        return Triage(ClassificationKind.EXCLUDED, role, note=title)
 
     modals = found_modals(body, rules)
     if modals:
@@ -273,31 +329,29 @@ def _title(heading: str | None, body: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def _matches(title: str, needles: tuple[str, ...]) -> bool:
-    """Does the title announce one of these roles?
+def _role_of(title: str) -> ExclusionReason | None:
+    """Does this heading *announce* a role, or merely contain the word?
 
-    **Word boundaries where the script has them, substring where it does not.** ``scope`` is a
-    substring of ``endoscope`` and ``purpose`` of ``repurpose``, so a plain containment test can
-    exclude an obligation-bearing clause as *scope* — and a clause wrongly excluded never reaches
-    the agent while coverage still reports it as examined, which is the quietest way to lose an
-    obligation. Korean needles take the substring path unchanged: ``\b`` is defined against ASCII
-    word characters and matches nothing useful in Hangul, so applying it there would stop the
-    Korean headings matching at all.
+    **Anchored, and that is the whole point.** The old test asked whether the title contained one of
+    a handful of needles. For ASCII it guarded with ``\b`` — ``scope`` is a substring of
+    ``endoscope`` and ``purpose`` of ``repurpose`` — but Hangul has no word boundary for ``\b`` to
+    find, so the Korean needles fell through to plain containment and matched inside compounds:
+    지**정의** 취소 등, 적합성인**정의** 취소 등, 사용**목적**, 전시 **목적** … 진열 승인.
 
-    No English heading in the FDA corpus trips this today — measured 2026-08-25, zero substring
-    false positives across 2,039 clauses. It is guarded because the corpus grows, not because it
-    is currently wrong.
+    Each of those is an obligation-bearing article that was excluded and never reached the agent,
+    while coverage still counted it as examined — which is the failure this function exists to
+    prevent, arriving through the door it left open.
+
+    A CFR heading repeats its own number, so that is stripped before the test; a trailing period is
+    too. ``§ 700.3 Definitions.`` has to read as ``Definitions``.
     """
     if not title:
-        return False
-    lowered = title.lower()
-    for needle in needles:
-        if needle.isascii():
-            if re.search(rf"\b{re.escape(needle)}\b", lowered):
-                return True
-        elif needle in lowered:
-            return True
-    return False
+        return None
+    cleaned = _HEADING_NUMBER.sub("", title).strip().rstrip(".").strip()
+    for pattern, reason in _ROLE_PATTERNS:
+        if pattern.match(cleaned):
+            return reason
+    return None
 
 
 __all__ = [

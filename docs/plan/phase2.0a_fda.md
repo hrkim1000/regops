@@ -1199,3 +1199,54 @@ And the structural criteria the slice is really about:
     drafts. Both are now `rejected` as `not_an_obligation`. The fix moves what the **gated** MFDS
     cells extract, because Korean 정의 조항 (제2조) have the same shape, so it carries a
     before-and-after over the phase 1.6 golden sets — *Deviations* 26, 28 and 32 again.
+
+34. **The definitions exclusion now descends — and fixing it first uncovered why it was dangerous
+    (2026-08-26).** Deferred three times (*Deviations* 26, 28, 32, 33) because it moves what the
+    **gated** cells extract. Measured before shipping, and the measurement rewrote the change.
+
+    **First attempt, and the number that stopped it.** Inheriting the role from the provision above
+    moved 306 of `mfds_samd`'s 22,776 clauses, of which **17 left `obligation_bearing`** — and
+    reading all 17 showed most were real duties: *"승인을 취소하여야 하고"*, *"승인을 얻어야
+    한다"*, *"하여서는 아니 되며"*. The inheritance was not wrong; it was **amplifying a defect
+    underneath it**.
+
+    **The defect: the Korean role test was a substring match, and it was live.** `_matches` guarded
+    the ASCII needles with `` — `scope` inside `endoscope` — and said so. Hangul has no ``, so
+    the Korean needles fell through to plain containment:
+
+    | heading | needle | matched as |
+    | --- | --- | --- |
+    | 지**정의** 취소 등 | 정의 | definition |
+    | 적합성인**정의** 취소 등 | 정의 | definition |
+    | 사용**목적** | 목적 | scope |
+    | 전시 **목적** 의료기기의 진열 승인 등 | 목적 | scope |
+
+    Every one is an obligation-bearing article that **never reached the agent while coverage counted
+    it as examined** — the failure `_matches` was written to prevent, arriving through the door it
+    left open. Two are excluded that way in the store today.
+
+    Replaced with an **anchored** test: a heading must *be* the role. All four genuine forms in the
+    corpus still match (정의 · 용어의 정의 · 목적 · 적용범위), a trailing 등 is allowed, and a CFR
+    heading's own section number is stripped so `§ 700.3 Definitions.` still reads. Verified against
+    all 15 real headings containing a needle, including a table header row `번호 | … | 정의`.
+
+    **Combined effect on the gated pair, which is what the deferral was about:**
+
+    | | obligation-bearing gained | lost |
+    | --- | ---: | ---: |
+    | `mfds_samd` | **+6** | **−2** |
+    | `mfds_cosmetic` | **0** | **0** |
+
+    Net **+4 on one cell and nothing on the other**, and the direction is *recovering* obligations
+    the substring bug had been swallowing. The first attempt's 17 losses became 2 once the false
+    parents were gone. **No locked IR is affected** — there is one in the store and its clause
+    (`제4조 규제의 재검토`) stays obligation-bearing.
+
+    Inheritance carries only `definition` and `scope`: both describe what the *provision* is, and a
+    paragraph of a definitions article is still a definition. `permissive`, `delegation` and the
+    rest describe the clause itself, and inheriting them would bury a duty a sub-clause carries
+    on its own. Structure still wins — an empty stub inside a definitions article is `empty`.
+
+    **The stored classifications are now behind the rules.** Re-extraction is per-version, LLM-bound
+    and explicit by design (CLAUDE.md § Celery), so nothing re-runs automatically; the delta above
+    is computed deterministically from the rules, which is why it could be measured without one.
