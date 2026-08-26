@@ -367,8 +367,17 @@ def test_the_cosmetic_taxonomy_is_untouched() -> None:
 
 def test_the_rule_version_moved_with_the_taxonomy() -> None:
     """An IR extracted under a different taxonomy is not comparable with one extracted under this,
-    which is the whole reason the version is stamped on every row."""
-    assert IR_RULE_VERSION == "1.3.0"
+    which is the whole reason the version is stamped on every row.
+
+    **This assertion pins the number and not the rules, and 1.3.0 is what that cost.** Two commits
+    changed what the rule set does — anchoring the role test, and letting a definition descend — and
+    this test passed through both, because neither touched the constant it reads. 21 CFR Part 700
+    then produced 21 IRs and later 18, twice, all three runs stamped ``1.3.0``.
+
+    Pinning the rule *content* to the version is the gate that would have failed here. It does not
+    exist yet.
+    """
+    assert IR_RULE_VERSION == "1.4.0"
     assert rule_set_for(Domain.SAMD, "en").rule_version == IR_RULE_VERSION
 
 

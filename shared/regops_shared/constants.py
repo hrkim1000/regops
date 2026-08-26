@@ -624,7 +624,25 @@ TAXONOMY_CODES: Final[dict[Domain, tuple[str, ...]]] = {
 #: from here on. Re-extracting the MFDS corpus under 1.3.0 would restore comparability and cost a
 #: agent pass over 25,729 clauses — a decision for whoever next needs the two sides compared, not a
 #: side effect to slip into this change.
-IR_RULE_VERSION: Final[str] = "1.3.0"
+#:
+#: **1.4.0 (2026-08-26) — the rules moved twice under 1.3.0's name, and this closes it.** Two
+#: commits changed what the rule set *does* after 1.3.0 was stamped on 2026-08-25: the role test
+#: was anchored so 정의 no longer matched inside 지정의 취소 등, and a definition or scope
+#: classification began descending to its children (``INHERITABLE_REASONS``). Neither bumped this
+#: constant.
+#:
+#: The consequence is measured, not feared. 21 CFR Part 700 was extracted three times on 2026-08-26
+#: and every run recorded ``1.3.0``: **21 IRs at 12:28, then 18 at 15:49 and 18 again at 17:42.**
+#: The two later runs agree exactly, so this is not sampling noise — it is one number naming two
+#: rule sets. That is precisely what ``rule_version`` exists to prevent: an IR stamped ``1.3.0`` is
+#: no longer enough to say which rules produced it, and Celery does not hot-reload, so the answer
+#: depends on when the worker last restarted — which the row does not record.
+#:
+#: Bumping cannot repair the rows already written; ``1.3.0`` stays ambiguous forever, and the honest
+#: response is to say so here rather than to renumber history. What it does buy is that everything
+#: from now on is attributable — which is why it happens **before** the FD&C Act re-extraction
+#: rather than after it.
+IR_RULE_VERSION: Final[str] = "1.4.0"
 
 #: Bumped independently of the rules — a prompt can be reworded without the rule set moving.
 IR_PROMPT_VERSION: Final[str] = "1.2.0"
