@@ -221,6 +221,40 @@ All tables belong to `regulation` and are **shared, not tenant-scoped** (ADR-000
    > `AUTHORITATIVE_LANGUAGE` has **no consumer in the codebase**.
 3. **Confidence threshold and sampling rate** for decision 5's middle tier. Needs golden-set
    evidence; unset until Phase 2.
-4. **Does retrieval actually use enrichment edges?** ADR-0006 specifies hybrid search plus graph
-   context expansion, but the expansion's edge types are unspecified. Deciding this earlier than
-   Phase 2 would let the golden query set measure whether the edges help at all.
+4. **Does retrieval actually use enrichment edges?** **Sharpened 2026-08-26; still open, and the
+   first evidence says no.**
+
+   **The premise was wrong.** ADR-0006 does not specify graph context expansion — the word *graph*
+   does not appear in it. Its decision 3 defines hybrid retrieval as **BM25 + vector, split by what
+   the query keys on**, and that is what `assistant` implements: exact/identifier, lexical, vector.
+   The `hybrid search (BM25 + vector) → graph context expansion` step lives only in
+   [RegOps.md](../RegOps.md) § L4, an overview diagram, and **no ADR ever decided it**. So the
+   question is not *"which edge types does the specified expansion use"* — it is **"should there be
+   a fourth arm at all"**, and nothing has committed us to one.
+
+   **Measured against the golden sets, which is what this question asked for.** Taking each item's
+   expected answer clause and asking whether it references *another* clause:
+
+   | cell | identifier | conceptual | effective_date |
+   | --- | ---: | ---: | ---: |
+   | `mfds_samd` | 15/40 (38%) | **0/26** | **0/16** |
+   | `mfds_cosmetic` | 9/40 (22%) | **0/26** | **0/16** |
+   | `fda_samd` | 2/40 (5%) | — | — |
+
+   The axis expansion would plausibly help — `conceptual`, the paraphrase axis — is **0 of 52**. The
+   items that do carry references are identifier lookups, which resolve exactly by construction and
+   have nothing for an expansion to add.
+
+   **The evidence is weak in one specific way, and it is the way that matters.** The curated axes
+   were hand-written by the system's own authors and are **not RA-signed**. A question whose answer
+   spans a reference is harder to write than one whose answer sits in a single clause, so 0% may be
+   measuring how the set was built rather than how the corpus behaves. The FDA columns are blank for
+   the same reason — those axes have no items yet.
+
+   **So the question stays open, and it now has an instrument.** When an RA writes the curated axes,
+   ask for items whose answer *requires following a reference*. If they cannot construct such
+   questions from a real corpus, that is the answer. If they can and retrieval fails them, that is
+   the case for a fourth arm — measured rather than assumed.
+
+   *(Also to settle: [RegOps.md](../RegOps.md) § L4 asserts a pipeline step no ADR backs. Either an
+   ADR adopts it or the diagram should stop promising it.)*
