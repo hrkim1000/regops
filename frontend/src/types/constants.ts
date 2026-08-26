@@ -1,5 +1,25 @@
 export const SCOPE_COOKIE = 'regops_scope_cell';
 
+/**
+ * Routes that re-render for the selected cell — the three section roots, plus the subscription
+ * manager, which shows every cell on purpose.
+ *
+ * **This list must match the pages that call `readScope()`**, and it exists because the ScopeBar
+ * cannot tell on its own. Every other route is pinned to an entity it resolves by id, and a pinned
+ * page ignores scope deliberately: a citation must render identically whichever cell the reader has
+ * selected (frontend-page skill). Correct — and it left the ScopeBar looking live on 11 of 14
+ * pages while changing nothing the reader could see.
+ */
+export const SCOPE_AWARE_PATHS = [
+  '/monitoring',
+  '/monitoring/subscriptions',
+  '/qa',
+  '/regulations',
+] as const;
+
+/** Where a cell change lands when the current page cannot show it. */
+export const SECTION_ROOTS = ['/monitoring', '/qa', '/regulations'] as const;
+
 /** httpOnly — set by /session, read by middleware and Server Components, never by client JS. */
 export const ACCESS_TOKEN_COOKIE = 'regops_access_token';
 
