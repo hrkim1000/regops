@@ -567,6 +567,12 @@ And the structural criteria the slice is really about:
   before fixing the poll interval ([ADR-0018](../design/ADR-0018-fda-source-model.md) open question 1).
 - **Open question (new) — how is the guidance corpus enumerated?** No API, and no crawl was attempted.
   Decision 9 settles how guidance is *treated*, not how it is *found*.
+  → **crawl attempted 2026-08-26, and the answer is "not on anything worth building on".** Three
+  layers, and each closes a different door (*Deviations* 37). There **is no API**: openFDA's own
+  endpoint catalogue lists 9 namespaces and 24 endpoints, and **none is guidance**. The index is
+  reachable but only through undocumented Drupal plumbing that returns rendered HTML inside a JSON
+  envelope. And the documents are HTML/PDF, which we have no extractor for. Still open — what is
+  closed is the assumption that a documented route exists and nobody had looked.
 - **Open question (new, 2026-08-26) — is a question in the "wrong" language answerable, and should
   it be?** Nothing branches on the question's language: the API takes no language and retrieval
   picks its stemmer from the *version's* language, so both are accepted and neither is handled.
@@ -1384,3 +1390,38 @@ And the structural criteria the slice is really about:
     safety signal is for** — an alert with no clause to cite is a different object from an amendment
     (ADR-0006's citation contract has nothing to bind it to), and that is worth settling before a
     connector exists rather than after.
+
+37. **Guidance has no API, and the route that exists is not one to build on (2026-08-26).** The open
+    question said *"no API, and no crawl was attempted"*. The crawl was attempted. Three layers, and
+    the first is decisive.
+
+    **There is no API.** openFDA's own catalogue (`api.fda.gov/download.json`, 590 KB) lists every
+    endpoint it has — 9 namespaces, 24 endpoints, `device` holding `510k · classification ·
+    covid19serology · enforcement · event · pma · recall · registrationlisting · udi`. **None is
+    guidance**, and none is Warning Letters either. openFDA carries regulatory *data* about
+    products, which is exactly what [ADR-0018](../design/ADR-0018-fda-source-model.md) rejected it
+    for as a regulation source; it does not become a text source by being reachable.
+
+    **The index is reachable and is internal plumbing.** The search page is a Drupal DataTables view
+    and its settings name the backend outright — `view_name: fda_guidance_documents`,
+    `view_base_path: datatables-json/search-for-guidance.json`. That path answers **200 with zero
+    bytes** whatever parameters it is given. What answers is `POST /views/ajax`, and it returns a
+    Drupal AJAX command envelope with **rendered HTML inside it** rather than data.
+    So a connector would be parsing one CMS's internal response format, which changes without
+    notice and without a version to pin. ADR-0018 decision 11 chose *documented API only, never
+    HTML* for the other two hosts on the publisher's own instruction; there is no such instruction
+    here, and no such API either.
+
+    **The documents are HTML/PDF.** `/media/{n}/download`. Nothing in the pipeline extracts PDF, and
+    decision 9 wants guidance stored as citable text — so the index is the smaller half of the
+    problem even if it were clean.
+
+    **One constraint found that outlives this question.** `www.fda.gov/robots.txt` does **not**
+    disallow the guidance paths — it asks for **`Crawl-Delay: 30`**. Our
+    `HOST_MIN_INTERVAL_SECONDS` is **1.0**, so any crawl of this host under the current fetcher
+    would run 30× faster than the publisher asks. A per-host interval override is a prerequisite for
+    touching `fda.gov` at all, and that is not abstract: the sibling host has already put us behind
+    Akamai's abuse detection (*Deviations* 36).
+
+    Nothing built. The question stays open; what is now closed is the possibility that a documented
+    route was sitting there unlooked-at.
