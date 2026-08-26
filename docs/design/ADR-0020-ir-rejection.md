@@ -109,6 +109,14 @@ mutable current state and an immutable history.
   under a later `rule_version` should re-offer a previously rejected obligation is **not decided
   here** — it needs a rule about identity across runs that does not exist yet, and guessing now
   would be a decision made without the case in front of it.
+
+  > **The case is arriving, 2026-08-26.** `_clear_previous_drafts` filters on `status == DRAFT`, so
+  > a `rejected` IR survives a re-extraction — correct by accident rather than by decision, since
+  > that function's docstring enumerates `locked`, `stale` and `superseded` and predates this ADR.
+  > The consequence is visible on the next run: 21 CFR Part 700 holds the two rejections that forced
+  > this ADR (`700.3(g)` and `700.3(n)`, both `not_an_obligation`), and re-extracting it will show
+  > whether the same obligations come back as fresh drafts beside their own rejections. **Decide
+  > after observing that**, which is what "without the case in front of it" was waiting for.
 - **The `700.3` defect is untouched by this.** Being able to record a refusal is not the same as not
   producing the draft: the exclusion of a definitions section should descend to its paragraphs, and
   it does not. That fix moves what the **gated** MFDS cells extract — Korean 정의 조항 (제2조) have
