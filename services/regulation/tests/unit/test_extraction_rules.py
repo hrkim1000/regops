@@ -11,16 +11,20 @@ contain an obligation modal" is a regex question, never a judgement call.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.extraction.rules import (
     INHERITABLE_REASONS,
     found_modals,
     has_permissive,
+    rule_digest,
     rule_set_for,
     triage,
 )
 from regops_shared.constants import (
+    IR_RULE_DIGEST,
     IR_RULE_VERSION,
     MODAL_INVENTORY,
     TAXONOMY_CODES,
@@ -374,11 +378,72 @@ def test_the_rule_version_moved_with_the_taxonomy() -> None:
     this test passed through both, because neither touched the constant it reads. 21 CFR Part 700
     then produced 21 IRs and later 18, twice, all three runs stamped ``1.3.0``.
 
-    Pinning the rule *content* to the version is the gate that would have failed here. It does not
-    exist yet.
+    Pinning the rule *content* to the version is the gate that would have failed here, and it is
+    now ``test_the_rule_digest_matches_the_pinned_version`` below.
     """
     assert IR_RULE_VERSION == "1.4.0"
     assert rule_set_for(Domain.SAMD, "en").rule_version == IR_RULE_VERSION
+
+
+def test_the_rule_digest_matches_the_pinned_version() -> None:
+    """The gate the test above could not be: the version is pinned to the *rules*, not to a number.
+
+    ``IR_RULE_VERSION`` promises that an IR stamped with it was produced by a known rule set. On
+    2026-08-26 that promise broke without a single test going red — the role test was anchored and
+    definitions began descending, both under 1.3.0's name, and 21 CFR Part 700 answered 21, 18, 18.
+
+    **If this fails, one of two things happened.**
+
+    *The rules changed.* Bump ``IR_RULE_VERSION`` and update ``IR_RULE_DIGEST`` in the same commit.
+    Every IR already extracted keeps its old stamp, and it now means something again.
+
+    *A table was reordered, or a pattern rewritten with identical meaning.* Update
+    ``IR_RULE_DIGEST`` alone — and say so in the commit message. That sentence is the only thing
+    between a refactor and a silent rule change, so it is worth writing deliberately rather than
+    reaching for whatever makes the test green.
+
+    The digest is deterministic across processes and machines: every table is flattened to sorted
+    pairs, regexes contribute their pattern and flags, and enums their values — nothing that depends
+    on dict insertion order, object identity or a Python version.
+    """
+    assert rule_digest() == IR_RULE_DIGEST
+
+
+def test_every_rule_table_reaches_the_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A table the digest does not read is a table whose change is silent again.
+
+    The gate above is only as wide as ``rule_digest()``'s inputs, and nothing about that function's
+    shape forces it to keep up with the module. So each input is perturbed in turn and the digest
+    must move. A rule table added later and not wired in fails here rather than years later, in an
+    IR whose stamp turns out to mean nothing.
+
+    Perturbations are deliberately meaning-changing rather than cosmetic: an emptied
+    ``INHERITABLE_REASONS`` stops definitions descending, and a replaced ``_ROLE_PATTERNS`` stops
+    정의 being recognised at all. Each is restored before the next, and the digest is checked back
+    to baseline at the end — a leaked mutation would quietly weaken every test that runs after this.
+    """
+    from app.extraction import rules as mod
+
+    baseline = rule_digest()
+    perturbations: list[tuple[str, object]] = [
+        ("_MODAL_PATTERNS", {"ko": {"하여야 한다": "zzz"}, "en": {"shall": "zzz"}}),
+        ("_PERMISSIVE_PATTERNS", {**mod._PERMISSIVE_PATTERNS, "ko": "zzz"}),
+        ("MODAL_INVENTORY", {"ko": ("zzz",), "en": ("zzz",)}),
+        ("PERMISSIVE_MODALS", {"ko": ("zzz",), "en": ("zzz",)}),
+        ("TAXONOMY_CODES", {Domain.SAMD: ("zzz",), Domain.COSMETIC: ("zzz",)}),
+        ("_ROLE_PATTERNS", ((re.compile(r"^zzz$"), ExclusionReason.DEFINITION),)),
+        ("_HEADING_NUMBER", re.compile(r"^zzz")),
+        ("_DELEGATION", re.compile(r"^zzz")),
+        ("_TRANSITIONAL_SEGMENTS", ("부칙", "zzz")),
+        ("_MIN_SUBSTANTIVE_CHARS", 999),
+        ("INHERITABLE_REASONS", frozenset()),
+    ]
+    for attr, replacement in perturbations:
+        monkeypatch.setattr(mod, attr, replacement)
+        assert rule_digest() != baseline, f"{attr} does not reach the digest"
+        monkeypatch.undo()
+
+    assert rule_digest() == baseline
 
 
 def test_adding_codes_did_not_touch_the_modal_inventory() -> None:

@@ -23,6 +23,8 @@ ground-truth markup can contradict it.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass
 from typing import Final
@@ -354,11 +356,68 @@ def _role_of(title: str) -> ExclusionReason | None:
     return None
 
 
+# --- provenance -------------------------------------------------------------------------------
+
+
+def rule_digest() -> str:
+    """A stable fingerprint of everything in this module that decides what counts as an obligation.
+
+    ``IR_RULE_VERSION`` is stamped on every IR so a later reader can say which rules produced it.
+    That promise is only as good as the discipline of bumping the constant, and on 2026-08-26 the
+    discipline failed: the role test was anchored and definitions began descending to their
+    children, both under 1.3.0's name. 21 CFR Part 700 then produced 21 IRs and, twice, 18 — three
+    runs, one version number, two rule sets. The existing test read the constant and passed.
+
+    So the version is pinned to *this* instead. Change a table below and the digest moves; the test
+    fails; you bump ``IR_RULE_VERSION`` and record the new digest in the same commit. A rule change
+    can still be wrong, but it can no longer be **silent**, which is the only thing a test can buy
+    here.
+
+    **Add a rule table, add it here.** A table this function does not read is a table whose change
+    is invisible again, which is the whole defect.
+
+    **What this does not cover: a change to control flow alone.** ``triage()`` could be rewritten to
+    consult the same tables differently and the digest would not move. That is a deliberate limit
+    rather than an oversight — this module's premise is that the domain branch is *data* (ADR-0004
+    decision 3: "a rule set, not a code path"), and its docstring says nothing here branches in
+    control flow. If rules ever start living in the logic, the fix is to move them back into a
+    table, not to hash the source: hashing source trips on every rename and rewrap, and an alarm
+    that cries wolf is answered by updating the digest without thinking, which is exactly the habit
+    this exists to prevent.
+    """
+    material: list[tuple[str, object]] = [
+        ("modal_patterns", _sorted_nested(_MODAL_PATTERNS)),
+        ("permissive_patterns", sorted(_PERMISSIVE_PATTERNS.items())),
+        ("modal_inventory", _sorted_nested(MODAL_INVENTORY)),
+        ("permissive_modals", _sorted_nested(PERMISSIVE_MODALS)),
+        ("taxonomy", sorted((d.value, list(codes)) for d, codes in TAXONOMY_CODES.items())),
+        ("role_patterns", [(p.pattern, p.flags, r.value) for p, r in _ROLE_PATTERNS]),
+        ("heading_number", (_HEADING_NUMBER.pattern, _HEADING_NUMBER.flags)),
+        ("delegation", (_DELEGATION.pattern, _DELEGATION.flags)),
+        ("transitional_segments", list(_TRANSITIONAL_SEGMENTS)),
+        ("min_substantive_chars", _MIN_SUBSTANTIVE_CHARS),
+        ("inheritable_reasons", sorted(r.value for r in INHERITABLE_REASONS)),
+    ]
+    # `sort_keys` is belt and braces — every dict above is already flattened to sorted pairs, since
+    # a digest that depends on insertion order would move for a reordering that changes nothing.
+    canonical = json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _sorted_nested(mapping: dict[str, dict[str, str]] | dict[str, tuple[str, ...]]) -> list[object]:
+    """Language-keyed tables, flattened so the digest cannot depend on dict insertion order."""
+    return [
+        (key, sorted(value.items()) if isinstance(value, dict) else sorted(value))
+        for key, value in sorted(mapping.items())
+    ]
+
+
 __all__ = [
     "RuleSet",
     "Triage",
     "found_modals",
     "has_permissive",
+    "rule_digest",
     "rule_set_for",
     "triage",
 ]

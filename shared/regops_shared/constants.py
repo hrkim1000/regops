@@ -644,6 +644,24 @@ TAXONOMY_CODES: Final[dict[Domain, tuple[str, ...]]] = {
 #: rather than after it.
 IR_RULE_VERSION: Final[str] = "1.4.0"
 
+#: Fingerprint of the rule tables that ``IR_RULE_VERSION`` above claims to name.
+#:
+#: The version is a promise — *"an IR stamped with this was produced by these rules"* — and a bare
+#: constant cannot keep it, because nothing forces the two to move together. That is not a
+#: hypothetical: 1.3.0 named two different rule sets, and the test guarding it read the constant and
+#: passed. So the version is pinned to the rules through this digest, computed by
+#: ``rules.rule_digest()`` and checked by ``test_the_rule_digest_matches_the_pinned_version``.
+#:
+#: **Both lines move in the same commit, or neither does.** If the digest changed because the rules
+#: changed, bump the version above and update this. If it changed because a table was reordered or
+#: a pattern rewritten with identical meaning, update this alone — and say so in the commit message,
+#: because that claim is the only thing standing between a refactor and a silent rule change.
+#:
+#: It lives here rather than beside ``rule_digest()`` so that anyone editing ``MODAL_INVENTORY``,
+#: ``PERMISSIVE_MODALS`` or ``TAXONOMY_CODES`` — which are in this file and *are* digest input — has
+#: it in front of them.
+IR_RULE_DIGEST: Final[str] = "f9ba469c4f31e413"
+
 #: Bumped independently of the rules — a prompt can be reworded without the rule set moving.
 IR_PROMPT_VERSION: Final[str] = "1.2.0"
 
