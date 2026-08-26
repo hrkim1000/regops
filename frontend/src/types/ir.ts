@@ -4,7 +4,14 @@
  * IR lifecycle (ADR-0004 decision 4). **Only `locked` flows downstream** — a `draft` is unreviewed
  * model output and a `stale` one has had its evidence amended out from under it.
  */
-export type IRStatus = 'draft' | 'locked' | 'stale' | 'superseded';
+export type IRStatus = 'draft' | 'locked' | 'rejected' | 'stale' | 'superseded';
+
+export type IRRejectionReason =
+  | 'not_an_obligation'
+  | 'misread_clause'
+  | 'not_atomic'
+  | 'wrong_citation'
+  | 'duplicate';
 
 export type Domain = 'samd' | 'cosmetic';
 

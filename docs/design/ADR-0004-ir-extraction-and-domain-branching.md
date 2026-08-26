@@ -131,6 +131,13 @@ the signer and timestamp.
 This is the Part 11 story as much as a quality story: a regulatory obligation asserted by a model
 and never reviewed is exactly the artefact an auditor will ask about first.
 
+> **Extended by [ADR-0020](ADR-0020-ir-rejection.md), 2026-08-26.** This decision describes the
+> review outcome where the RA agrees and is silent on the other one, and the silence was load-bearing:
+> `IRStatus` had no `rejected`, `lock` had no counterpart, and a refusal left as `draft` reads as
+> "nobody has looked at this". Decision 6 below makes exactly that argument about clauses. ADR-0020
+> adds `rejected` plus `unlock`, and leaves `IR_VISIBLE_STATUSES` at `(LOCKED,)` — only locked IRs
+> still flow.
+
 ### 5. Amendments re-derive into a new IR version; they never mutate in place
 
 *(Resolves ADR-0002 open question 2.)*

@@ -74,9 +74,30 @@ export const CLAUSE_MAX_INDENT_LEVEL = 5;
 export const IR_STATUS_LABEL: Record<string, string> = {
   draft: '초안 (검토 대기)',
   locked: '확정',
+  rejected: '반려',
   stale: '재도출 필요',
   superseded: '대체됨',
 };
+
+/**
+ * Why an RA refused a draft (ADR-0020 decision 2). The enum is what the counts are made of; the
+ * note beside it is where the judgement lives.
+ */
+export const IR_REJECTION_REASON_LABEL: Record<string, string> = {
+  not_an_obligation: '의무 아님 (정의·목적·적용범위)',
+  misread_clause: '조문을 잘못 읽음',
+  not_atomic: '원자적이지 않음 (의무 여러 개 또는 조각)',
+  wrong_citation: '인용 조문이 틀림',
+  duplicate: '다른 IR과 중복',
+};
+
+export const IR_REJECTION_REASONS = [
+  'not_an_obligation',
+  'misread_clause',
+  'not_atomic',
+  'wrong_citation',
+  'duplicate',
+] as const;
 
 /**
  * Tailwind classes per status. Only `locked` reads as settled; `draft` and `stale` both draw the
@@ -85,12 +106,19 @@ export const IR_STATUS_LABEL: Record<string, string> = {
 export const IR_STATUS_STYLE: Record<string, string> = {
   draft: 'border-sky-800 bg-sky-950/50 text-sky-300',
   locked: 'border-emerald-800 bg-emerald-950/50 text-emerald-300',
+  rejected: 'border-rose-900 bg-rose-950/40 text-rose-300',
   stale: 'border-amber-700 bg-amber-950/50 text-amber-300',
   superseded: 'border-surface-border text-slate-500',
 };
 
-/** Tab order. `locked` first because it is the default and the only status that flows downstream. */
-export const IR_STATUS_ORDER = ['locked', 'draft', 'stale', 'superseded'] as const;
+/**
+ * Tab order. `locked` first because it is the default and the only status that flows downstream.
+ *
+ * `rejected` sits after `draft` and before the two history states: it is not a queue — nobody has
+ * to act on it — but it is the count that says how often extraction proposed something an RA threw
+ * out, which is the number to look at when `draft` keeps filling up (ADR-0020).
+ */
+export const IR_STATUS_ORDER = ['locked', 'draft', 'rejected', 'stale', 'superseded'] as const;
 
 /**
  * Obligation taxonomy per domain — the entire content of the domain branch alongside the modal

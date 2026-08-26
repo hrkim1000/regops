@@ -425,12 +425,38 @@ TOKEN_TYPE_REFRESH: Final[str] = "refresh"
 
 
 class IRStatus(StrEnum):
-    """IR lifecycle (ADR-0004 decision 4). Only ``LOCKED`` IRs flow downstream."""
+    """IR lifecycle (ADR-0004 decision 4, extended by ADR-0020). Only ``LOCKED`` flows on."""
 
     DRAFT = "draft"
     LOCKED = "locked"
+    #: An RA examined this draft and refused it. **Not the same as ``DRAFT``**, which is the reason
+    #: it exists: a refusal left as a draft is indistinguishable from one nobody has looked at, and
+    #: would be re-offered to the next reviewer forever. This is ADR-0004 decision 6's argument —
+    #: examined-and-excluded must not read as unexamined — applied to the IR rather than the clause.
+    REJECTED = "rejected"
     STALE = "stale"  # a cited clause was amended; re-extraction pending (ADR-0004 decision 5)
     SUPERSEDED = "superseded"
+
+
+class RejectionReason(StrEnum):
+    """Why an RA refused a draft IR. Required whenever ``status = rejected`` (ADR-0020).
+
+    An enum rather than free text for the reason ``ExclusionReason`` is one: the count per reason is
+    a quality signal about the extraction agent, and a jump in ``NOT_AN_OBLIGATION`` is a
+    classification regression wearing a review costume. A free-text note rides alongside for the
+    particulars, which is where the judgement actually lives.
+    """
+
+    #: The cited clause states no duty at all — a definition, a scope statement, a recital.
+    NOT_AN_OBLIGATION = "not_an_obligation"
+    #: There is an obligation, and the statement misreports it.
+    MISREAD_CLAUSE = "misread_clause"
+    #: Several duties in one IR, or a fragment of one. ADR-0004 decision 2 wants exactly one.
+    NOT_ATOMIC = "not_atomic"
+    #: The obligation is real and the citation points at the wrong clause.
+    WRONG_CITATION = "wrong_citation"
+    #: Already carried by another IR in this run.
+    DUPLICATE = "duplicate"
 
 
 #: The only statuses downstream consumers may read (ADR-0004 decision 4). Retrieval, impact grading

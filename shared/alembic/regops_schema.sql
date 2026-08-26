@@ -284,9 +284,23 @@ CREATE TYPE public.fetch_outcome AS ENUM (
 -- Name: ir_status; Type: TYPE; Schema: public; Owner: -
 --
 
+CREATE TYPE public.rejection_reason AS ENUM (
+    'not_an_obligation',
+    'misread_clause',
+    'not_atomic',
+    'wrong_citation',
+    'duplicate'
+);
+
+
+--
+-- Name: ir_status; Type: TYPE; Schema: public; Owner: -
+--
+
 CREATE TYPE public.ir_status AS ENUM (
     'draft',
     'locked',
+    'rejected',
     'stale',
     'superseded'
 );
@@ -840,6 +854,10 @@ CREATE TABLE public.irs (
     stale_since timestamp with time zone,
     locked_by uuid,
     locked_at timestamp with time zone,
+    rejected_by uuid,
+    rejected_at timestamp with time zone,
+    rejection_reason public.rejection_reason,
+    rejection_note text,
     llm_provider character varying(32),
     llm_model character varying(64),
     prompt_version character varying(32),

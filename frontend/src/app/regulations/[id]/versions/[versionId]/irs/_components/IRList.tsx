@@ -10,7 +10,7 @@ import {
 } from '@/types/constants';
 import type { IR, IRCitation } from '@/types/ir';
 
-import { LockButton } from './LockButton';
+import { ReviewActions } from './ReviewActions';
 
 /**
  * One atomic obligation per row: **one bearer + one modal + one required action** (ADR-0004
@@ -87,7 +87,9 @@ function IRCard({ ir, canLock }: { ir: IR; canLock: boolean }) {
           >
             {IR_STATUS_LABEL[ir.status] ?? ir.status}
           </span>
-          {canLock && ir.status === 'draft' ? <LockButton irId={ir.id} /> : null}
+          {canLock && (ir.status === 'draft' || ir.status === 'locked') ? (
+            <ReviewActions irId={ir.id} status={ir.status} />
+          ) : null}
         </div>
       </div>
 

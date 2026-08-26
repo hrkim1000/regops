@@ -1160,3 +1160,42 @@ And the structural criteria the slice is really about:
     The seeder now also drifts from both stored MFDS sets for a second, benign reason — the wider
     in-force ladder makes more documents visible, which changes which ones feed each axis. Neither
     difference is applied.
+
+33. **A review had two outcomes and only one was representable —
+    [ADR-0020](../design/ADR-0020-ir-rejection.md), 2026-08-26.** Found by an operator mis-clicking
+    확정 on an IR and having no way back, which turned out not to be a missing button.
+
+    `POST /irs/{id}/lock` existed and nothing else did. `IRStatus` held `draft | locked | stale |
+    superseded`, so there was **nowhere to record that an RA had refused a draft** and no way to
+    undo a lock. ADR-0004 decision 4 describes the reviewer agreeing and is silent on the other
+    half; the silence was load-bearing.
+
+    A refusal left as `draft` is the same claim as *"nobody has looked at this"*, so it returns to
+    the next reviewer's queue forever and the extraction agent's error rate has no denominator.
+    That is ADR-0004 decision **6**'s own argument — examined-and-excluded must not read as
+    unexamined — one level up, about the IR rather than the clause.
+
+    Added: `IRStatus.REJECTED`, a `RejectionReason` enum with a required free-text note (the split
+    `ExclusionReason` already makes — the count per reason is a signal about the *agent*, the
+    particulars of one refusal are a human judgement), `POST /irs/{id}/reject`, and
+    `POST /irs/{id}/unlock`. Migration `0012`. **`IR_VISIBLE_STATUSES` is unchanged at `(LOCKED,)`**
+    — a rejected IR is inert exactly as a draft is, and the difference is that it is inert *and*
+    accounted for. The review surface gained the two controls the model had been missing.
+
+    **Unlock returns to `draft`, never straight to `rejected`.** *"This approval was a mistake"* and
+    *"I have reviewed this and refuse it"* are different assertions; collapsing them would write a
+    judgement nobody made — which is exactly what happened here.
+
+    **The lock cleared from the row and not from the audit trail.** `audit_log` is append-only and
+    hash-chained, so the `ir.locked` entry stays and `ir.unlocked` is appended beside it. The
+    mis-clicked IR now reads `ir.locked` → `ir.unlocked` → `ir.rejected` across seq 84–86, and
+    `verify_chain` passes over all 86 entries. Who approved it and who took that back are both
+    answerable, and neither from the row alone.
+
+    **What this does not fix, and the ADR says so.** Being able to record a refusal is not the same
+    as not producing the draft: `§ 700.3 Definitions` is correctly excluded as `definition`, but the
+    exclusion **does not descend to its paragraphs**, so `700.3(g)` and `700.3(n)` were classified
+    obligation-bearing and extracted — 2 of Part 700's 16 obligation-bearing clauses and 2 of its 21
+    drafts. Both are now `rejected` as `not_an_obligation`. The fix moves what the **gated** MFDS
+    cells extract, because Korean 정의 조항 (제2조) have the same shape, so it carries a
+    before-and-after over the phase 1.6 golden sets — *Deviations* 26, 28 and 32 again.

@@ -18,7 +18,15 @@ from datetime import UTC, date, datetime
 import pytest
 from fastapi import HTTPException
 
-from app.api.v1.irs import _ir_out, _run_out, lock_ir
+from app.api.v1.irs import (
+    RejectRequest,
+    UnlockRequest,
+    _ir_out,
+    _run_out,
+    lock_ir,
+    reject_ir,
+    unlock_ir,
+)
 from app.models import IR, ExtractionRun, IRCitation
 from regops_shared.auth import Principal, require_roles
 from regops_shared.constants import (
@@ -26,6 +34,7 @@ from regops_shared.constants import (
     Domain,
     ExtractionRunStatus,
     IRStatus,
+    RejectionReason,
     Role,
 )
 
@@ -173,3 +182,166 @@ async def test_only_a_draft_can_be_locked(status) -> None:
         )
     assert exc.value.status_code == 409
     assert status.value in exc.value.detail
+
+
+# --- refusal, and taking back a lock (ADR-0020) -------------------------------------------------
+
+
+class _Session:
+    """Just enough session to drive a transition: one IR, and a record of what was committed."""
+
+    def __init__(self, ir: IR) -> None:
+        self._ir = ir
+        self.committed = False
+        self.audited: list[dict] = []
+
+    async def get(self, _model, _id):
+        return self._ir
+
+    async def commit(self) -> None:
+        self.committed = True
+
+
+@pytest.fixture
+def audit(monkeypatch):
+    """Capture the audit append rather than writing a chain entry in a unit test."""
+    entries: list[dict] = []
+
+    async def _record(_db, **kwargs):
+        entries.append(kwargs)
+        return None
+
+    monkeypatch.setattr("app.api.v1.irs.record", _record)
+    return entries
+
+
+@pytest.mark.asyncio
+async def test_rejecting_a_draft_records_who_why_and_when(audit) -> None:
+    """*ADR-0020 decision 1.* The point is that a refusal is **not** left as a draft: a draft that
+    an RA has already refused reads as one nobody has opened, so it returns to the next reviewer
+    forever and the agent's error rate has no denominator."""
+    ir = _ir(status=IRStatus.DRAFT)
+    db = _Session(ir)
+    principal = Principal(id=uuid.uuid4(), email="ra@example.test", role=Role.RA)
+
+    out = await reject_ir(
+        ir.id,
+        db,  # type: ignore[arg-type]
+        principal,
+        RejectRequest(
+            reason=RejectionReason.NOT_AN_OBLIGATION,
+            note="21 CFR 700.3(g) is a definition",
+        ),
+    )
+
+    assert ir.status is IRStatus.REJECTED
+    assert ir.rejected_by == principal.id
+    assert ir.rejected_at is not None
+    assert ir.rejection_reason is RejectionReason.NOT_AN_OBLIGATION
+    assert ir.rejection_note
+    assert db.committed
+    assert out["data"]["status"] == "rejected"
+
+    (entry,) = audit
+    assert entry["action"] == "ir.rejected"
+    # The agent's provenance rides along, because the count per reason is a signal about the
+    # extraction regime rather than about this one IR.
+    assert entry["payload"]["reason"] == "not_an_obligation"
+    assert entry["payload"]["llm_model"] == ir.llm_model
+    assert entry["payload"]["rule_version"] == ir.rule_version
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status", [IRStatus.LOCKED, IRStatus.STALE, IRStatus.SUPERSEDED, IRStatus.REJECTED]
+)
+async def test_only_a_draft_can_be_rejected(status, audit) -> None:
+    """A locked IR is unlocked first — two steps, because taking back an approval and refusing a
+    proposal are different assertions (*ADR-0020 decision 3*). Stale and superseded are already out
+    of the queue, and re-rejecting would overwrite the first reviewer's reason."""
+    ir = _ir(status=status)
+    with pytest.raises(HTTPException) as exc:
+        await reject_ir(
+            ir.id,
+            _Session(ir),  # type: ignore[arg-type]
+            Principal(id=uuid.uuid4(), email="ra@example.test", role=Role.RA),
+            RejectRequest(reason=RejectionReason.DUPLICATE, note="already covered"),
+        )
+    assert exc.value.status_code == 409
+    assert status.value in exc.value.detail
+    assert audit == []
+
+
+@pytest.mark.asyncio
+async def test_unlocking_returns_to_draft_and_clears_the_signature(audit) -> None:
+    """*ADR-0020 decisions 3 and 4.* Back to `draft`, never straight to `rejected` — unlocking says
+    the approval was a mistake, which is not the same as refusing the proposal.
+
+    `locked_by` / `locked_at` clear because a draft that still names a signer is a lie about its own
+    state; who signed it survives in the audit entry, which is append-only and hash-chained.
+    """
+    signer = uuid.uuid4()
+    locked_at = datetime(2026, 8, 26, 4, 7, 9, tzinfo=UTC)
+    ir = _ir(status=IRStatus.LOCKED, locked_by=signer, locked_at=locked_at)
+    db = _Session(ir)
+
+    out = await unlock_ir(
+        ir.id,
+        db,  # type: ignore[arg-type]
+        Principal(id=uuid.uuid4(), email="ra@example.test", role=Role.RA),
+        UnlockRequest(note="locked in error"),
+    )
+
+    assert ir.status is IRStatus.DRAFT
+    assert ir.locked_by is None
+    assert ir.locked_at is None
+    assert out["data"]["locked_at"] is None
+    assert db.committed
+
+    (entry,) = audit
+    assert entry["action"] == "ir.unlocked"
+    assert entry["payload"]["previously_locked_by"] == str(signer)
+    assert entry["payload"]["previously_locked_at"] == locked_at.isoformat()
+    assert entry["payload"]["note"] == "locked in error"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [IRStatus.DRAFT, IRStatus.STALE, IRStatus.REJECTED])
+async def test_only_a_locked_ir_can_be_unlocked(status, audit) -> None:
+    ir = _ir(status=status)
+    with pytest.raises(HTTPException) as exc:
+        await unlock_ir(
+            ir.id,
+            _Session(ir),  # type: ignore[arg-type]
+            Principal(id=uuid.uuid4(), email="ra@example.test", role=Role.RA),
+            UnlockRequest(note="mis-click"),
+        )
+    assert exc.value.status_code == 409
+    assert audit == []
+
+
+@pytest.mark.asyncio
+async def test_a_viewer_can_neither_reject_nor_unlock() -> None:
+    """Both are human assertions entering the audit trail, so both carry the lock's guard."""
+    guard = require_roles([Role.RA, Role.ADMIN])
+    viewer = Principal(id=uuid.uuid4(), email="viewer@example.test", role=Role.VIEWER)
+    with pytest.raises(HTTPException) as exc:
+        await guard(principal=viewer)
+    assert exc.value.status_code == 403
+
+
+def test_a_rejected_ir_is_inert_exactly_as_a_draft_is() -> None:
+    """*ADR-0020 decision 1.* `IR_VISIBLE_STATUSES` does not move: rejecting changes whether the
+    refusal is recorded, not what flows downstream."""
+    assert IRStatus.REJECTED not in IR_VISIBLE_STATUSES
+    assert IR_VISIBLE_STATUSES == (IRStatus.LOCKED,)
+
+
+def test_a_reason_is_required_and_a_blank_note_is_refused() -> None:
+    """An unexplained reversal of a human assertion is the entry an auditor stops on."""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        UnlockRequest(note="")
+    with pytest.raises(pydantic.ValidationError):
+        RejectRequest(reason=RejectionReason.DUPLICATE, note="")

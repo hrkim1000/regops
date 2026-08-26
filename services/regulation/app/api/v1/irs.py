@@ -24,6 +24,7 @@ import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from regops_shared.api import Meta, ok
@@ -34,6 +35,7 @@ from regops_shared.constants import (
     ClassificationKind,
     Domain,
     IRStatus,
+    RejectionReason,
     Role,
 )
 from regops_shared.db import AsyncSession, get_db
@@ -232,6 +234,143 @@ async def lock_ir(
     )
     await db.commit()
     return ok({"id": str(ir_id), "status": ir.status.value, "locked_at": ir.locked_at.isoformat()})
+
+
+class UnlockRequest(BaseModel):
+    """Why a lock is being taken back.
+
+    Required, and not defaulted to "". Reversing a human assertion with no explanation is the entry
+    an auditor stops on, and the answer is usually short and complete — "locked in error".
+    """
+
+    note: str = Field(min_length=3, max_length=1000)
+
+
+class RejectRequest(BaseModel):
+    """Why a draft is being refused.
+
+    The enum is what the counts are made of and the note is where the judgement lives; both are
+    required, for the split ``ExclusionReason`` already makes between an aggregatable reason and
+    the particulars of one case.
+    """
+
+    reason: RejectionReason
+    note: str = Field(min_length=3, max_length=1000)
+
+
+@router.post("/irs/{ir_id}/unlock")
+async def unlock_ir(
+    ir_id: uuid.UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_roles([Role.RA, Role.ADMIN]))],
+    body: UnlockRequest,
+) -> dict[str, Any]:
+    """Undo a lock that should not have happened. **Restricted and audited** (ADR-0020).
+
+    Only from ``locked``, and it returns the IR to ``draft`` — the state it was in before the
+    signature. Not to ``rejected``: unlocking says *"this approval was a mistake"*, which is a
+    different assertion from *"I have reviewed this and refuse it"*, and collapsing the two would
+    put a judgement in the record that nobody made.
+
+    **The lock is erased from the row and not from the audit trail.** ``locked_by``/``locked_at``
+    clear, because a draft that still names a signer is a lie about its own state; the ``ir.locked``
+    entry stays where it is, in an append-only hash chain, next to the ``ir.unlocked`` entry this
+    writes. Who approved it and who took that back are both answerable, and neither is answerable
+    from the row alone — which is what the chain is for.
+
+    A reason is required. An unexplained reversal of a human assertion is the one thing an auditor
+    would ask about, and "it was a mis-click" is a complete answer where a blank is not.
+    """
+    ir = await db.get(IR, ir_id)
+    if ir is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "IR not found")
+    if ir.status is not IRStatus.LOCKED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"IR is '{ir.status.value}'; only a locked IR can be unlocked",
+        )
+
+    was_locked_by, was_locked_at = ir.locked_by, ir.locked_at
+    ir.status = IRStatus.DRAFT
+    ir.locked_by = None
+    ir.locked_at = None
+    await record(
+        db,
+        service=SERVICE,
+        action="ir.unlocked",
+        actor_id=principal.id,
+        entity_type="ir",
+        entity_id=ir_id,
+        payload={
+            "note": body.note,
+            "previously_locked_by": str(was_locked_by) if was_locked_by else None,
+            "previously_locked_at": was_locked_at.isoformat() if was_locked_at else None,
+        },
+    )
+    await db.commit()
+    return ok({"id": str(ir_id), "status": ir.status.value, "locked_at": None})
+
+
+@router.post("/irs/{ir_id}/reject")
+async def reject_ir(
+    ir_id: uuid.UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_roles([Role.RA, Role.ADMIN]))],
+    body: RejectRequest,
+) -> dict[str, Any]:
+    """A human asserts this draft is wrong. **Restricted and audited** (ADR-0020).
+
+    The counterpart to :func:`lock_ir`, and it exists for the reason ADR-0004 decision 6 gives one
+    level down: a refusal left as ``draft`` is indistinguishable from a draft nobody has opened, so
+    it returns to the next reviewer's queue forever and the extraction agent's error rate is
+    unmeasurable.
+
+    Only from ``draft``. A ``locked`` IR is unlocked first — two steps, because taking back an
+    approval and refusing a proposal are different assertions and the record should say which
+    happened. A ``stale`` or ``superseded`` IR is already out of the review queue.
+
+    Rejecting does **not** delete the row. ``IR_VISIBLE_STATUSES`` is unchanged, so a rejected IR is
+    inert exactly as a draft is — inert *and* accounted for, which is the whole difference.
+    """
+    ir = await db.get(IR, ir_id)
+    if ir is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "IR not found")
+    if ir.status is not IRStatus.DRAFT:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"IR is '{ir.status.value}'; only a draft IR can be rejected",
+        )
+
+    ir.status = IRStatus.REJECTED
+    ir.rejected_by = principal.id
+    ir.rejected_at = utcnow()
+    ir.rejection_reason = body.reason
+    ir.rejection_note = body.note
+    await record(
+        db,
+        service=SERVICE,
+        action="ir.rejected",
+        actor_id=principal.id,
+        entity_type="ir",
+        entity_id=ir_id,
+        payload={
+            "reason": body.reason.value,
+            "note": body.note,
+            "rule_version": ir.rule_version,
+            "prompt_version": ir.prompt_version,
+            "llm_provider": ir.llm_provider,
+            "llm_model": ir.llm_model,
+        },
+    )
+    await db.commit()
+    return ok(
+        {
+            "id": str(ir_id),
+            "status": ir.status.value,
+            "rejection_reason": ir.rejection_reason.value,
+            "rejected_at": ir.rejected_at.isoformat(),
+        }
+    )
 
 
 @router.get("/document-versions/{version_id}/coverage")

@@ -248,6 +248,8 @@ function emptyTitle(status: IRStatus, extracted: boolean): string {
       return '확정된 IR이 없습니다';
     case 'draft':
       return '검토 대기 중인 초안이 없습니다';
+    case 'rejected':
+      return '반려된 IR이 없습니다';
     case 'stale':
       return '재도출이 필요한 IR이 없습니다';
     case 'superseded':
@@ -262,6 +264,8 @@ function emptyHint(status: IRStatus, extracted: boolean): string | undefined {
       return '추출은 초안만 만듭니다. ra가 확정해야 답변 생성·영향 등급·갭 분석에 사용됩니다.';
     case 'stale':
       return '인용 조문이 개정되면 해당 IR이 여기에 나타납니다.';
+    case 'rejected':
+      return 'ra가 반려한 초안이 여기에 남습니다. 사유별 건수는 추출 품질의 신호입니다.';
     default:
       return undefined;
   }

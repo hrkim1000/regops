@@ -51,6 +51,7 @@ from regops_shared.constants import (
     ExclusionReason,
     ExtractionRunStatus,
     IRStatus,
+    RejectionReason,
 )
 from regops_shared.models.base import Base, TimestampMixin, UUIDPrimaryKey
 from regops_shared.models.cell import domain_enum
@@ -67,6 +68,12 @@ classification_kind_enum = SAEnum(
 exclusion_reason_enum = SAEnum(
     ExclusionReason,
     name="exclusion_reason",
+    values_callable=lambda e: [m.value for m in e],
+    native_enum=True,
+)
+rejection_reason_enum = SAEnum(
+    RejectionReason,
+    name="rejection_reason",
     values_callable=lambda e: [m.value for m in e],
     native_enum=True,
 )
@@ -105,6 +112,20 @@ class IR(UUIDPrimaryKey, TimestampMixin, Base):
 
     locked_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    #: Who refused this draft, why, and when (ADR-0020). Set together with ``status = rejected`` and
+    #: cleared by a re-review, the same way the lock triple is.
+    #:
+    #: The reason is an enum and the note is free text, for the split ``ExclusionReason`` already
+    #: makes: the count per reason is a quality signal about the extraction agent — a jump in
+    #: ``not_an_obligation`` is a classification regression showing up at review time — while the
+    #: particulars of one refusal are a human judgement that no enum should pretend to hold.
+    rejected_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[RejectionReason | None] = mapped_column(
+        rejection_reason_enum, nullable=True
+    )
+    rejection_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     #: Provenance for any row an LLM produced (`.claude/skills/service-endpoint` § LLM seam).
     #:
