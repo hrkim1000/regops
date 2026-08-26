@@ -306,9 +306,16 @@ Not planned when this slice was written: the FD&C Act was expected to reuse a pr
 - [x] `path_segments` `[subchapter, part, section, paragraph…]`, so `21 U.S.C. 351(a)(1)` stores as
       `Subchapter V/Part A/351/(a)/(1)` — the same shape `cfr_structured` uses, rendered at citation
       time. 20 unit tests
-- [ ] The 23 ambiguous clause paths (0.19% of 12,179) that remain. Each is logged and suffixed
+- [x] The 23 ambiguous clause paths (0.19% of 12,179) that remain. Each is logged and suffixed
       deterministically by `_disambiguate`; whether any is our mis-nesting rather than the source's
       own repeat is **not yet established** — see *Deviations* 24
+      → **established 2026-08-26, and it was both.** **16 were ours** — a roman `(i)` nested three
+      levels down is a perfect successor to subsection `(h)`, so the ladder read it as the section's
+      ninth subsection and the real `(i)` then collided with it. **7 are the source's**, and the
+      Office of the Law Revision Counsel says so in its own footnotes: *"So in original. Two
+      subsecs. (z) have been enacted."* Fixed the 16 by using the depth the authority states
+      (`subsection-head`) instead of inferring it; the 7 keep their `~2` suffix, which is what
+      `_disambiguate` is for. 23 → 7, clause count unchanged at 12,179. See *Deviations* 30
 
 ### Extraction — the English rule set
 
@@ -1003,3 +1010,50 @@ And the structural criteria the slice is really about:
     warnings (`701.3/(a)`, `(b)`, `(c)`, occurrence 2). **Pre-existing** — reproduced on the parser
     as it stood before this change — so it is a separate defect in how that section restarts its
     designators, not a regression here. Recorded rather than folded in silently.
+
+30. **The 23 ambiguous clause paths were two different things, and one of them was ours
+    (2026-08-26).** *Deviations* 24 left this open rather than describing it as clean. Answering it
+    needed the source, not the parser.
+
+    **16 of 23 were our mis-nesting, and the cause is a genuine ambiguity.** The USC nests
+    `(a)(1)(A)(i)(I)`, so `(i)` is both the **ninth subsection** and the **first roman numeral**.
+    `depth_for` walks the open levels from the inside out looking for a successor — and after a
+    subsection `(h)`, a roman `(i)` three levels down *is* a perfect successor to it. So the ladder
+    closed three levels and filed the provision at subsection depth, where the section's real `(i)`
+    later landed on the same path. Nine subsections were misplaced this way, in 335a, 343, 348,
+    350a–1, 353, 355–1, 360, 360j, 360bbb–4, 379j, 379aa and 379aa–1.
+
+    **7 are the source's own repeat, and the authority states it outright.** 21 U.S.C. 355 carries
+    two subsections `(z)` and 353b carries two `(d)`, each flagged by an OLRC footnote reading *"So
+    in original. Two subsecs. (z) have been enacted."* — the ` 6` marker in the clause text is
+    that footnote reference. Their `~2` suffix is correct and stays: this is exactly the case
+    `_disambiguate` was written for, and dropping the second would lose an obligation while the
+    clause count still looked plausible.
+
+    **The fix is the shape ADR-0002 decision 7 already argues for.**
+    [usc.py](../../services/regulation/app/parsing/usc.py) treated *every* class as
+    presentational — *"the suffix is matched and then ignored"*. True of `-Nem`, and it
+    stays true: a compound run like `(h)(1)(A)` is indented at its **outermost** new
+    level, so the indent does not state what the paragraph opens. It was never true of
+    `subsection-head` / `paragraph-head` / `subparagraph-head` / `clause-head`, which are the OLRC
+    **naming the level** — 1,444 blocks carry one. Those now supply the depth outright and the
+    ladder is told; inference runs where nothing is stated, which is the same primary/fallback split
+    as a stated 조문이동 beating a similarity guess.
+
+    With the real subsections stated, the inference can safely prefer the deep reading for what is
+    left: a token that is a successor at a shallower level **and** a well-formed first child of the
+    innermost one now takes the child, because the shallow reading is the destructive one and a
+    genuine subsection no longer relies on it.
+
+    **Measured, not asserted.** `subsection-head` blocks placed at subsection depth: **904 → 912 of
+    913**. Duplicate paths **23 → 7**. Clause count **12,179, unchanged** — 306 paths (2.5%) moved,
+    nothing was lost or invented. **No citation broke: `ir_citations` pinned to this version is 0**,
+    because the Act has not been extracted yet, so the re-addressing is free exactly now and would
+    not have been later.
+
+    **The gated cells cannot be reached by this.** `ladder.py` is imported only by `cfr.py` and
+    `usc.py`; MFDS parses through `outline.py`. That is why this was fixable in passing and
+    *Deviations* 26 and 28 were not — those sit on the gated pair's own path.
+
+    One `subsection-head` is still misplaced (`350k/(a)/(1)`, filed a level deep) and is left as
+    measured rather than rounded off.

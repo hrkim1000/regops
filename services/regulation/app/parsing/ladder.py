@@ -190,13 +190,28 @@ class Ladder:
 
         Walking the open levels from the inside out is the whole disambiguation.
         """
+        child_depth = len(stack)
+        opens_a_child = self.index_in(token, self.style_at(child_depth)) == 1
+
         for depth in range(len(stack) - 1, -1, -1):
             label, style, _ = stack[depth]
             if self.successor_of(token, style, label.strip("()")):
+                # A successor at a *shallower* level closes every level below it, so where the token
+                # is equally a well-formed first child of the innermost level, the shallow reading
+                # is the destructive one and the deep reading is preferred.
+                #
+                # This is the ``(i)`` case and it is not hypothetical: the USC nests
+                # ``(a)(1)(A)(i)``, so a roman ``(i)`` three levels down is also a perfect successor
+                # to subsection ``(h)`` — and reading it that way closed three levels and put the
+                # provision at subsection depth, where the section's real ``(i)`` then collided with
+                # it. Preferring the child is only safe because a genuine subsection says so: the
+                # OLRC marks it ``subsection-head`` and :meth:`segment_paragraphs` is given that
+                # depth outright, so it never reaches this inference at all.
+                if opens_a_child and depth < child_depth - 1:
+                    return child_depth
                 return depth
 
-        child_depth = len(stack)
-        if self.index_in(token, self.style_at(child_depth)) == 1:
+        if opens_a_child:
             return child_depth
 
         # Neither a successor nor a well-formed first child — the authority's sequence broke.
@@ -208,7 +223,12 @@ class Ladder:
         return child_depth
 
     def segment_paragraphs(
-        self, paragraphs: list[str], *, prefix: tuple[str, ...], clauses: list[ParsedClause]
+        self,
+        paragraphs: list[str],
+        *,
+        prefix: tuple[str, ...],
+        clauses: list[ParsedClause],
+        stated_depths: list[int | None] | None = None,
     ) -> list[int]:
         """Turn a flat run of paragraph texts into a nested clause tree, by designator sequence.
 
@@ -219,12 +239,25 @@ class Ladder:
         produced, so a caller can attach something to the paragraph it followed. It is not the
         identity: a compound run like ``(3)(A)`` opens two levels and emits two clauses from one
         paragraph, which is why this is returned rather than recomputed by counting.
+
+        ``stated_depths`` is the **authority's own** level for a paragraph's first designator, where
+        it publishes one — ``None`` everywhere else. Inference is what runs when nothing is stated,
+        not what runs instead: this is ADR-0002 decision 7's shape, where a stated 조문이동 beats a
+        similarity guess, applied to depth rather than to identity.
+
+        It exists because the inference has one case it cannot win. The USC ladder is
+        ``(a)(1)(A)(i)(I)``, so ``(i)`` is both the **ninth subsection** and the **first roman** —
+        and after a subsection ``(h)``, a roman ``(i)`` buried three levels down is a perfect
+        successor to it. :meth:`depth_for` walks the open levels outermost-last and finds that
+        successor, closing three levels that should have stayed open. The real subsection ``(i)``
+        then lands on the same path, which is how 16 of the FD&C Act's 23 duplicate paths arose.
         """
         #: (path segment, style, index into ``clauses``) per open level, outermost first.
         stack: list[tuple[str, str, int]] = []
         produced: list[int] = []
 
-        for text in paragraphs:
+        for position_in_run, text in enumerate(paragraphs):
+            stated = stated_depths[position_in_run] if stated_depths is not None else None
             tokens = designator_run(text)
             if not tokens:
                 _append_unlabelled(text, prefix=prefix, stack=stack, clauses=clauses)
@@ -232,7 +265,12 @@ class Ladder:
                 continue
 
             for position, token in enumerate(tokens):
-                depth = self.depth_for(token, stack)
+                # Only the run's first designator is the one the authority labelled; the rest of a
+                # compound run like `(j)(1)` are its children and are inferred as always.
+                if position == 0 and stated is not None:
+                    depth = min(stated, len(stack))
+                else:
+                    depth = self.depth_for(token, stack)
                 del stack[depth:]
 
                 segment = f"({token})"

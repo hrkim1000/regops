@@ -77,12 +77,25 @@ _CONTAINERS: Final[dict[str, str]] = {
     "subpart-head": "Subpart",
 }
 
-#: Blocks holding enacted text. The ``-Nem`` suffixes are indentation, which is presentational; the
-#: designator sequence is what establishes depth, so the suffix is matched and then ignored.
+#: Blocks holding enacted text. The ``-Nem`` suffixes are indentation and stay ignored: they are
+#: presentational, and a compound run like ``(h)(1)(A)`` is indented at its *outermost* new level,
+#: so the suffix does not state the depth of what the paragraph actually opens.
 _STATUTORY_PREFIXES: Final[tuple[str, ...]] = ("statutory-body",)
-_STATUTORY_HEADS: Final[frozenset[str]] = frozenset(
-    {"subsection-head", "paragraph-head", "subparagraph-head", "clause-head", "subclause-head"}
-)
+
+#: The head classes are a different thing, and conflating them with the ``-Nem`` suffixes cost 16 of
+#: the 23 duplicate clause paths in the FD&C Act. ``subsection-head`` is not presentational — it is
+#: the Office of the Law Revision Counsel **naming the level**, and it is the one signal that
+#: settles ``(i)``, which is both the ninth subsection and the first roman numeral. So each maps to
+#: the depth it names and the ladder is told, rather than left to infer against a ladder where the
+#: inference cannot win. 1,444 blocks carry one.
+_HEAD_DEPTHS: Final[dict[str, int]] = {
+    "subsection-head": 0,
+    "paragraph-head": 1,
+    "subparagraph-head": 2,
+    "clause-head": 3,
+    "subclause-head": 4,
+}
+_STATUTORY_HEADS: Final[frozenset[str]] = frozenset(_HEAD_DEPTHS)
 
 #: The ambiguous presentational style. Admitted only while the walker is inside statutory text —
 #: see the module docstring.
@@ -182,13 +195,18 @@ def parse(raw: bytes) -> ParsedDocument:
     prefix: tuple[str, ...] = ()
     section_index: int | None = None
     paragraphs: list[str] = []
+    #: The authority's own level per paragraph, where it named one. ``None`` means "infer".
+    stated_depths: list[int | None] = []
     in_apparatus = False
 
     def close_section() -> None:
-        nonlocal paragraphs
+        nonlocal paragraphs, stated_depths
         if section_index is not None and paragraphs:
-            _LADDER.segment_paragraphs(paragraphs, prefix=prefix, clauses=clauses)
+            _LADDER.segment_paragraphs(
+                paragraphs, prefix=prefix, clauses=clauses, stated_depths=stated_depths
+            )
         paragraphs = []
+        stated_depths = []
 
     for css, text in _blocks_of(raw):
         if css in _CONTAINERS:
@@ -238,6 +256,7 @@ def parse(raw: bytes) -> ParsedDocument:
 
         if css in _STATUTORY_HEADS or css.startswith(_STATUTORY_PREFIXES) or css == _AMBIGUOUS:
             paragraphs.append(text)
+            stated_depths.append(_HEAD_DEPTHS.get(css))
 
     close_section()
 

@@ -265,3 +265,67 @@ def test_containers_are_segments_and_the_chapter_is_not() -> None:
 def test_the_section_heading_is_kept_separately_from_its_text() -> None:
     parsed = _parse('<h3 class="section-head">§351. Adulterated drugs and devices</h3>')
     assert parsed.clauses[0].heading == "Adulterated drugs and devices"
+
+
+# --- depth the authority states, versus depth we infer -----------------------------------------
+
+#: The `(i)` collision, in the shape 21 U.S.C. 335a has it: subsections run to `(h)`, a paragraph
+#: three levels down opens a roman `(i)`, and the section's own `(i)` follows. `(i)` is both the
+#: ninth letter and the first roman, so the designator alone cannot separate them — but the Office
+#: of the Law Revision Counsel marks its subsections `subsection-head` and says which is which.
+AMBIGUOUS_I = (
+    '<h3 class="section-head">&sect;335a. Debarment</h3>'
+    '<p class="subsection-head">(h) Termination of suspension</p>'
+    '<p class="statutory-body">The Secretary may terminate a suspension.</p>'
+    '<p class="statutory-body-1em">(1) In general</p>'
+    '<p class="statutory-body-2em">(A) The person shall&mdash;</p>'
+    '<p class="statutory-body-3em">(i) fully remedy the patterns or practices; and</p>'
+    '<p class="statutory-body-3em">(ii) demonstrate that it will operate lawfully.</p>'
+    '<p class="subsection-head">(i) Procedure</p>'
+    '<p class="statutory-body">The Secretary may not take any action under subsection (a).</p>'
+)
+
+#: 21 U.S.C. 355 really does carry two subsections `(z)`, and the source says so in as many words:
+#: footnote 6 reads *"So in original. Two subsecs. (z) have been enacted."*
+TWO_Z = (
+    '<h3 class="section-head">&sect;355. New drugs</h3>'
+    '<p class="subsection-head">(z) Nonclinical test defined</p>'
+    '<p class="statutory-body">For purposes of this section the term is defined.</p>'
+    '<p class="subsection-head">(z) Diversity action plan for clinical studies</p>'
+    '<p class="statutory-body">A sponsor shall submit a plan.</p>'
+)
+
+_PREFIX = "Subchapter V/Part A/"
+
+
+def test_a_roman_three_levels_down_is_not_the_subsection_after_h() -> None:
+    """Both readings are well-formed and only one is right. The deep `(i)` is a perfect successor to
+    subsection `(h)`, so reading it that way closes three levels and files the provision at
+    subsection depth — where the section's real `(i)` then lands on the same path. 16 of the FD&C
+    Act's 23 duplicate clause paths were this."""
+    paths = _paths(_parse(AMBIGUOUS_I))
+    assert f"{_PREFIX}335a/(h)/(1)/(A)/(i)" in paths
+    assert f"{_PREFIX}335a/(h)/(1)/(A)/(ii)" in paths
+
+
+def test_the_subsection_the_authority_named_is_placed_where_it_said() -> None:
+    """`subsection-head` is not presentational — it is the OLRC naming the level. The `-Nem`
+    suffixes stay ignored, and for a different reason: a compound run like `(h)(1)(A)` is indented
+    at its outermost new level, so the indent does not state what the paragraph opens."""
+    paths = _paths(_parse(AMBIGUOUS_I))
+    assert f"{_PREFIX}335a/(i)" in paths
+    # It did not have to be suffixed, because nothing else claimed the path.
+    assert f"{_PREFIX}335a/(i)~2" not in paths
+
+
+def test_a_designator_the_authority_enacted_twice_keeps_both_provisions() -> None:
+    """This is what `_disambiguate` is *for*, and telling it apart from our own mis-nesting is the
+    whole point of the distinction. Dropping the second would lose an obligation while the clause
+    count still looked plausible; the `~2` suffix is deterministic, so a citation resolves."""
+    parsed = _parse(TWO_Z)
+    paths = _paths(parsed)
+    assert f"{_PREFIX}355/(z)" in paths
+    assert f"{_PREFIX}355/(z)~2" in paths
+    by_path = {c.clause_path: c for c in parsed.clauses}
+    assert "Nonclinical" in by_path[f"{_PREFIX}355/(z)"].text
+    assert "Diversity" in by_path[f"{_PREFIX}355/(z)~2"].text
