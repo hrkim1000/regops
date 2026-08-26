@@ -392,6 +392,11 @@ Not planned when this slice was written: the FD&C Act was expected to reuse a pr
 - [ ] Embedding model unchanged — `nomic-embed-text`, 768-dim, fixed regardless of generation
       provider. If the English corpus argues for a different model, that is a separate decision with a
       full re-index behind it
+      → **the model is unchanged and the index was never built (2026-08-26).** `clause_embeddings`
+      holds 7,640 rows and **0 of them are FDA**, so retrieval in an FDA cell is lexical-only — the
+      hybrid has one arm. Not a defect: embedding is explicit by design and nobody has run
+      `assistant.embed_index` over these versions. Open, and it gates any claim about English
+      retrieval quality. See *Deviations* 35
 - [x] Passage assembly reviewed against CFR section length; `MAX_PASSAGE_CHARS` was tuned on
       별표-heavy Korean text
       → **reviewed, measured, and left alone.** The worry does not bite: English clauses sit more
@@ -529,6 +534,12 @@ And the structural criteria the slice is really about:
   before fixing the poll interval ([ADR-0018](../design/ADR-0018-fda-source-model.md) open question 1).
 - **Open question (new) — how is the guidance corpus enumerated?** No API, and no crawl was attempted.
   Decision 9 settles how guidance is *treated*, not how it is *found*.
+- **Open question (new, 2026-08-26) — is a question in the "wrong" language answerable, and should
+  it be?** Nothing branches on the question's language: the API takes no language and retrieval
+  picks its stemmer from the *version's* language, so both are accepted and neither is handled.
+  Measured live, the two directions fail differently and **both fail silently** (*Deviations* 35).
+  Deciding this is not a retrieval tuning question — it is whether an FDA cell asked in Korean
+  should say so, or return nothing and let the citation contract call it "needs verification".
 
 ## Deviations & decisions
 
@@ -1250,3 +1261,44 @@ And the structural criteria the slice is really about:
     **The stored classifications are now behind the rules.** Re-extraction is per-version, LLM-bound
     and explicit by design (CLAUDE.md § Celery), so nothing re-runs automatically; the delta above
     is computed deterministically from the rules, which is why it could be measured without one.
+
+35. **Both languages are accepted; only one of them retrieves. Recorded, not fixed (2026-08-26).**
+    Raised as a question — *can a question be asked in English or Korean?* — and worth measuring
+    rather than reasoning about, because the honest answer is "the interface takes both" and that is
+    not the same as "both work".
+
+    **Nothing branches on the question's language.** `POST /api/v1/queries` has no language
+    parameter, and `_lexical_by_language` keys the stemmer on the **version's** language, not the
+    asker's. So the question language selects nothing, anywhere.
+
+    Measured live against the running stack:
+
+    | question | corpus in scope | hits | what came back |
+    | --- | --- | ---: | --- |
+    | English | FDA (English) | 5 | on target — `820.35(a) Records of complaints`, `803.18(d)(1)` |
+    | **Korean** | **FDA (English)** | **0** | lexical 0, vector 0 — nothing at all |
+    | Korean | MFDS (Korean) | 5 | same-language path, unchanged |
+    | English | MFDS (Korean) | 5 | 별지 서식 and a table of contents — worse than nothing |
+
+    Two causes, and the second is the one worth recording:
+
+    - **The lexical arm cannot cross languages by construction.** Korean tokens do not match English
+      text. That is not a bug and no amount of tuning changes it.
+    - **The FDA corpus has no embeddings.** `clause_embeddings` holds 7,640 rows, **0 of them FDA**,
+      so an FDA cell has no vector arm at all — the hybrid is running on one leg. A Korean question
+      there loses the only arm it could not use anyway, which is why it returns exactly zero.
+
+    Embedding is deliberately not chained off parse (CLAUDE.md § Celery), so this is unrun work
+    rather than a failure. It does mean **no claim about English retrieval quality is currently
+    supported by anything**, including the FDA golden sets seeded in *Deviations* 32.
+
+    **The asymmetry is the part that should not survive to a user.** Korean→FDA returns nothing, and
+    the citation contract turns that into *"needs verification"* — which is correct and honest.
+    English→MFDS returns *plausible-looking wrong evidence*, because `nomic-embed-text` emits enough
+    cross-lingual signal to rank something (37 vector hits) and not enough to rank the right thing.
+    An empty answer is a good failure; a confident one built on a 별지 form is the failure the
+    evidence-verification pass exists to catch, and it should not be reaching that pass by design.
+
+    Neither is in any row of this plan. Left as an open question above rather than fixed here,
+    because "run the embeddings" and "decide what a language mismatch should do" are different
+    decisions and only the first is mechanical.
