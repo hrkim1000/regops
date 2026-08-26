@@ -15,10 +15,16 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from app.extraction.agent import AgentResult, Proposal
-from app.extraction.extract import ExtractionResult, _process, _RoleTrail
+from app.extraction.extract import (
+    ExtractionResult,
+    _process,
+    _RoleTrail,
+    describe_exception,
+)
 from app.extraction.rules import rule_set_for
 from regops_shared.constants import ClassificationKind, Domain, ExclusionReason
 
@@ -149,3 +155,31 @@ def test_a_clause_that_yields_an_ir_is_obligation_bearing(monkeypatch, captured)
 
     assert kind is ClassificationKind.OBLIGATION_BEARING
     assert reason is None
+
+
+# --- a failure that says what failed --------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        (httpx.ReadTimeout(""), "httpx.ReadTimeout"),
+        (httpx.ConnectError(""), "httpx.ConnectError"),
+        (RuntimeError(""), "RuntimeError"),
+        (ValueError("clause 42 has no citation"), "ValueError: clause 42 has no citation"),
+    ],
+)
+def test_a_failure_reason_survives_an_exception_with_no_message(exc, expected) -> None:
+    """**The transport errors that actually end a run carry no message.** `run.error` was
+    `str(exc)`, which is right for anything raised with a sentence and empty for these: a run over
+    the FD&C Act died on `httpx.ReadTimeout` after 291 of 12,179 clauses and recorded its reason as
+    `''`. The column exists so a failure is legible without opening a worker log, and it said
+    nothing.
+
+    The type leads because for a timeout it *is* the answer; a message follows where there is one.
+    """
+    assert describe_exception(exc) == expected
+
+
+def test_a_long_message_is_truncated_to_the_column() -> None:
+    assert len(describe_exception(ValueError("x" * 5000))) == 2000

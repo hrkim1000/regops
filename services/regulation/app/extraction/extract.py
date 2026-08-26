@@ -141,11 +141,11 @@ def extract_version(
         # A run that dies mid-corpus must be *visibly* incomplete. Leaving it `running` forever
         # would read as "still working" and the partial IRs would look like the whole extraction.
         run.status = ExtractionRunStatus.FAILED
-        run.error = str(exc)[:2000]
+        run.error = describe_exception(exc)
         run.completed_at = utcnow()
         _checkpoint(session, run, result)
-        result.error = str(exc)
-        bound.error("extract.failed", error=str(exc))
+        result.error = run.error
+        bound.error("extract.failed", error=run.error)
         raise
 
     run.status = ExtractionRunStatus.COMPLETED
@@ -178,6 +178,26 @@ def domains_for(session: Session, document_id: uuid.UUID) -> list[Domain]:
 
 
 # --- one clause ------------------------------------------------------------------------------
+
+
+def describe_exception(exc: BaseException) -> str:
+    """A failure reason that survives an exception carrying no message.
+
+    ``run.error`` used to be ``str(exc)``, which is correct for anything raised with a sentence and
+    **empty for the transport errors that actually end a run**: ``httpx.ReadTimeout`` and
+    ``ConnectError`` are raised with an empty message, so ``str()`` on them is ``""``. A run over
+    the FD&C Act died on one after 291 of 12,179 clauses and recorded its reason as the empty
+    string — the column exists so a failure is legible without reading a worker log, and it said
+    nothing at all.
+
+    So the type leads and the message follows where there is one. ``httpx.ReadTimeout`` is a
+    complete answer on its own; ``ValueError`` is not, and keeps its text.
+    """
+    name = type(exc).__name__
+    module = type(exc).__module__
+    qualified = name if module in ("builtins", None) else f"{module}.{name}"
+    detail = str(exc).strip()
+    return (f"{qualified}: {detail}" if detail else qualified)[:2000]
 
 
 class _RoleTrail:
