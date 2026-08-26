@@ -320,6 +320,16 @@ as a coverage hole unless it is stated as a rule.
   outside its language's tuple is rejected. Adding `should` would change extraction for every cell,
   including the gated MFDS pair, to accommodate documents this decision excludes anyway.
 
+> **Amended by [ADR-0021](ADR-0021-guidance-leaves-the-regulation-library.md), 2026-08-26 — the
+> storing half is reversed.** Guidance does **not** enter `documents`, in any cell. Two things this
+> decision could not weigh: the acquisition route is internal CMS plumbing with no API (that is a
+> cost, and costs change), and a guidance citation carries no legal `effective_date` while
+> `versions_in_scope` does not filter on `doc_type` — so a fused answer could cite binding and
+> nonbinding text in one list under one contract. The never-extracted half is kept and becomes
+> structural: nothing nonbinding is in the store to skip. Where guidance goes instead is
+> **deliberately not decided**; three candidate channels are recorded there. `should` still does not
+> join the inventory, for the reason above.
+
 #### 10. The detection-coverage denominator is the sections of the in-scope Parts, from the structure endpoint
 
 phase2.0a records the ≥95% coverage gate as unmeasurable for FDA on the grounds that

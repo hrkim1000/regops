@@ -359,13 +359,20 @@ Not planned when this slice was written: the FD&C Act was expected to reuse a pr
       (807, 63), `classification` (892 + 860, 102) and `records` (11, 18); `postmarket` absorbs MDR,
       surveillance, corrections/removals and recalls (137) **by decision, recorded**. `IR_RULE_VERSION`
       → 1.3.0. See *Deviations* 13
-- [ ] Guidance excluded by the rule decided above — with an `ExclusionReason`, so it appears as
+- [x] Guidance excluded by the rule decided above — with an `ExclusionReason`, so it appears as
       examined-and-excluded rather than unexamined
       → **deferred with the Guidance block (2026-08-25).** The rule is decided
       ([ADR-0018](../design/ADR-0018-fda-source-model.md) decision 9) and `ExclusionReason.NON_BINDING`
       exists in the schema; there is simply no guidance document to apply it to while `fda.gov`
       refuses us. **Nothing in the coverage number moves**: decision 10 already defines the
       denominator over obligation-bearing `doc_type`s, so guidance was never in it
+      → **closed as no-longer-applicable 2026-08-26 by
+      [ADR-0021](../design/ADR-0021-guidance-leaves-the-regulation-library.md).** Guidance does not
+      enter `documents` at all, in any cell, so there is nothing to mark examined-and-excluded. The
+      rule this row implements is now structural rather than procedural: extraction needs no
+      `doc_type` skip because no nonbinding instrument is in the store.
+      `ExclusionReason.NON_BINDING` stays in the enum, unused and documented as such. *(Also: the
+      premise this row was deferred on was wrong — `fda.gov` was not refusing us, *Deviations* 36.)*
 - [x] `IR_RULE_VERSION` bumped if the inventory or taxonomy moves. IRs extracted under two rule
       versions are not comparable, and a golden-set score is meaningful only per rule version
       → **1.2.0 → 1.3.0** with the taxonomy. The modal inventory did not move, so *whether* a clause
@@ -1425,3 +1432,34 @@ And the structural criteria the slice is really about:
 
     Nothing built. The question stays open; what is now closed is the possibility that a documented
     route was sitting there unlooked-at.
+
+38. **Guidance leaves the regulation library —
+    [ADR-0021](../design/ADR-0021-guidance-leaves-the-regulation-library.md), 2026-08-26.**
+    [ADR-0018](../design/ADR-0018-fda-source-model.md) decision 9 answered *"does the Guidance block
+    belong in `documents` at all"* with yes. The storing half is reversed; the never-extracted half
+    is kept and becomes structural.
+
+    **Free to decide, because nothing was ever built.** Across all eight cells: **0** documents with
+    `doc_type = guidance`, **0** source rows in the `guidance` block — not seeded anywhere — and
+    **0** clauses carrying `ExclusionReason.NON_BINDING`. The gated MFDS pair reached Phase 1
+    acceptance without a line of guidance in the store. This is declining to build, not removing
+    something that works, and that is the cheapest such decision ever is.
+
+    **The acquisition cost is not the argument, though it is what prompted the question.**
+    *Deviations* 37 found no API, an index reachable only through Drupal internals, HTML/PDF
+    documents and a 30× crawl-delay gap. Costs change. What does not: a guidance `Citation` carries
+    no legal `effective_date`, and `versions_in_scope` **does not filter on `doc_type`** — so a
+    fused answer could cite binding and nonbinding text in one list under one contract that promises
+    clause-level evidence. A reader acting on nonbinding text as though it bound them is the worst
+    mistake this domain offers, and the product would have handed it over with a citation attached.
+
+    **Where guidance goes instead is deliberately not decided.** Three channels are recorded — a
+    reference library outside the citation contract, link-only, or a change signal with no stored
+    text — with what each buys, what it costs, and what evidence would settle it. The pilot is the
+    instrument that distinguishes *"what does the guidance say"* from *"has the guidance changed"*,
+    and it has not run. Picking now would repeat decision 9's mistake in the other direction.
+
+    **This is not an FDA rule.** The `Guidance` block exists in the MFDS, EU and NMPA sections of
+    the source map too, and the same reasoning covers them. The blocks stay in
+    [import-source-map.md](../import-source-map.md): they are a true inventory of what exists, and
+    deleting real sources to reflect a routing decision would make the single catalog lie.
