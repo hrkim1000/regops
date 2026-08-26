@@ -781,6 +781,7 @@ CREATE TABLE public.extraction_runs (
     irs_written integer DEFAULT 0 NOT NULL,
     rejected_uncited integer DEFAULT 0 NOT NULL,
     started_at timestamp with time zone NOT NULL,
+    heartbeat_at timestamp with time zone,
     completed_at timestamp with time zone,
     error text,
     CONSTRAINT ck_extraction_runs_counts_nonneg CHECK (((clauses_seen >= 0) AND (irs_written >= 0) AND (rejected_uncited >= 0)))

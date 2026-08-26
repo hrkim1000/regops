@@ -274,6 +274,10 @@ class ExtractionRun(UUIDPrimaryKey, Base):
     rejected_uncited: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    #: Bumped at every incremental checkpoint, so ``running`` can be checked rather than believed.
+    #: ``started_at`` cannot do this job: it never moves, so a run killed after one clause looks
+    #: exactly like one still working three hours in. See ``extraction_run_is_live``.
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 

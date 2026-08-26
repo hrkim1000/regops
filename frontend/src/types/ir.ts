@@ -102,8 +102,35 @@ export interface DomainCoverage {
   complete: boolean;
 }
 
+export interface ExtractionRunSummary {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  clauses_seen: number;
+  irs_written: number;
+  started_at: string;
+  heartbeat_at: string | null;
+  completed_at: string | null;
+  error: string | null;
+  /**
+   * Whether work is actually in flight — **read this, not `status`.**
+   *
+   * `status` is what the row says; `live` is whether anything is still saying it. They differ
+   * exactly when a worker died without closing its run, and that is the case a reader most needs
+   * told apart: a stuck `running` row would otherwise show "추출 중" forever. Derived server-side
+   * from the checkpoint heartbeat so the client never has to agree two fields.
+   */
+  live: boolean;
+}
+
 export interface CoverageReport {
   version_id: string;
   clauses: number;
   domains: DomainCoverage[];
+  /**
+   * The most recent run, or null if this version has never been extracted.
+   *
+   * Coverage means a different thing while one is in flight: an `unclassified` remainder mid-run is
+   * a snapshot, not a finding. The page needs the run to tell those apart.
+   */
+  latest_run: ExtractionRunSummary | null;
 }

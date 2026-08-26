@@ -71,6 +71,15 @@ export default async function IRsPage({
   // four filters, and `serverGetPage` returns null rather than throwing — so this cannot reject and
   // one dead probe still renders as a `?` beside its tab instead of taking the other three with it.
   // `page_size=1` because this reads `meta.total`, not the rows.
+  // Whether an extraction is in flight is the server's answer, read once here and handed to both
+  // consumers. Two components asking the same question independently is how they end up disagreeing
+  // on screen — the button saying "추출 중" beside a panel calling the same run's remainder a defect.
+  const latestRun = coverage?.latest_run ?? null;
+  // `live`, not `status`: a run whose worker died still says `running`, and the server is the only
+  // side that can tell — it holds the checkpoint heartbeat. Reading `status` here is what would put
+  // "추출 중" on screen for a run that stopped hours ago.
+  const running = latestRun?.live === true;
+
   const probes = await Promise.all(
     IR_STATUS_ORDER.map((candidate) =>
       serverGetPage<IR[]>('regulation', `/document-versions/${versionId}/irs`, {
@@ -135,7 +144,7 @@ export default async function IRsPage({
         >
           <ListTree size={13} /> 조문 보기
         </Link>
-        {canWrite ? <ExtractButton versionId={versionId} /> : null}
+        {canWrite ? <ExtractButton versionId={versionId} run={latestRun} /> : null}
       </div>
 
       {coverage === null ? (
@@ -144,18 +153,23 @@ export default async function IRsPage({
           hint="IR 목록은 아래에 그대로 표시됩니다 — 분류 원장만 읽지 못한 상태입니다."
         />
       ) : coverage.domains.length === 0 ? (
+        // Zero domains means zero classified clauses, which is the same picture at two opposite
+        // moments: before anyone ran it, and in the first seconds of a run that has not committed a
+        // clause yet. The run tells them apart, so it decides which sentence this is.
         <EmptyState
-          title="아직 추출이 실행되지 않았습니다"
+          title={running ? '추출을 시작했습니다' : '아직 추출이 실행되지 않았습니다'}
           hint={
-            canWrite
-              ? '조문마다 LLM을 호출하므로 수집 시 자동 실행되지 않습니다. 위의 “IR 추출 실행”을 누르세요.'
-              : '조문마다 LLM을 호출하므로 수집 시 자동 실행되지 않습니다. ra 권한을 가진 사용자가 실행할 수 있습니다.'
+            running
+              ? '조문마다 LLM을 호출하므로 시간이 걸립니다. 워커가 조문 단위로 커밋하므로 결과는 진행되는 대로 나타납니다.'
+              : canWrite
+                ? '조문마다 LLM을 호출하므로 수집 시 자동 실행되지 않습니다. 위의 “IR 추출 실행”을 누르세요.'
+                : '조문마다 LLM을 호출하므로 수집 시 자동 실행되지 않습니다. ra 권한을 가진 사용자가 실행할 수 있습니다.'
           }
         />
       ) : (
         <div className="space-y-3">
           {coverage.domains.map((domain) => (
-            <CoveragePanel key={domain.domain} coverage={domain} />
+            <CoveragePanel key={domain.domain} coverage={domain} running={running} />
           ))}
         </div>
       )}

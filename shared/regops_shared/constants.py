@@ -1,7 +1,7 @@
 """Shared constants. No magic literals in service code."""
 
 from collections.abc import Iterable
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from typing import Final
 
@@ -642,6 +642,40 @@ EXTRACTION_BATCH_SIZE: Final[int] = 1
 #: How many clauses are written before the orchestrator commits. Long work commits incrementally so
 #: progress survives a worker restart and a retry skips what is already classified.
 EXTRACTION_COMMIT_EVERY: Final[int] = 25
+
+#: How long a ``running`` extraction may go without a checkpoint before it is presumed dead.
+#:
+#: A status column alone cannot answer *"is this still running?"* — a row says ``running`` just as
+#: firmly whether the worker is mid-clause or was killed an hour ago. That is not hypothetical: a
+#: worker restart on 2026-08-26 left a ``running`` row that claimed a live extraction, and the
+#: concurrency guard then refused every new run on that version. Only a *restart* cleared it, so a
+#: worker that stays up while its task dies would have stranded the version indefinitely.
+#:
+#: The threshold is generous on purpose. A checkpoint lands every ``EXTRACTION_COMMIT_EVERY``
+#: clauses and one clause is one LLM call — observed at ~3.5s on ``gemma3:4b``, so ~90s per
+#: checkpoint, and a single slow generation can dwarf that. Calling a live run dead is the worse
+#: error of the two: it unblocks a second run over clauses the first is still writing.
+EXTRACTION_HEARTBEAT_STALE_AFTER: Final[timedelta] = timedelta(minutes=15)
+
+
+def extraction_run_is_live(
+    status: str, heartbeat_at: datetime | None, *, now: datetime | None = None
+) -> bool:
+    """Is this run still working — as opposed to merely still *saying* ``running``?
+
+    Derived on read, never stored. A second column would be a copy of ``heartbeat_at`` that starts
+    disagreeing with it the moment a worker dies, and nothing would run to flip it — the same
+    argument :func:`version_status` makes about ``effective_date``.
+
+    A null heartbeat reads as **not live**: every row written from here on carries one from
+    ``open_run``, so a null is either a row from before this column existed or a run that never
+    reached its first checkpoint. Neither is evidence of a working extraction.
+    """
+    if status != ExtractionRunStatus.RUNNING.value:
+        return False
+    if heartbeat_at is None:
+        return False
+    return (now or datetime.now(UTC)) - heartbeat_at < EXTRACTION_HEARTBEAT_STALE_AFTER
 
 
 #: Stamped onto every ``document_versions.parser_version`` and used to decide whether a stored parse

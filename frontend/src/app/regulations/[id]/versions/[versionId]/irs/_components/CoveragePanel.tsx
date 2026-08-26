@@ -14,10 +14,23 @@ import type { DomainCoverage } from '@/types/ir';
  * - **The exclusion reasons are broken out.** A single "27 excluded" count is opaque; the split is
  *   what makes the claim auditable, and it is where a regression shows first — `unparseable` is a
  *   *defect signal*, not a verdict, so it is styled apart from the ten legitimate reasons.
+ *
+ * **`running` suspends the verdict, it does not change the numbers.** A run that has reached clause
+ * 50 of 406 leaves 356 genuinely unclassified, and the panel used to call that a defect in red while
+ * the worker was still walking the corpus — the reading was arithmetically right and told the
+ * operator the opposite of the truth. Mid-run the counts stay exactly as they are and only the
+ * verdict is withheld, because a partial count is still evidence and a premature verdict is not.
  */
-export function CoveragePanel({ coverage }: { coverage: DomainCoverage }) {
+export function CoveragePanel({
+  coverage,
+  running = false,
+}: {
+  coverage: DomainCoverage;
+  running?: boolean;
+}) {
   const { clauses, classified, unclassified, obligation_bearing, excluded, complete } = coverage;
   const pct = clauses === 0 ? 0 : Math.round((classified / clauses) * 100);
+  const defective = !complete && !running;
 
   return (
     <section className="rounded-lg border border-surface-border bg-surface-raised/40 p-4">
@@ -29,22 +42,34 @@ export function CoveragePanel({ coverage }: { coverage: DomainCoverage }) {
             'rounded border px-1.5 py-0.5 text-[10px]',
             complete
               ? 'border-emerald-800 bg-emerald-950/50 text-emerald-300'
-              : 'border-red-800 bg-red-950/40 text-red-300',
+              : running
+                ? 'border-surface-border text-slate-400'
+                : 'border-red-800 bg-red-950/40 text-red-300',
           )}
         >
-          {complete ? '전 조문 검토됨' : `미분류 ${unclassified.toLocaleString()}건`}
+          {complete
+            ? '전 조문 검토됨'
+            : running
+              ? `추출 진행 중 — 남은 조문 ${unclassified.toLocaleString()}건`
+              : `미분류 ${unclassified.toLocaleString()}건`}
         </span>
       </div>
 
       <p className="mt-2 text-[11px] text-slate-600">
         모든 조문은 <em className="not-italic text-slate-400">의무 보유</em> 또는{' '}
         <em className="not-italic text-slate-400">사유가 붙은 제외</em> 중 하나입니다. 건너뛴 조문이
-        없다는 것이 커버리지 주장의 근거입니다 — 미분류가 0이 아니면 그것이 곧 결함입니다.
+        없다는 것이 커버리지 주장의 근거입니다 —{' '}
+        {running
+          ? '추출이 끝난 뒤의 미분류가 결함입니다.'
+          : '미분류가 0이 아니면 그것이 곧 결함입니다.'}
       </p>
 
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-border">
         <div
-          className={clsx('h-full', complete ? 'bg-emerald-600' : 'bg-red-600')}
+          className={clsx(
+            'h-full transition-[width] duration-500',
+            complete ? 'bg-emerald-600' : running ? 'bg-accent' : 'bg-red-600',
+          )}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -53,7 +78,7 @@ export function CoveragePanel({ coverage }: { coverage: DomainCoverage }) {
         <Stat label="조문" value={clauses} />
         <Stat label="의무 보유" value={obligation_bearing} />
         <Stat label="제외" value={excluded} />
-        <Stat label="미분류" value={unclassified} alarm={unclassified > 0} />
+        <Stat label={running ? '남은 조문' : '미분류'} value={unclassified} alarm={defective} />
       </dl>
 
       {excluded > 0 ? (
@@ -92,12 +117,7 @@ function Stat({ label, value, alarm }: { label: string; value: number; alarm?: b
   return (
     <div className="min-w-0">
       <dt className="text-[11px] uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd
-        className={clsx(
-          'mt-0.5 font-mono text-sm',
-          alarm ? 'text-red-300' : 'text-slate-200',
-        )}
-      >
+      <dd className={clsx('mt-0.5 font-mono text-sm', alarm ? 'text-red-300' : 'text-slate-200')}>
         {value.toLocaleString()}
       </dd>
     </div>

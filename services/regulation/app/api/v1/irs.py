@@ -31,12 +31,15 @@ from regops_shared.api import Meta, ok
 from regops_shared.audit import record
 from regops_shared.auth import Principal, get_current_principal, require_roles
 from regops_shared.constants import (
+    EXTRACTION_HEARTBEAT_STALE_AFTER,
     IR_VISIBLE_STATUSES,
     ClassificationKind,
     Domain,
+    ExtractionRunStatus,
     IRStatus,
     RejectionReason,
     Role,
+    extraction_run_is_live,
 )
 from regops_shared.db import AsyncSession, get_db
 from regops_shared.models.base import utcnow
@@ -85,6 +88,47 @@ async def trigger_extraction(
             status.HTTP_409_CONFLICT,
             "Version has not been parsed; extraction has no clauses to read",
         )
+
+    # A second run against the same version is not a duplicate request — it is destructive. It calls
+    # `_clear_previous_drafts`, deleting the proposals the live run has already committed, and then
+    # both write `clause_classifications` for the same clauses until the UNIQUE (clause_id,
+    # domain_profile) constraint kills whichever loses. The worker runs `-c 2`, so they genuinely
+    # overlap. Observed 2026-08-26: the button re-enables after five minutes while a 23-minute run
+    # is still going, and nothing stopped a second click.
+    #
+    # **A `running` row is not by itself evidence of a live worker.** Guarding on the status alone
+    # makes a dead run permanent: the version becomes unextractable until a worker happens to
+    # reboot, because `_fail_orphaned_runs` fires on `worker_ready` and nothing else does. So the
+    # guard asks for a pulse, and closes any row that has stopped producing one.
+    open_runs = list(
+        await db.scalars(
+            select(ExtractionRun).where(
+                ExtractionRun.document_version_id == version_id,
+                ExtractionRun.status == ExtractionRunStatus.RUNNING,
+            )
+        )
+    )
+    live = next((r for r in open_runs if _run_is_live(r)), None)
+    if live is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"An extraction is already running for this version — {live.clauses_seen} clauses "
+            f"examined so far. Starting another would delete its drafts and collide on the clauses "
+            f"it has already classified.",
+        )
+
+    # Whatever is left said `running` and had no pulse. Close it here rather than leaving it for a
+    # reboot: it is about to be contradicted by the run this request starts, and two rows claiming
+    # to be running the same version is a worse record than one marked dead with its reason.
+    for stale in open_runs:
+        stale.status = ExtractionRunStatus.FAILED
+        stale.error = (
+            f"No checkpoint for longer than {EXTRACTION_HEARTBEAT_STALE_AFTER}; presumed dead "
+            "when a new extraction was requested."
+        )
+        stale.completed_at = utcnow()
+    if open_runs:
+        await db.commit()
 
     from ...celery_app import celery_app
 
@@ -442,7 +486,24 @@ async def extraction_coverage(
             }
         )
 
-    return ok({"version_id": str(version_id), "clauses": clauses, "domains": per_domain})
+    # **The coverage number means something different while a run is in flight**, and the docstring
+    # above is only true when one is not: an `unclassified` remainder mid-run is a snapshot, not a
+    # finding. Reporting the run beside the number is what lets a reader tell those apart — without
+    # it, a 23-minute extraction showed "미분류 306건" in alarm red at the five-minute mark.
+    latest = await db.scalar(
+        select(ExtractionRun)
+        .where(ExtractionRun.document_version_id == version_id)
+        .order_by(ExtractionRun.started_at.desc())
+        .limit(1)
+    )
+    return ok(
+        {
+            "version_id": str(version_id),
+            "clauses": clauses,
+            "domains": per_domain,
+            "latest_run": _run_out(latest) if latest is not None else None,
+        }
+    )
 
 
 @router.get("/extraction-runs/{run_id}")
@@ -527,6 +588,11 @@ def _ir_out(
     return payload
 
 
+def _run_is_live(run: ExtractionRun) -> bool:
+    """Is this run still working, as opposed to merely still *saying* ``running``?"""
+    return extraction_run_is_live(run.status.value, run.heartbeat_at)
+
+
 def _run_out(run: ExtractionRun) -> dict[str, Any]:
     return {
         "id": str(run.id),
@@ -542,8 +608,14 @@ def _run_out(run: ExtractionRun) -> dict[str, Any]:
         "irs_written": run.irs_written,
         "rejected_uncited": run.rejected_uncited,
         "started_at": run.started_at.isoformat(),
+        "heartbeat_at": run.heartbeat_at.isoformat() if run.heartbeat_at else None,
         "completed_at": run.completed_at.isoformat() if run.completed_at else None,
         "error": run.error,
+        # **Read this, not `status`, to decide whether work is in flight.** `status` is what the row
+        # says; `live` is whether anything is still saying it. They differ exactly when a worker
+        # died without closing its run, which is the case a reader most needs told apart — and
+        # asking a client to agree two fields is how they end up disagreeing on screen.
+        "live": _run_is_live(run),
     }
 
 

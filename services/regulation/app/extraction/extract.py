@@ -467,6 +467,10 @@ def open_run(
         temperature=EXTRACTION_TEMPERATURE,
         status=ExtractionRunStatus.RUNNING,
         started_at=utcnow(),
+        # A run is live from the moment it opens, not from its first checkpoint — otherwise the
+        # first `EXTRACTION_COMMIT_EVERY` clauses would read as a dead run and the concurrency
+        # guard would let a second worker in over the same clauses.
+        heartbeat_at=utcnow(),
     )
     session.add(run)
     session.commit()
@@ -474,8 +478,15 @@ def open_run(
 
 
 def _checkpoint(session: Session, run: ExtractionRun, result: ExtractionResult) -> None:
-    """Commit progress so a worker restart resumes rather than restarts."""
+    """Commit progress so a worker restart resumes rather than restarts.
+
+    The heartbeat rides along on the write that was happening anyway. It is what lets a reader tell
+    a working run from a row that merely still says ``running`` — ``started_at`` never moves, so on
+    its own it makes a run killed after one clause look like one still going three hours in
+    (``extraction_run_is_live``).
+    """
     run.clauses_seen = result.clauses_seen
+    run.heartbeat_at = utcnow()
     session.commit()
 
 

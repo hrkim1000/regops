@@ -181,3 +181,65 @@ def test_a_version_effective_today_is_in_force_not_pending() -> None:
     today = date(2026, 8, 6)
     in_force = in_force_date([today], today=today)
     assert version_status(today, in_force=in_force, today=today) is VersionStatus.IN_FORCE
+
+
+# --- extraction liveness ---------------------------------------------------------------------
+
+
+def test_a_fresh_heartbeat_is_live() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from regops_shared.constants import extraction_run_is_live
+
+    now = datetime(2026, 8, 26, 10, 0, tzinfo=UTC)
+    assert extraction_run_is_live("running", now - timedelta(minutes=2), now=now)
+
+
+def test_a_running_row_with_no_pulse_is_not_live() -> None:
+    """The whole point. A worker killed mid-corpus leaves ``running`` behind, and reading the status
+    alone makes the version unextractable until a worker happens to reboot — the concurrency guard
+    refuses, and the UI says 추출 중 forever."""
+    from datetime import UTC, datetime, timedelta
+
+    from regops_shared.constants import EXTRACTION_HEARTBEAT_STALE_AFTER, extraction_run_is_live
+
+    now = datetime(2026, 8, 26, 10, 0, tzinfo=UTC)
+    assert not extraction_run_is_live(
+        "running", now - EXTRACTION_HEARTBEAT_STALE_AFTER - timedelta(seconds=1), now=now
+    )
+
+
+def test_a_null_heartbeat_is_not_live() -> None:
+    """Rows written before the column existed, and runs that died before their first checkpoint.
+    Neither is evidence of a working extraction, and treating null as live would resurrect exactly
+    the stuck rows this exists to close."""
+    from regops_shared.constants import extraction_run_is_live
+
+    assert not extraction_run_is_live("running", None)
+
+
+def test_a_finished_run_is_never_live_however_fresh_its_heartbeat() -> None:
+    """``completed`` wins over the timestamp. The last checkpoint of a successful run is written
+    *at* completion, so a status-blind check would call every just-finished run live."""
+    from datetime import UTC, datetime
+
+    from regops_shared.constants import extraction_run_is_live
+
+    now = datetime(2026, 8, 26, 10, 0, tzinfo=UTC)
+    assert not extraction_run_is_live("completed", now, now=now)
+    assert not extraction_run_is_live("failed", now, now=now)
+
+
+def test_the_stale_threshold_clears_several_checkpoints() -> None:
+    """A checkpoint lands every ``EXTRACTION_COMMIT_EVERY`` clauses and one clause is one LLM call.
+    Calling a live run dead is the worse error — it lets a second run in over clauses the first is
+    still writing — so the threshold must not sit near one checkpoint's worth of work."""
+    from regops_shared.constants import (
+        EXTRACTION_COMMIT_EVERY,
+        EXTRACTION_HEARTBEAT_STALE_AFTER,
+    )
+
+    # ~3.5s per clause observed on gemma3:4b; the threshold should survive several checkpoints of
+    # that, so that an ordinary slow patch of the corpus never reads as a death.
+    checkpoint_seconds = EXTRACTION_COMMIT_EVERY * 3.5
+    assert EXTRACTION_HEARTBEAT_STALE_AFTER.total_seconds() > checkpoint_seconds * 5
