@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import UTC, date, datetime
 from typing import Any
 
 from fda_lag.probe import (
@@ -182,6 +183,27 @@ def _force_utf8() -> None:
             reconfigure(encoding="utf-8")
 
 
+def _observed_on(raw: str) -> date:
+    """An ISO date within a day of the container's own, or an error.
+
+    The bound is the guard, not the parsing. A timezone can move the operator's calendar day by at
+    most one either way — UTC+14 to UTC-12 — so anything further out is a typo or a stale shell
+    variable, and a typo here does not fail loudly: it files a real observation under the wrong day
+    and quietly corrupts a ten-day series that has no way to notice.
+    """
+    try:
+        value = date.fromisoformat(raw)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{raw!r} is not an ISO date (YYYY-MM-DD)") from exc
+    drift = abs((value - datetime.now(UTC).date()).days)
+    if drift > 1:
+        raise argparse.ArgumentTypeError(
+            f"{raw} is {drift} days from the container's UTC date — no timezone is that far off, "
+            "so this is a typo rather than a local date"
+        )
+    return value
+
+
 def main(argv: list[str] | None = None) -> int:
     _force_utf8()
     parser = argparse.ArgumentParser(prog="fda_lag.cli", description=__doc__)
@@ -190,6 +212,17 @@ def main(argv: list[str] | None = None) -> int:
     probe_cmd = sub.add_parser("probe", help="one observation, as a JSON line on stdout")
     probe_cmd.add_argument("--lookback-days", type=int, default=DEFAULT_LOOKBACK_DAYS)
     probe_cmd.add_argument("--tolerance-days", type=int, default=DEFAULT_PAIR_TOLERANCE_DAYS)
+    probe_cmd.add_argument(
+        "--observed-on",
+        type=_observed_on,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help=(
+            "calendar day to file this observation under; defaults to the container's UTC date. "
+            "The wrapper passes the operator's local date, because the series counts distinct "
+            "days and a day means the operator's day (see fetch.observe)."
+        ),
+    )
 
     report_cmd = sub.add_parser("report", help="distributions over a JSONL log read from stdin")
     report_cmd.add_argument("--min-days", type=int, default=DEFAULT_MIN_DAYS)
@@ -214,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
             with PoliteFetcher() as fetcher:
                 observation = observe(
                     fetcher,
+                    observed_on=args.observed_on,
                     lookback_days=args.lookback_days,
                     tolerance_days=args.tolerance_days,
                 )

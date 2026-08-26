@@ -7,9 +7,12 @@ ambiguous attribution reported as certain.
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import asdict
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
+import pytest
+from fda_lag.cli import _observed_on
 from fda_lag.probe import (
     FinalRule,
     Observation,
@@ -386,3 +389,41 @@ class TestObservationSerialization:
         reloaded, errors = load_observations([line])
         assert errors == []
         assert reloaded[0] == asdict(observation)
+
+
+class TestObservedOnOverride:
+    """``--observed-on`` — the day the observation is *filed under*.
+
+    The container runs UTC and the operator need not. At UTC+9 every run before 09:00 local falls
+    on the previous UTC date, which the wrapper's "already recorded" guard would then decline —
+    costing a morning out of ten without saying so. The wrapper passes its own date instead.
+
+    What is worth testing is the **bound**, not the parsing. A typo does not fail loudly: it files
+    a real observation under a wrong day, and nothing downstream can notice.
+    """
+
+    def _utc_today(self) -> date:
+        return datetime.now(UTC).date()
+
+    def test_the_containers_own_date_is_accepted(self) -> None:
+        assert _observed_on(self._utc_today().isoformat()) == self._utc_today()
+
+    def test_one_day_either_side_is_accepted_because_a_timezone_can_do_that(self) -> None:
+        for offset in (-1, 1):
+            day = self._utc_today() + timedelta(days=offset)
+            assert _observed_on(day.isoformat()) == day
+
+    def test_two_days_out_is_refused_as_a_typo(self) -> None:
+        """UTC+14 to UTC-12 is the whole range there is, so nothing legitimate lands here."""
+        day = self._utc_today() + timedelta(days=2)
+        with pytest.raises(argparse.ArgumentTypeError, match="typo rather than a local date"):
+            _observed_on(day.isoformat())
+
+    def test_a_mistyped_year_is_refused_rather_than_filed(self) -> None:
+        stale = self._utc_today().replace(year=self._utc_today().year - 1)
+        with pytest.raises(argparse.ArgumentTypeError):
+            _observed_on(stale.isoformat())
+
+    def test_something_that_is_not_a_date_is_refused(self) -> None:
+        with pytest.raises(argparse.ArgumentTypeError, match="not an ISO date"):
+            _observed_on("yesterday")

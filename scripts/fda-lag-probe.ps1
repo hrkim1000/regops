@@ -12,6 +12,10 @@
          observation. This validates the output as one JSON object before touching the log.
       3. A BOM — PowerShell's `>>` writes EF BB BF when it creates the target, which costs the
          first observation. This writes UTF-8 without a BOM and with LF endings.
+      4. A day filed under the wrong date — the container runs UTC and the operator may not. At
+         UTC+9 every run before 09:00 local falls on the previous UTC date, which lands on a day
+         already in the log; the no-op guard below would then decline it and the morning would be
+         lost. This passes the host's own date with `--observed-on`.
 
     Running twice in one day is a no-op, not an error: `days_observed` counts distinct days, so a
     duplicate would add bytes and no information. Use -Force to record one anyway.
@@ -73,7 +77,12 @@ try {
 
     # --- 2. probe. stdout is the data; stderr carries progress and goes to the console ----------
     Write-Step "Probing eCFR and the Federal Register..."
-    $output = docker compose exec -T -w /scripts regulation python -m fda_lag.cli probe
+    # The date is the host's, not the container's: `days_observed` counts distinct `observed_on`
+    # values, so the day has to be the one the person running this is having. `observed_at` inside
+    # the observation stays the true UTC instant of the fetch, and the two may differ by a day.
+    $localDay = Get-Date -Format 'yyyy-MM-dd'
+    Write-Verbose "Filing this observation under the host's local date $localDay"
+    $output = docker compose exec -T -w /scripts regulation python -m fda_lag.cli probe --observed-on $localDay
     if ($LASTEXITCODE -ne 0) {
         Stop-WithReason "probe exited $LASTEXITCODE." 2
     }

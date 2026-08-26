@@ -151,12 +151,25 @@ def observe(
     fetcher: PoliteFetcher,
     *,
     now: datetime | None = None,
+    observed_on: date | None = None,
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
     tolerance_days: int = DEFAULT_PAIR_TOLERANCE_DAYS,
     title: int = CFR_TITLE,
 ) -> Observation:
+    """One observation. ``observed_on`` overrides the calendar day the run is filed under.
+
+    **The two timestamps mean different things and are allowed to disagree by a day.**
+    ``observed_at`` is the instant the fetch happened, in UTC, and is provenance. ``observed_on`` is
+    the day the observation is *filed under*, and the series counts distinct values of it — so it
+    has to mean the operator's day, not the container's.
+
+    The container runs UTC; the operator does not have to. At UTC+9 every run before 09:00 local
+    falls on the previous UTC date, which would file a fresh observation under a day already in the
+    log — and the wrapper's "already recorded" guard would then decline to append it, silently
+    costing a day out of ten. So the wrapper passes its own local date and this honours it.
+    """
     moment = now or datetime.now(UTC)
-    observed_on = moment.date()
+    observed_on = observed_on or moment.date()
     since = observed_on - timedelta(days=lookback_days)
 
     state = fetch_title_state(fetcher, title=title)
