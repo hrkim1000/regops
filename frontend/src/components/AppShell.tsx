@@ -24,6 +24,10 @@ export type Section = (typeof SECTIONS)[number]['key'];
 /**
  * The chrome every signed-in page wears: identity, the cell ScopeBar, and the section nav.
  *
+ * **The cell is the outer axis, so it sits on the outer row.** The nav sat above the ScopeBar and
+ * read as "pick a section, then filter it by cell" — the model inverted. All three sections read
+ * one cell; you choose the cell and then choose which pillar to see it through.
+ *
  * Shared rather than duplicated per section, because the **ScopeBar has to be the same control on
  * all three**. Scope is an app-level axis (frontend-page skill: no per-page cell pickers), so a
  * reader who scopes to `mfds_cosmetic` in the regulation browser must land in the same cell when
@@ -49,26 +53,23 @@ export async function AppShell({
   return (
     <div className="min-h-screen">
       <header className="border-b border-surface-border bg-surface-raised/60">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-6 py-3">
+        {/* Row 1 — the cell. **Scope is the outer axis and sits outermost.** All three sections read
+            the same cell, so a nav above the ScopeBar would read as "section, then filter by cell",
+            which is the model backwards: you choose a cell and then choose which pillar to see it
+            through. It also makes the ScopeBar's own behaviour legible — changing the outer axis
+            landing you at a section root is what changing an outer axis does. */}
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-6 pt-3">
           <Link href="/regulations" className="text-sm font-semibold text-slate-100">
             RegOps
           </Link>
 
-          <nav className="flex items-center gap-1">
-            {SECTIONS.map((section) => (
-              <Link
-                key={section.key}
-                href={section.href}
-                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
-                  section.key === active
-                    ? 'bg-accent-muted/40 text-slate-100'
-                    : 'text-slate-500 hover:text-slate-200'
-                }`}
-              >
-                {section.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="min-w-0">
+            {cells ? (
+              <ScopeBar cells={cells} active={scope} />
+            ) : (
+              <p className="text-xs text-red-400">셀 목록을 불러오지 못했습니다</p>
+            )}
+          </div>
 
           <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
             {email ? <span>{email}</span> : null}
@@ -79,14 +80,27 @@ export async function AppShell({
             ) : null}
             <SignOutButton />
           </div>
+        </div>
 
-          <div className="w-full">
-            {cells ? (
-              <ScopeBar cells={cells} active={scope} />
-            ) : (
-              <p className="text-xs text-red-400">셀 목록을 불러오지 못했습니다</p>
-            )}
-          </div>
+        {/* Row 2 — the pillars, inside the cell above. Indented and underlined so the nesting is
+            visible rather than inferred from order alone. */}
+        <div className="mx-auto max-w-7xl px-6">
+          <nav className="flex items-center gap-1 border-t border-surface-border/60 py-1.5">
+            {SECTIONS.map((section) => (
+              <Link
+                key={section.key}
+                href={section.href}
+                aria-current={section.key === active ? 'page' : undefined}
+                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                  section.key === active
+                    ? 'bg-accent-muted/40 text-slate-100'
+                    : 'text-slate-500 hover:text-slate-200'
+                }`}
+              >
+                {section.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </header>
 
