@@ -21,11 +21,12 @@ rather than by remembering to.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, tuple_
 
 from regops_shared.api import Meta, ok
 from regops_shared.audit import record
@@ -200,9 +201,10 @@ async def list_irs(
         )
     )
     citations = await _citations_by_ir(db, [row.id for row in rows])
+    cited = await _clauses_by_citation(db, [c for group in citations.values() for c in group])
 
     return ok(
-        [_ir_out(row, citations.get(row.id, [])) for row in rows],
+        [_ir_out(row, citations.get(row.id, []), cited=cited) for row in rows],
         meta=Meta(page=page, page_size=page_size, total=total),
     )
 
@@ -219,8 +221,9 @@ async def get_ir(ir_id: uuid.UUID, db: DbSession, _: CurrentUser) -> dict[str, A
     if ir is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "IR not found")
     citations = await _citations_by_ir(db, [ir.id])
+    cited = await _clauses_by_citation(db, citations.get(ir.id, []))
     run = await db.get(ExtractionRun, ir.extraction_run_id) if ir.extraction_run_id else None
-    return ok(_ir_out(ir, citations.get(ir.id, []), run=run))
+    return ok(_ir_out(ir, citations.get(ir.id, []), cited=cited, run=run))
 
 
 @router.post("/irs/{ir_id}/lock")
@@ -535,8 +538,101 @@ async def _citations_by_ir(
     return out
 
 
+async def _clauses_by_citation(
+    db: AsyncSession, citations: Iterable[IRCitation]
+) -> dict[tuple[uuid.UUID, str], Clause]:
+    """The cited text itself. One query for the page, not one per citation.
+
+    **Looked up through the citation's own version, never the page's.** A superseded citation points
+    at an older version, and the text that was actually cited lives there — resolving it against the
+    current version would show a reviewer a sentence the IR was not derived from, which is the exact
+    substitution ADR-0004 decision 5 exists to prevent.
+
+    Why the text belongs in this payload at all: four of the five ``rejection_reason`` values a
+    reviewer can choose — ``not_an_obligation``, ``misread_clause``, ``not_atomic``,
+    ``wrong_citation`` — cannot be judged without reading the clause. A review surface that asks for
+    that judgement and ships only a link is asking for a signature on evidence it did not provide.
+    """
+    targets: set[tuple[uuid.UUID, str]] = set()
+    for citation in citations:
+        targets.add((citation.document_version_id, citation.clause_path))
+        # The ancestors ride along in the same query. A citation names a 항, but the 조 heading that
+        # says what the article is *about* lives one level up — see `_context_for`.
+        for path in _ancestor_paths(citation.clause_path):
+            targets.add((citation.document_version_id, path))
+    if not targets:
+        return {}
+    rows = await db.scalars(
+        select(Clause).where(
+            tuple_(Clause.document_version_id, Clause.clause_path).in_(list(targets))
+        )
+    )
+    return {(row.document_version_id, row.clause_path): row for row in rows}
+
+
+def _ancestor_paths(clause_path: str) -> list[str]:
+    """``제1장/제4조의2/제1항`` → ``[제1장/제4조의2, 제1장]``, nearest first."""
+    parts = clause_path.split("/")
+    return ["/".join(parts[:depth]) for depth in range(len(parts) - 1, 0, -1)]
+
+
+def _context_for(
+    citation: IRCitation, cited: dict[tuple[uuid.UUID, str], Clause]
+) -> tuple[str, str] | None:
+    """The nearest ancestor carrying a heading, as ``(clause_path, heading)``.
+
+    A citation names the 항 that bears the duty, but the heading that says what the article is
+    *about* sits on the 조 — ``제1장/제4조의2/제1항`` has none, while ``제1장/제4조의2`` reads
+    "의료기기 안전관리 종합계획 등". A reviewer judging ``misread_clause`` or ``not_an_obligation``
+    is judging the 항 against what the article is for, so the heading has to travel with it.
+
+    Kept **separate from the citation's own ``heading``** rather than filled in as a default: an
+    article's title is not the paragraph's title, and quietly presenting one as the other would be a
+    small lie in exactly the field a reviewer is trusting.
+    """
+    for path in _ancestor_paths(citation.clause_path):
+        ancestor = cited.get((citation.document_version_id, path))
+        if ancestor is not None and ancestor.heading:
+            return path, ancestor.heading
+    return None
+
+
+def _citation_out(
+    citation: IRCitation, clause: Clause | None, context: tuple[str, str] | None = None
+) -> dict[str, Any]:
+    """One piece of evidence: where it is, when it was in force, and what it actually says.
+
+    ``clause`` is ``None`` only if the cited path no longer resolves in its own version, which the
+    uncited-IR trigger and the immutability of a version together make unreachable. It is carried as
+    a null rather than raised so that one unresolvable citation renders as a visible gap in the
+    reviewer's evidence instead of failing the whole page.
+
+    An annex row carries its content in ``row_columns`` and has an empty ``text`` (ADR-0014), so
+    both travel and the reader decides which one is the body.
+    """
+    return {
+        "document_id": str(citation.document_id),
+        "document_version_id": str(citation.document_version_id),
+        "clause_path": citation.clause_path,
+        "effective_date": (
+            citation.effective_date.isoformat() if citation.effective_date else None
+        ),
+        "superseded_at": (citation.superseded_at.isoformat() if citation.superseded_at else None),
+        "heading": clause.heading if clause else None,
+        "text": clause.text if clause else None,
+        "kind": clause.kind.value if clause else None,
+        "row_columns": clause.row_columns if clause else None,
+        "context_path": context[0] if context else None,
+        "context_heading": context[1] if context else None,
+    }
+
+
 def _ir_out(
-    ir: IR, citations: list[IRCitation], *, run: ExtractionRun | None = None
+    ir: IR,
+    citations: list[IRCitation],
+    *,
+    cited: dict[tuple[uuid.UUID, str], Clause] | None = None,
+    run: ExtractionRun | None = None,
 ) -> dict[str, Any]:
     """One obligation.
 
@@ -562,17 +658,11 @@ def _ir_out(
         "locked_by": str(ir.locked_by) if ir.locked_by else None,
         "locked_at": ir.locked_at.isoformat() if ir.locked_at else None,
         "citations": [
-            {
-                "document_id": str(citation.document_id),
-                "document_version_id": str(citation.document_version_id),
-                "clause_path": citation.clause_path,
-                "effective_date": (
-                    citation.effective_date.isoformat() if citation.effective_date else None
-                ),
-                "superseded_at": (
-                    citation.superseded_at.isoformat() if citation.superseded_at else None
-                ),
-            }
+            _citation_out(
+                citation,
+                (cited or {}).get((citation.document_version_id, citation.clause_path)),
+                _context_for(citation, cited or {}),
+            )
             for citation in citations
         ],
         "provenance": {

@@ -179,6 +179,14 @@ gap_findings(id, tenant_id, statement_id, ir_id, kind, severity, opened_at, clos
    statement per `(product, cell)` or one spanning statement? The schema above assumes per-cell.
 4. **Who owns Product** — it is tenant-scoped and small in Phase 2, but if product data grows (BOM,
    ingredient lists, formulations) it may outgrow the `regulation` service. Revisit at Phase 2 exit.
+5. **Does an obligation borne by the regulator reach gap analysis?** — inherited from
+   [ADR-0004](ADR-0004-ir-extraction-and-domain-branching.md) open question 6, raised 2026-08-27.
+   The IR store deliberately keeps them: refusing them upstream would make the shared reference
+   layer decide applicability, which is this ADR's job. But roughly **27% of one measured document's
+   IRs are borne by the authority**, and nothing on the row marks that — so mapping IRs to controls
+   as specified above would put a quarter of its candidates in front of a reviewer as duties nobody
+   in the tenant can implement. Whether the bearer's kind is classified on the IR, derived here, or
+   handled some third way is open, and it is this service that has to answer it.
 
 ## What this unblocks
 

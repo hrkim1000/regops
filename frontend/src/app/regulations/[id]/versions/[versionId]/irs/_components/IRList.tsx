@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { AlertTriangle, Link2 } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Link2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { formatDate, formatDateTime } from '@/lib/format';
@@ -102,7 +102,7 @@ function IRCard({ ir, canLock }: { ir: IR; canLock: boolean }) {
         </p>
       ) : null}
 
-      <Citations citations={ir.citations} />
+      <Citations citations={ir.citations} openByDefault={ir.status === 'draft'} />
 
       {ir.status === 'stale' ? (
         <p className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-300/90">
@@ -123,7 +123,13 @@ function IRCard({ ir, canLock }: { ir: IR; canLock: boolean }) {
  * immutable version, and a superseded one points at an older version whose text is the thing that
  * was actually cited. Following it has to land there.
  */
-function Citations({ citations }: { citations: IRCitation[] }) {
+function Citations({
+  citations,
+  openByDefault,
+}: {
+  citations: IRCitation[];
+  openByDefault: boolean;
+}) {
   if (citations.length === 0) {
     return (
       <p className="mt-2 rounded border border-red-800 bg-red-950/40 px-2.5 py-1.5 text-[11px] text-red-300">
@@ -134,33 +140,121 @@ function Citations({ citations }: { citations: IRCitation[] }) {
   }
 
   return (
-    <ul className="mt-2 flex flex-wrap gap-1.5">
+    <ul className="mt-2 space-y-1.5">
       {citations.map((citation) => (
         <li key={`${citation.document_version_id}:${citation.clause_path}`}>
-          <Link
-            href={`/regulations/${citation.document_id}/versions/${citation.document_version_id}/clauses#${encodeURIComponent(citation.clause_path)}`}
-            title={
-              citation.superseded_at
-                ? `이 인용이 가리키는 버전은 ${formatDateTime(citation.superseded_at)}에 개정되었습니다 — 링크는 인용 당시의 원문으로 갑니다`
-                : '인용된 조문으로 이동'
-            }
-            className={clsx(
-              'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[11px] transition-colors',
-              citation.superseded_at
-                ? 'border-amber-800 bg-amber-950/30 text-amber-300 hover:border-amber-600'
-                : 'border-surface-border text-slate-400 hover:border-slate-500 hover:text-slate-200',
-            )}
-          >
-            <Link2 size={11} />
-            {citation.clause_path}
-            {citation.effective_date ? (
-              <span className="text-slate-600">@{formatDate(citation.effective_date)}</span>
-            ) : null}
-            {citation.superseded_at ? <span className="not-italic">·개정됨</span> : null}
-          </Link>
+          <Citation citation={citation} openByDefault={openByDefault} />
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * One citation: the path, and the clause it names.
+ *
+ * **A draft opens its evidence; everything else stays shut.** Four of the five rejection reasons —
+ * not an obligation, misread, not atomic, wrong citation — cannot be judged without reading the
+ * clause, so on the review queue the text is the default rather than a click away. A list of locked
+ * IRs is a different act of reading, and a hundred open clauses there is a wall.
+ *
+ * `<details>` rather than component state: the disclosure is per-citation and needs no JavaScript,
+ * so this stays a server component and the text is in the HTML the reader already received.
+ */
+function Citation({
+  citation,
+  openByDefault,
+}: {
+  citation: IRCitation;
+  openByDefault: boolean;
+}) {
+  return (
+    <details open={openByDefault} className="group">
+      <summary
+        className={clsx(
+          'inline-flex cursor-pointer items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[11px] transition-colors marker:content-none',
+          citation.superseded_at
+            ? 'border-amber-800 bg-amber-950/30 text-amber-300 hover:border-amber-600'
+            : 'border-surface-border text-slate-400 hover:border-slate-500 hover:text-slate-200',
+        )}
+      >
+        <ChevronRight
+          size={11}
+          className="shrink-0 transition-transform group-open:rotate-90"
+          aria-hidden
+        />
+        {citation.clause_path}
+        {citation.effective_date ? (
+          <span className="text-slate-600">@{formatDate(citation.effective_date)}</span>
+        ) : null}
+        {citation.superseded_at ? <span>·개정됨</span> : null}
+      </summary>
+
+      <ClauseText citation={citation} />
+
+      <Link
+        href={`/regulations/${citation.document_id}/versions/${citation.document_version_id}/clauses#${encodeURIComponent(citation.clause_path)}`}
+        title={
+          citation.superseded_at
+            ? `이 인용이 가리키는 버전은 ${formatDateTime(citation.superseded_at)}에 개정되었습니다 — 링크는 인용 당시의 원문으로 갑니다`
+            : '전체 조문 트리에서 보기'
+        }
+        className="mt-1 ml-4 inline-flex items-center gap-1 text-[10px] text-slate-600 hover:text-accent hover:underline"
+      >
+        <Link2 size={10} /> 조문 트리에서 보기
+      </Link>
+    </details>
+  );
+}
+
+/**
+ * The cited text, resolved through the citation's own version — for a superseded citation that is
+ * the older wording, which is what the IR was actually derived from.
+ *
+ * An annex row's content is in `row_columns` and its `text` is empty (ADR-0014), so the columns are
+ * rendered instead of an empty box.
+ */
+function ClauseText({ citation }: { citation: IRCitation }) {
+  const columns = citation.row_columns ? Object.entries(citation.row_columns) : [];
+
+  if (citation.text === null && columns.length === 0) {
+    return (
+      <p className="mt-1 ml-4 rounded border border-red-800 bg-red-950/40 px-2.5 py-1.5 text-[11px] text-red-300">
+        인용된 조문을 찾을 수 없습니다 — 이 인용은 자기 버전에서 해석되지 않습니다. 결함으로
+        보고하세요.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-1 ml-4 rounded border border-surface-border bg-surface-raised/60 px-2.5 py-2">
+      {/* A citation names the 항 that bears the duty; the heading saying what the article is *about*
+          sits on the 조 above it. Shown as its own line, attributed to its own path — presenting an
+          article's title as the paragraph's would be a small lie in the field being trusted. */}
+      {citation.context_heading ? (
+        <p className="mb-1 text-[10px] text-slate-500">
+          <span className="font-mono text-slate-600">{citation.context_path}</span>{' '}
+          {citation.context_heading}
+        </p>
+      ) : null}
+      {citation.heading ? (
+        <p className="mb-1 text-[11px] font-medium text-slate-300">{citation.heading}</p>
+      ) : null}
+      {columns.length > 0 ? (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          {columns.map(([column, value]) => (
+            <div key={column} className="contents">
+              <dt className="font-mono text-[10px] text-slate-600">{column}</dt>
+              <dd className="whitespace-pre-wrap break-words text-slate-300">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">
+          {citation.text}
+        </p>
+      )}
+    </div>
   );
 }
 

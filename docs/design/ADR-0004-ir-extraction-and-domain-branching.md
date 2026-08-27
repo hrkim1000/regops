@@ -218,6 +218,33 @@ ir_citations(ir_id, document_version_id, clause_path, effective_date, superseded
    determinism, so it is a measured target rather than a guarantee — which is why the value used is
    stored rather than assumed.
 
+6. **Is the bearer's *kind* part of an IR?** — **open, raised 2026-08-27.** Decision 1 requires a
+   bearer and says nothing about who may be one, so an obligation borne by the regulator is an IR
+   by the written rule, and the extractor emits it. That is correct here for the same reason open
+   question 3 settled product class: *"this duty is not yours"* is an applicability judgement, it is
+   Compliance-owned and tenant-scoped, and the shared reference layer must not make it on every
+   tenant's behalf. Pillars 1 and 2 need these rows besides — a processing deadline the authority
+   must meet is both an answerable question and an amendment worth alerting on.
+
+   What is unresolved is that **nothing downstream can tell the two apart.** Measured on 의료기기법
+   (`mfds_samd`, rule 1.4.0, 133 IRs): 식품의약품안전처장 25, 지자체장 5, 보건복지부장관 3, 정보원장
+   3 — **≈27% of the document's IRs are borne by the regulator**, and `taxonomy_code` does not
+   separate them (11 of 27 `registration` IRs are authority-borne). Gap analysis maps IRs to
+   controls, so on today's schema Phase 2 would open with roughly a quarter of its candidates being
+   duties the tenant cannot implement, surfacing as false findings.
+
+   The shape that suggests itself is a **classification of the bearer** — regulated entity /
+   authority / third party — recorded beside the existing free-text `bearer` so the record is kept
+   and the filtering happens downstream. It is deliberately *not* an exclusion reason: refusing
+   these at extraction would delete the row, and `rejection_reason` counts are meant to signal
+   extraction quality, so filing a scope question under `not_an_obligation` would corrupt the one
+   metric that says whether the agent is working.
+
+   Deferred to whenever Compliance is specified (ADR-0007, phase 2.2) rather than decided here:
+   whether the classification is deterministic from the bearer string, an agent judgement, or a
+   per-cell lookup is exactly the kind of question that should be answered by the service that
+   consumes it.
+
 ## What this unblocks
 
 W3-4 IR extraction rules and the clause schema. Next: retrieval and citation-enforced generation,

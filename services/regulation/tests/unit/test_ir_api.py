@@ -21,16 +21,18 @@ from fastapi import HTTPException
 from app.api.v1.irs import (
     RejectRequest,
     UnlockRequest,
+    _ancestor_paths,
     _ir_out,
     _run_out,
     lock_ir,
     reject_ir,
     unlock_ir,
 )
-from app.models import IR, ExtractionRun, IRCitation
+from app.models import IR, Clause, ExtractionRun, IRCitation
 from regops_shared.auth import Principal, require_roles
 from regops_shared.constants import (
     IR_VISIBLE_STATUSES,
+    ClauseKind,
     Domain,
     ExtractionRunStatus,
     IRStatus,
@@ -70,6 +72,21 @@ def _citation(**overrides) -> IRCitation:
     for key, value in overrides.items():
         setattr(citation, key, value)
     return citation
+
+
+def _clause(citation: IRCitation, **overrides) -> Clause:
+    clause = Clause(
+        document_version_id=citation.document_version_id,
+        clause_path=citation.clause_path,
+        path_segments=citation.clause_path.split("/"),
+        kind=ClauseKind.PROSE,
+        heading="기록의 보관",
+        text="제조업자는 기록을 3년간 보관하여야 한다.",
+        content_hash="x" * 64,
+    )
+    for key, value in overrides.items():
+        setattr(clause, key, value)
+    return clause
 
 
 # --- serialization ------------------------------------------------------------------------------
@@ -345,3 +362,94 @@ def test_a_reason_is_required_and_a_blank_note_is_refused() -> None:
         UnlockRequest(note="")
     with pytest.raises(pydantic.ValidationError):
         RejectRequest(reason=RejectionReason.DUPLICATE, note="")
+
+
+# --- the cited text travels with the citation ---------------------------------------------------
+
+
+def test_a_citation_carries_the_clause_it_names() -> None:
+    """Four of the five rejection reasons cannot be judged without reading the clause.
+
+    ``not_an_obligation``, ``misread_clause``, ``not_atomic`` and ``wrong_citation`` are all
+    judgements about the text. A review surface that asks for one of them and ships only a link is
+    asking for a signature on evidence it did not provide.
+    """
+    citation = _citation()
+    clause = _clause(citation)
+
+    out = _ir_out(
+        _ir(), [citation], cited={(citation.document_version_id, citation.clause_path): clause}
+    )
+
+    assert out["citations"][0]["heading"] == "기록의 보관"
+    assert out["citations"][0]["text"] == "제조업자는 기록을 3년간 보관하여야 한다."
+    assert out["citations"][0]["kind"] == "prose"
+
+
+def test_a_citation_whose_clause_is_missing_renders_as_a_gap_not_a_crash() -> None:
+    """Unreachable — the version is immutable and the uncited-IR trigger holds — but not fatal.
+
+    One unresolvable citation must show as a visible hole in the reviewer's evidence rather than
+    failing the page that carries the other ninety-nine.
+    """
+    out = _ir_out(_ir(), [_citation()], cited={})
+
+    assert out["citations"][0]["text"] is None
+    assert out["citations"][0]["clause_path"] == "제5조/제1항"
+
+
+def test_an_annex_row_carries_its_columns_rather_than_an_empty_text() -> None:
+    """An annex row is a Clause whose content is in ``row_columns`` (ADR-0014)."""
+    citation = _citation(clause_path="별표1/표1/행3")
+    clause = _clause(
+        citation,
+        kind=ClauseKind.TABLE_ROW,
+        heading=None,
+        text="",
+        row_columns={"등급": "2등급", "보관기간": "3년"},
+    )
+
+    out = _ir_out(
+        _ir(), [citation], cited={(citation.document_version_id, citation.clause_path): clause}
+    )
+
+    assert out["citations"][0]["row_columns"] == {"등급": "2등급", "보관기간": "3년"}
+    assert out["citations"][0]["text"] == ""
+
+
+def test_ancestor_paths_are_nearest_first() -> None:
+    """The 조 above a 항 must be consulted before the 장 above the 조."""
+    assert _ancestor_paths("제1장/제4조의2/제1항") == ["제1장/제4조의2", "제1장"]
+    assert _ancestor_paths("제5조") == []
+
+
+def test_the_article_heading_travels_with_a_paragraph_citation() -> None:
+    """A 항 has no heading of its own; the subject of the article sits one level up.
+
+    A reviewer judging ``misread_clause`` reads the paragraph against what the article is *for*, so
+    "의료기기 안전관리 종합계획 등" has to arrive with 제1항 rather than being one click away.
+    """
+    citation = _citation(clause_path="제1장/제4조의2/제1항")
+    paragraph = _clause(citation, heading=None, text="① 식품의약품안전처장은 …")
+    article = Clause(
+        document_version_id=citation.document_version_id,
+        clause_path="제1장/제4조의2",
+        path_segments=["제1장", "제4조의2"],
+        kind=ClauseKind.PROSE,
+        heading="의료기기 안전관리 종합계획 등",
+        text="제4조의2(의료기기 안전관리 종합계획 등)",
+        content_hash="y" * 64,
+    )
+
+    out = _ir_out(
+        _ir(),
+        [citation],
+        cited={
+            (citation.document_version_id, citation.clause_path): paragraph,
+            (citation.document_version_id, "제1장/제4조의2"): article,
+        },
+    )
+
+    assert out["citations"][0]["heading"] is None, "the paragraph has no title of its own"
+    assert out["citations"][0]["context_heading"] == "의료기기 안전관리 종합계획 등"
+    assert out["citations"][0]["context_path"] == "제1장/제4조의2"

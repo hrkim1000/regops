@@ -1,5 +1,7 @@
 /** Mirrors the `regulation` service IR schema (phase 1.2). Field names identical to the API. */
 
+import type { ClauseKind } from './regulation';
+
 /**
  * IR lifecycle (ADR-0004 decision 4). **Only `locked` flows downstream** — a `draft` is unreviewed
  * model output and a `stale` one has had its evidence amended out from under it.
@@ -30,6 +32,24 @@ export interface IRCitation {
   effective_date: string | null;
   /** Set by the diff stage when an amendment touched the cited path. The row is never rewritten. */
   superseded_at: string | null;
+  /**
+   * The cited clause itself, resolved through this citation's **own** version — a superseded
+   * citation carries the older text, which is the text the IR was actually derived from.
+   *
+   * `null` only where the path no longer resolves, which the uncited-IR trigger makes unreachable.
+   * An annex row has an empty `text` and its content in `row_columns` (ADR-0014).
+   */
+  heading: string | null;
+  text: string | null;
+  kind: ClauseKind | null;
+  row_columns: Record<string, string> | null;
+  /**
+   * The nearest **ancestor** heading — the 조 title above a cited 항, which is where the subject of
+   * the article lives. Kept separate from `heading` rather than defaulted into it: an article's
+   * title is not the paragraph's title.
+   */
+  context_path: string | null;
+  context_heading: string | null;
 }
 
 /** What produced this row. Mandatory reading, not diagnostics (ADR-0004 decision 4). */
