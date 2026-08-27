@@ -20,6 +20,10 @@ Idempotent per ``(version, domain)``: a re-run deletes the *draft* IRs a previou
 writes again. It never touches a ``locked``, ``stale`` or ``superseded`` IR — those are evidence a
 human acted on, and re-running an extractor is not a reason to discard that. Human-authored
 classifications survive a re-run for the same reason.
+
+That clearing is why a *concurrent* run is destructive rather than merely wasteful, and why this
+module refuses one itself instead of trusting the API's 409 to be the only door: a task redelivered
+by the broker never passes through the API at all.
 """
 
 from __future__ import annotations
@@ -39,6 +43,7 @@ from regops_shared.constants import (
     ExclusionReason,
     ExtractionRunStatus,
     IRStatus,
+    extraction_run_is_live,
 )
 from regops_shared.llm import LLMClient, get_llm_client
 from regops_shared.models import (
@@ -109,6 +114,32 @@ def extract_version(
         # this is a feed or an unparsed version. Neither is an extraction failure, and creating an
         # empty run would report a domain as covered when nothing was examined.
         log.info("extract.no_clauses", version=str(version.id), domain=domain.value)
+        return result
+
+    live = _live_run(session, version, domain=domain)
+    if live is not None:
+        # **A redelivered task is not a second request.** The API refuses a concurrent extraction
+        # with 409, but a duplicate does not have to come through the API: Redis redelivers any
+        # task still running at the broker's visibility timeout, and the worker runs `-c 2`, so the
+        # copy lands in the sibling child beside the original. Observed 2026-08-27 on 의료기기법 —
+        # one POST at 01:24, the same task id received again at 02:25, and the copy's
+        # `_clear_previous_drafts` destroyed 89 drafts the live run had already committed.
+        #
+        # So the refusal belongs here, at the one point every path to an extraction passes through,
+        # rather than only at the door the duplicate never used. Nothing is written and no run is
+        # opened — the live one keeps its drafts and its clause ledger.
+        result.run_id = live.id
+        result.error = (
+            f"extraction {live.id} is already live for this version and profile; refused rather "
+            f"than clearing its drafts"
+        )
+        log.warning(
+            "extract.already_live",
+            version=str(version.id),
+            domain=domain.value,
+            live_run=str(live.id),
+            live_clauses=live.clauses_seen,
+        )
         return result
 
     rules = rule_set_for(domain, version.language)
@@ -452,6 +483,29 @@ def _note(agent: AgentResult) -> str | None:
 
 
 # --- run bookkeeping -------------------------------------------------------------------------
+
+
+def _live_run(
+    session: Session, version: DocumentVersion, *, domain: Domain
+) -> ExtractionRun | None:
+    """The run still working this ``(version, domain)`` — not merely one still saying ``running``.
+
+    Same rule as the API's concurrency guard, from the same shared helper, so the two cannot drift
+    into disagreeing about what "live" means. A row with no pulse is *not* live: a worker killed
+    mid-corpus would otherwise make the version permanently unextractable, and closing that row is
+    the caller's job, not this predicate's.
+    """
+    candidates = session.scalars(
+        select(ExtractionRun).where(
+            ExtractionRun.document_version_id == version.id,
+            ExtractionRun.domain_profile == domain,
+            ExtractionRun.status == ExtractionRunStatus.RUNNING,
+        )
+    )
+    return next(
+        (run for run in candidates if extraction_run_is_live(run.status.value, run.heartbeat_at)),
+        None,
+    )
 
 
 def open_run(

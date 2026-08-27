@@ -2,7 +2,7 @@
 
 import { Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import type { ExtractionRunSummary } from '@/types/ir';
 
@@ -41,6 +41,11 @@ export function ExtractButton({
   const [error, setError] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [elapsed, setElapsed] = useState<number | null>(null);
+  const [refreshing, startRefresh] = useTransition();
+  // Read inside the interval without re-arming it — `refreshing` in the effect deps would tear the
+  // timer down and rebuild it on every poll, which is its own way of losing the cadence.
+  const refreshingRef = useRef(false);
+  refreshingRef.current = refreshing;
 
   const running = run?.live === true;
   const startedAt = run?.started_at ?? null;
@@ -55,7 +60,15 @@ export function ExtractButton({
     const tick = setInterval(() => setElapsed(Date.now() - since), 1_000);
     // No ceiling. The poll stops when the server says the run stopped, which is the only thing that
     // actually knows — a timeout here is a guess that was wrong for every run over five minutes.
-    const poll = setInterval(() => router.refresh(), POLL_MS);
+    //
+    // It does skip a tick while the previous refresh is still in flight. One `router.refresh()`
+    // costs the server nine upstream reads, and firing unconditionally every five seconds is what
+    // stacked them: renders grew 33s → 73s → 129s until undici's 10s connect timeout began failing
+    // and the page rendered a live version as "버전을 찾을 수 없습니다".
+    const poll = setInterval(() => {
+      if (refreshingRef.current) return;
+      startRefresh(() => router.refresh());
+    }, POLL_MS);
     return () => {
       clearInterval(tick);
       clearInterval(poll);

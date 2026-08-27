@@ -43,6 +43,7 @@ from app.models import (
 )
 from app.parse import parse_version
 from regops_shared.constants import (
+    EXTRACTION_HEARTBEAT_STALE_AFTER,
     ClassificationKind,
     DocType,
     Domain,
@@ -697,3 +698,84 @@ def test_a_human_classification_survives_a_re_run(session, source):
     session.refresh(definition)
     assert definition.classified_by == reviewer
     assert definition.kind is ClassificationKind.OBLIGATION_BEARING
+
+
+# --- concurrency: a redelivered task must not clear a live run's drafts ------------------------
+
+
+def _fake_live_run(session, version, *, heartbeat_age: timedelta) -> ExtractionRun:
+    """A row claiming to be running this version, with a heartbeat of a chosen age."""
+    run = ExtractionRun(
+        document_version_id=version.id,
+        domain_profile=Domain.SAMD,
+        rule_version="test",
+        prompt_version="test",
+        llm_provider="stub",
+        llm_model="stub",
+        temperature=0.0,
+        status=ExtractionRunStatus.RUNNING,
+        started_at=datetime.now(UTC) - heartbeat_age,
+        heartbeat_at=datetime.now(UTC) - heartbeat_age,
+    )
+    session.add(run)
+    session.commit()
+    return run
+
+
+def test_a_second_extraction_over_a_live_run_is_refused(session, source):
+    """A duplicate does not have to arrive through the API, so the API cannot be the only guard.
+
+    Redis redelivers any task still running at the broker's visibility timeout while the original
+    is still executing. On 2026-08-27 that copy ran ``_clear_previous_drafts`` and destroyed 89
+    drafts the live run had committed. The refusal therefore lives in ``extract_version``, where
+    every path to an extraction converges.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:concurrent"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    assert first.irs_written == 1
+    drafts = _draft_ids(session, version)
+    assert len(drafts) == 1
+
+    live = _fake_live_run(session, version, heartbeat_age=timedelta(minutes=1))
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert second.error is not None, "a concurrent run must refuse, not proceed"
+    assert second.run_id == live.id, "the refusal names the run it deferred to"
+    assert second.irs_written == 0
+    assert _draft_ids(session, version) == drafts, "the live run's drafts must survive"
+
+
+def test_a_run_without_a_pulse_does_not_block_a_re_run(session, source):
+    """The guard asks for a heartbeat, not for a status.
+
+    Guarding on ``running`` alone would make a worker killed mid-corpus permanent: the row says
+    ``running`` forever and the version becomes unextractable. The dead row is passed over.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:pulseless"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    _fake_live_run(
+        session, version, heartbeat_age=EXTRACTION_HEARTBEAT_STALE_AFTER + timedelta(minutes=1)
+    )
+    result = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert result.error is None
+    assert result.irs_written == 1
+
+
+def _draft_ids(session, version) -> set[uuid.UUID]:
+    return set(
+        session.scalars(
+            select(IR.id)
+            .join(IRCitation, IRCitation.ir_id == IR.id)
+            .where(IRCitation.document_version_id == version.id, IR.status == IRStatus.DRAFT)
+        )
+    )

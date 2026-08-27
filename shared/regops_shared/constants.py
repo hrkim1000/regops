@@ -665,6 +665,26 @@ IR_RULE_DIGEST: Final[str] = "f9ba469c4f31e413"
 #: Bumped independently of the rules — a prompt can be reworded without the rule set moving.
 IR_PROMPT_VERSION: Final[str] = "1.2.0"
 
+# --- task broker --------------------------------------------------------------------------------
+
+#: How long Redis holds a delivered task before deciding no worker acked it and handing the same
+#: message to another one.
+#:
+#: The broker's default is one hour, and with ``task_acks_late`` an ack lands only when the task
+#: *finishes* — so any task running longer than this is redelivered **while the original is still
+#: executing**. That is not a theoretical race: on 2026-08-27 one extraction of 의료기기법 was
+#: requested once at 01:24 and the same task id arrived again at 02:25, 60m49s later. The copy ran
+#: beside the original in the sibling pool child, called ``_clear_previous_drafts`` and deleted the
+#: 89 drafts the live run had just committed.
+#:
+#: Six hours covers every task this stack runs today with room to spare — the longest observed
+#: extraction is under two. It is a **waste** guard, not a correctness one: no timeout can be
+#: proven large enough for a corpus nobody has extracted yet, so the duplicate is *also* refused
+#: where every path to an extraction converges (``extract_version``'s liveness guard). This number
+#: only decides whether the pointless copy is created at all.
+CELERY_VISIBILITY_TIMEOUT: Final[timedelta] = timedelta(hours=6)
+
+
 #: Extraction is run at temperature 0 and any delta between two runs at the same
 #: ``(rule_version, prompt_version, llm_model)`` is treated as a regression (ADR-0017 decision 1).
 #: Sampling makes this approximate rather than guaranteed, which is why it is a *test*, not a claim.
