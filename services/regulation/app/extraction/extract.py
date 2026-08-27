@@ -549,20 +549,31 @@ def _resumable_run(
 ) -> ExtractionRun | None:
     """The interrupted run this one may continue, or ``None`` to start clean.
 
-    **Only the most recent run, only if it failed, and only at an identical fingerprint.** Each of
-    those three is load-bearing:
+    **The most recent run, if it has stopped and is not finished, at an identical fingerprint.**
 
     - *Most recent* because an older one's drafts have since been cleared by whatever ran after it;
       adopting its clauses would keep classifications saying "examined" over IRs that no longer
       exist, which reads as an obligation-free article rather than as missing work.
-    - *Failed* because a completed run means the work is done — a re-run after one is a deliberate
-      redo, and silently adopting its output would make the redo a no-op.
+    - *Stopped, not finished* because a completed run means the work is done — a re-run after one is
+      a deliberate redo, and silently adopting its output would make the redo a no-op.
     - *Identical fingerprint* because ``rule_version``/``prompt_version``/``llm_model`` are the
       promise stamped on every IR (ADR-0017 decision 1). Adopting clauses across a version change
       would produce one run's worth of rows that two different rule sets wrote.
 
-    A run still holding a pulse is not resumable either — it is a live peer, and ``extract_version``
-    refuses beside it rather than racing it.
+    **"Stopped" is a pulse question, not a status question, and that distinction cost 945 IRs.**
+    This asked for ``FAILED`` when it was written, which is the state a *swept* crash leaves. A
+    crash that nothing has swept yet leaves ``RUNNING`` with a dead heartbeat — and nothing sweeps
+    on the dispatch path, because ``_fail_orphaned_runs`` fires on ``worker_ready`` and the API's
+    guard only runs when someone uses the API. So on 2026-08-28 a run killed at 2,625 of 12,179
+    clauses sat at ``RUNNING``, and re-dispatching it would have started from clause 1 and cleared
+    the 945 drafts it had already committed — the exact loss resuming exists to prevent, reachable
+    because resumption depended on a sweep having happened first.
+
+    Reading the heartbeat instead makes the answer self-contained. It is the same threshold
+    ``_live_run`` uses, so the two cannot disagree about whether a run is still working; a run that
+    still holds a pulse is a live peer, and ``extract_version`` refuses beside it rather than racing
+    it. Checking it here too is belt-and-braces: correctness must not rest on the order in which
+    that function and this one happen to be called.
     """
     candidate = session.scalars(
         select(ExtractionRun)
@@ -573,7 +584,9 @@ def _resumable_run(
         .order_by(ExtractionRun.started_at.desc())
         .limit(1)
     ).first()
-    if candidate is None or candidate.status is not ExtractionRunStatus.FAILED:
+    if candidate is None or candidate.status is ExtractionRunStatus.COMPLETED:
+        return None
+    if extraction_run_is_live(candidate.status.value, candidate.heartbeat_at):
         return None
     same_fingerprint = (
         candidate.rule_version == rules.rule_version

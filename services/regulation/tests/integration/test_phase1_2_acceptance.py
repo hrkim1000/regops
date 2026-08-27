@@ -868,3 +868,57 @@ def test_a_failed_run_at_a_different_rule_version_is_not_resumed(session, source
 
     assert second.resumed == 0, "a different rule set is not work this run may adopt"
     assert second.irs_written == 1
+
+
+def test_a_crashed_run_nothing_swept_yet_is_still_resumed(session, source):
+    """The gap that cost 945 IRs on 2026-08-28.
+
+    A crash leaves the row at ``running`` with a dead heartbeat until something sweeps it, and
+    nothing sweeps on the dispatch path — ``_fail_orphaned_runs`` fires on ``worker_ready`` and the
+    API's guard only runs when someone uses the API. Requiring ``failed`` therefore made resumption
+    depend on a sweep having happened first, and a re-dispatch without one would have started from
+    clause 1 and cleared the drafts the crash left behind.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-unswept"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    kept = _draft_ids(session, version)
+    # Exactly what a crash leaves: still `running`, heartbeat long dead, nobody has closed it.
+    run = session.get(ExtractionRun, first.run_id)
+    run.status = ExtractionRunStatus.RUNNING
+    run.completed_at = None
+    run.heartbeat_at = datetime.now(UTC) - (EXTRACTION_HEARTBEAT_STALE_AFTER + timedelta(minutes=5))
+    session.commit()
+
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert second.resumed == first.clauses_seen
+    assert second.irs_written == 0
+    assert _draft_ids(session, version) == kept, "the crashed run's drafts must survive"
+
+
+def test_a_run_still_holding_a_pulse_is_never_adopted(session, source):
+    """A live peer is refused, not resumed — on the same threshold the concurrency guard uses."""
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-alive"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    kept = _draft_ids(session, version)
+    run = session.get(ExtractionRun, first.run_id)
+    run.status = ExtractionRunStatus.RUNNING
+    run.completed_at = None
+    run.heartbeat_at = datetime.now(UTC)
+    session.commit()
+
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert second.error is not None, "a live run is refused before resumption is even considered"
+    assert second.resumed == 0
+    assert _draft_ids(session, version) == kept
