@@ -779,3 +779,92 @@ def _draft_ids(session, version) -> set[uuid.UUID]:
             .where(IRCitation.document_version_id == version.id, IR.status == IRStatus.DRAFT)
         )
     )
+
+
+# --- resume: a crash costs the clauses it did not reach, not the ones it did -------------------
+
+
+def _fail_run(session, run) -> None:
+    """Close a run the way the orphan sweep does after a worker dies mid-corpus."""
+    run.status = ExtractionRunStatus.FAILED
+    run.completed_at = datetime.now(UTC)
+    run.error = "orphaned: the worker that owned this run did not survive"
+    session.commit()
+
+
+def test_a_resumed_run_adopts_the_clauses_the_failed_one_finished(session, source):
+    """`_checkpoint` has always committed progress; nothing used to read it back.
+
+    A run that died at clause 600 of 729 started again at clause 1 and re-spent the whole model
+    budget — which is what the Postgres crash of 2026-08-27 actually cost.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    assert first.irs_written == 1
+    kept = _draft_ids(session, version)
+    run = session.get(ExtractionRun, first.run_id)
+    _fail_run(session, run)
+
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert second.resumed == first.clauses_seen, "every finished clause is adopted, not re-read"
+    assert second.irs_written == 0, "an adopted clause is not re-extracted"
+    assert _draft_ids(session, version) == kept, "the predecessor's drafts survive intact"
+
+
+def test_a_resumed_run_does_not_duplicate_the_obligations_it_adopted(session, source):
+    """The failure mode a scoped clear exists to prevent: keep the drafts *and* write them again."""
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-dup"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    _fail_run(session, session.get(ExtractionRun, first.run_id))
+    extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert len(_draft_ids(session, version)) == 1
+
+
+def test_a_completed_run_is_not_resumed_so_a_re_run_still_re_extracts(session, source):
+    """Resuming a *completed* run would make a deliberate re-run a silent no-op."""
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-done"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    extract_version(session, version, domain=Domain.SAMD, client=client)
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert second.resumed == 0
+    assert second.irs_written == 1
+
+
+def test_a_failed_run_at_a_different_rule_version_is_not_resumed(session, source):
+    """`rule_version` is the promise stamped on every IR; adopting across a change would break it.
+
+    One run's rows would then carry two rule sets' work under a single version number — the exact
+    ambiguity `IR_RULE_DIGEST` exists to make impossible.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-rules"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    run = session.get(ExtractionRun, first.run_id)
+    run.rule_version = "0.0.1-different"
+    _fail_run(session, run)
+
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert second.resumed == 0, "a different rule set is not work this run may adopt"
+    assert second.irs_written == 1

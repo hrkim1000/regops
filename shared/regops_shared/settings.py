@@ -14,6 +14,13 @@ class Settings(BaseSettings):
 
     stage: Literal["dev", "test", "prod"] = "dev"
 
+    #: Which service this process is, reported to PostgreSQL as ``application_name``.
+    #:
+    #: Every service connects as the same role to the same database, so without this a connection
+    #: log line names neither. It is what lets a dead backend's pid be traced back to an owner —
+    #: see the ``db`` service's logging flags and the crashes of 2026-08-13 and 2026-08-27.
+    service_name: str = "regops"
+
     # --- database ---------------------------------------------------------
     database_url: str = Field(
         default="postgresql+asyncpg://regops:regops@db:5432/regops",

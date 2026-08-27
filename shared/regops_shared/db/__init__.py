@@ -31,6 +31,9 @@ def get_engine() -> AsyncEngine:
         settings.database_url,
         echo=settings.db_echo,
         pool_pre_ping=True,
+        # asyncpg takes startup parameters under `server_settings`; psycopg2 below takes
+        # `application_name` directly. Same destination, two spellings.
+        connect_args={"server_settings": {"application_name": settings.service_name}},
     )
 
 
@@ -52,7 +55,12 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
 @lru_cache
 def get_sync_engine() -> Engine:
     settings = get_settings()
-    return create_engine(settings.sync_database_url, echo=settings.db_echo, pool_pre_ping=True)
+    return create_engine(
+        settings.sync_database_url,
+        echo=settings.db_echo,
+        pool_pre_ping=True,
+        connect_args={"application_name": settings.service_name},
+    )
 
 
 @lru_cache

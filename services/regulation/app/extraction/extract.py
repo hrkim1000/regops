@@ -81,6 +81,8 @@ class ExtractionResult:
     excluded: int = 0
     irs_written: int = 0
     rejected_uncited: int = 0
+    #: Clauses this run took from an interrupted predecessor instead of re-examining.
+    resumed: int = 0
     exclusion_reasons: dict[str, int] = field(default_factory=dict)
     error: str | None = None
 
@@ -144,10 +146,26 @@ def extract_version(
 
     rules = rule_set_for(domain, version.language)
     client = client or get_llm_client()
+
+    # **A crash should cost minutes, not the whole model budget.** `_checkpoint` has always
+    # committed every `EXTRACTION_COMMIT_EVERY` clauses, but nothing read those commits back, so a
+    # run that died at clause 600 of 729 started again at clause 1 — which is what the Postgres
+    # crash of 2026-08-27 actually cost: two hours of `gemma3:4b`, not the ninety seconds the
+    # database was down.
+    resume_from = _resumable_run(session, version, domain=domain, rules=rules, client=client)
     run = open_run(session, version, rules=rules, client=client)
     result.run_id = run.id
 
-    _clear_previous_drafts(session, version, domain=domain)
+    # Spares the predecessor's drafts and clears every other draft, so a clause is either adopted
+    # whole or re-examined with nothing of its own left behind. There is no third state where a
+    # cleared clause keeps a classification saying it was done.
+    _clear_previous_drafts(session, version, domain=domain, keep_run=resume_from)
+    done = _clauses_done_by(session, version, run=resume_from)
+    if done:
+        bound_resume = log.bind(version=str(version.id), domain=domain.value)
+        bound_resume.info(
+            "extract.resuming", from_run=str(resume_from.id), clauses_adopted=len(done)
+        )
 
     bound = log.bind(version=str(version.id), domain=domain.value, run=str(run.id))
     #: Paths whose role a child inherits, accumulated as we go. Clauses arrive in document order, so
@@ -165,6 +183,7 @@ def extract_version(
                 version=version,
                 result=result,
                 roles=roles,
+                done=done,
             )
             if index % EXTRACTION_COMMIT_EVERY == 0:
                 _checkpoint(session, run, result)
@@ -190,6 +209,7 @@ def extract_version(
         excluded=result.excluded,
         irs=result.irs_written,
         rejected=result.rejected_uncited,
+        resumed=result.resumed,
     )
     return result
 
@@ -272,6 +292,7 @@ def _process(
     version: DocumentVersion,
     result: ExtractionResult,
     roles: _RoleTrail,
+    done: frozenset[uuid.UUID] = frozenset(),
 ) -> None:
     """Classify one clause and, if it bears obligations, write the IRs it yields."""
     result.clauses_seen += 1
@@ -286,6 +307,16 @@ def _process(
         inherited=roles.role_above(clause.clause_path),
     )
     roles.record(clause.clause_path, verdict.reason)
+
+    # Adopted from the interrupted run — its classification and its IRs are already committed.
+    #
+    # **After `triage`, never before.** A clause's exclusion reason descends to its children
+    # (`INHERITABLE_REASONS`), so the trail has to be walked for every clause in document order or a
+    # later one inherits from a gap. Triage is deterministic and free; the LLM call is what this
+    # skips.
+    if clause.id in done:
+        result.resumed += 1
+        return
 
     if not verdict.needs_agent:
         _classify(session, clause, run=run, rules=rules, verdict=verdict, result=result)
@@ -508,6 +539,75 @@ def _live_run(
     )
 
 
+def _resumable_run(
+    session: Session,
+    version: DocumentVersion,
+    *,
+    domain: Domain,
+    rules: RuleSet,
+    client: LLMClient,
+) -> ExtractionRun | None:
+    """The interrupted run this one may continue, or ``None`` to start clean.
+
+    **Only the most recent run, only if it failed, and only at an identical fingerprint.** Each of
+    those three is load-bearing:
+
+    - *Most recent* because an older one's drafts have since been cleared by whatever ran after it;
+      adopting its clauses would keep classifications saying "examined" over IRs that no longer
+      exist, which reads as an obligation-free article rather than as missing work.
+    - *Failed* because a completed run means the work is done — a re-run after one is a deliberate
+      redo, and silently adopting its output would make the redo a no-op.
+    - *Identical fingerprint* because ``rule_version``/``prompt_version``/``llm_model`` are the
+      promise stamped on every IR (ADR-0017 decision 1). Adopting clauses across a version change
+      would produce one run's worth of rows that two different rule sets wrote.
+
+    A run still holding a pulse is not resumable either — it is a live peer, and ``extract_version``
+    refuses beside it rather than racing it.
+    """
+    candidate = session.scalars(
+        select(ExtractionRun)
+        .where(
+            ExtractionRun.document_version_id == version.id,
+            ExtractionRun.domain_profile == domain,
+        )
+        .order_by(ExtractionRun.started_at.desc())
+        .limit(1)
+    ).first()
+    if candidate is None or candidate.status is not ExtractionRunStatus.FAILED:
+        return None
+    same_fingerprint = (
+        candidate.rule_version == rules.rule_version
+        and candidate.prompt_version == rules.prompt_version
+        and candidate.llm_provider == client.provider
+        and candidate.llm_model == client.model
+    )
+    return candidate if same_fingerprint else None
+
+
+def _clauses_done_by(
+    session: Session, version: DocumentVersion, *, run: ExtractionRun | None
+) -> frozenset[uuid.UUID]:
+    """Clauses the given run finished — safe to adopt rather than re-examine.
+
+    A committed classification is the marker, and it is sound because of the write order in
+    :func:`_process`: the IRs go in first and the classification last, both inside the transaction
+    that ``_checkpoint`` commits. So a classification that survived the crash has its IRs beside it,
+    and a lost batch lost both together. There is no committed state where a clause claims to be
+    classified while its obligations are missing.
+    """
+    if run is None:
+        return frozenset()
+    rows = session.scalars(
+        select(ClauseClassification.clause_id)
+        .join(Clause, Clause.id == ClauseClassification.clause_id)
+        .where(
+            Clause.document_version_id == version.id,
+            ClauseClassification.extraction_run_id == run.id,
+        )
+    )
+    return frozenset(rows)
+
+
 def open_run(
     session: Session, version: DocumentVersion, *, rules: RuleSet, client: LLMClient
 ) -> ExtractionRun:
@@ -544,7 +644,13 @@ def _checkpoint(session: Session, run: ExtractionRun, result: ExtractionResult) 
     session.commit()
 
 
-def _clear_previous_drafts(session: Session, version: DocumentVersion, *, domain: Domain) -> None:
+def _clear_previous_drafts(
+    session: Session,
+    version: DocumentVersion,
+    *,
+    domain: Domain,
+    keep_run: ExtractionRun | None = None,
+) -> None:
     """Drop unreviewed proposals from an earlier run of this version and profile.
 
     Only ``draft``. A ``locked`` IR carries a human signature, a ``stale`` one is waiting for
@@ -554,14 +660,20 @@ def _clear_previous_drafts(session: Session, version: DocumentVersion, *, domain
     ``ir_citations`` cascades from ``irs``, so the deferred uncited-IR trigger sees the IR gone and
     stays quiet.
     """
+    conditions = [
+        IRCitation.document_version_id == version.id,
+        IR.domain_profile == domain,
+        IR.status == IRStatus.DRAFT,
+    ]
+    if keep_run is not None:
+        # Spared by **run**, not by citation path. An IR can cite a second clause for a condition
+        # that lives elsewhere, so a path-based exclusion would delete an IR the resumed run wrote
+        # merely because one of its citations points at a clause about to be re-examined.
+        conditions.append(IR.extraction_run_id.is_distinct_from(keep_run.id))
     doomed = (
         select(IR.id)
         .join(IRCitation, IRCitation.ir_id == IR.id)
-        .where(
-            IRCitation.document_version_id == version.id,
-            IR.domain_profile == domain,
-            IR.status == IRStatus.DRAFT,
-        )
+        .where(*conditions)
         .distinct()
         .scalar_subquery()
     )
