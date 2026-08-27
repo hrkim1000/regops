@@ -32,6 +32,8 @@ from typing import Final
 from regops_shared.constants import (
     IR_PROMPT_VERSION,
     IR_RULE_VERSION,
+    LANGUAGE_SCRIPT_FOREIGN,
+    LANGUAGE_SCRIPT_REQUIRED,
     MODAL_INVENTORY,
     PERMISSIVE_MODALS,
     TAXONOMY_CODES,
@@ -40,6 +42,16 @@ from regops_shared.constants import (
     Domain,
     ExclusionReason,
 )
+
+#: Compiled once. ``LANGUAGE_SCRIPT_REQUIRED`` says what a field composed in this language must
+#: contain; ``LANGUAGE_SCRIPT_FOREIGN`` says what proves it was composed in another one.
+_SCRIPT_REQUIRED: dict[str, re.Pattern[str]] = {
+    language: re.compile(pattern) for language, pattern in LANGUAGE_SCRIPT_REQUIRED.items()
+}
+_SCRIPT_FOREIGN: dict[str, tuple[re.Pattern[str], ...]] = {
+    language: tuple(re.compile(pattern) for pattern in patterns)
+    for language, patterns in LANGUAGE_SCRIPT_FOREIGN.items()
+}
 
 #: Canonical modal → the pattern that recognises it *and its conjunctive forms*.
 #:
@@ -176,6 +188,23 @@ class RuleSet:
             if modal in self.modals and re.search(pattern, candidate):
                 return modal
         return None
+
+    def written_in_language(self, text: str) -> bool:
+        """Is this composed text in the clause's language?
+
+        A regex question, not a judgement — the same reason modal detection and structural exclusion
+        are kept out of the LLM's hands. The model is *asked* for the right language in the prompt;
+        this is what makes the answer checkable.
+
+        Empty text is not a language failure. ``statement`` is required non-empty earlier and
+        ``condition_text`` is optional, so an absent field must not be reported as the wrong
+        language.
+        """
+        if not text:
+            return True
+        if not _SCRIPT_REQUIRED[self.language].search(text):
+            return False
+        return not any(pattern.search(text) for pattern in _SCRIPT_FOREIGN[self.language])
 
     def canonical_taxonomy(self, raw: str | None) -> str | None:
         """Taxonomy code, or ``None`` if the model invented one. Never stored unvalidated."""
@@ -389,6 +418,8 @@ def rule_digest() -> str:
         ("modal_patterns", _sorted_nested(_MODAL_PATTERNS)),
         ("permissive_patterns", sorted(_PERMISSIVE_PATTERNS.items())),
         ("modal_inventory", _sorted_nested(MODAL_INVENTORY)),
+        ("language_script_required", sorted(LANGUAGE_SCRIPT_REQUIRED.items())),
+        ("language_script_foreign", _sorted_nested(LANGUAGE_SCRIPT_FOREIGN)),
         ("permissive_modals", _sorted_nested(PERMISSIVE_MODALS)),
         ("taxonomy", sorted((d.value, list(codes)) for d, codes in TAXONOMY_CODES.items())),
         ("role_patterns", [(p.pattern, p.flags, r.value) for p, r in _ROLE_PATTERNS]),

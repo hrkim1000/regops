@@ -381,7 +381,7 @@ def test_the_rule_version_moved_with_the_taxonomy() -> None:
     Pinning the rule *content* to the version is the gate that would have failed here, and it is
     now ``test_the_rule_digest_matches_the_pinned_version`` below.
     """
-    assert IR_RULE_VERSION == "1.4.0"
+    assert IR_RULE_VERSION == "1.5.0"
     assert rule_set_for(Domain.SAMD, "en").rule_version == IR_RULE_VERSION
 
 

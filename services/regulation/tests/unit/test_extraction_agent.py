@@ -189,3 +189,82 @@ def test_prompt_differs_between_domains() -> None:
         "detected_modals": ("하여야 한다",),
     }
     assert build_prompt(rules=SAMD, **kwargs) != build_prompt(rules=COSMETIC, **kwargs)
+
+
+# --- composed fields are written in the clause's language --------------------------------------
+
+SAMD_EN = rule_set_for(Domain.SAMD, "en")
+
+
+def test_a_statement_composed_in_the_wrong_language_is_discarded() -> None:
+    """An IR is checked by holding it beside the clause it cites, which needs one language.
+
+    Observed 2026-08-27 on 의료기기법: three of 133 IRs carried an English `statement` beside
+    `modal: 하여야 한다` — a row disagreeing with itself, and one a reviewer had to translate before
+    they could verify it.
+    """
+    result = _parse(
+        [
+            _proposal(statement="shall report to the relevant government officials."),
+            _proposal(),
+        ]
+    )
+    assert len(result.proposals) == 1
+    assert any("statement is not written in ko" in reason for reason in result.discarded)
+
+
+def test_a_condition_composed_in_the_wrong_language_is_discarded_too() -> None:
+    """`condition_text` carries the class restriction, so a reviewer reads it as closely."""
+    result = _parse(
+        [_proposal(condition_text="according to the standards set by the Minister of Health")]
+    )
+    assert not result.proposals
+    assert any("condition_text is not written in ko" in reason for reason in result.discarded)
+
+
+def test_latin_inside_a_korean_statement_is_not_a_foreign_language() -> None:
+    """The rule is deliberately asymmetric: Korean statutes are full of Latin.
+
+    GMP, IEC 62304, RFID. A mirror-image rule would refuse a correct Korean statement for naming a
+    standard, which is why `LANGUAGE_SCRIPT_FOREIGN["ko"]` is empty rather than `[A-Za-z]`.
+    """
+    result = _parse([_proposal(statement="GMP 적합인정을 받아야 하며 IEC 62304를 따라야 한다")])
+    assert len(result.proposals) == 1
+    assert not result.discarded
+
+
+def test_hangul_inside_an_english_statement_is_a_foreign_language() -> None:
+    """The other direction *is* evidence — an English rule set has no reason to compose Hangul."""
+    result = _parse(
+        [
+            {
+                "bearer": "the manufacturer",
+                "modal": "shall",
+                "statement": "기록을 3년간 보관하여야 한다",
+                "condition_text": None,
+                "taxonomy_code": None,
+                "cites": [PATH],
+            }
+        ],
+        rules=SAMD_EN,
+    )
+    assert not result.proposals
+    assert any("statement is not written in en" in reason for reason in result.discarded)
+
+
+def test_an_absent_condition_is_not_a_language_failure() -> None:
+    """`condition_text` is optional; a null must not be reported as the wrong language."""
+    result = _parse([_proposal(condition_text=None)])
+    assert len(result.proposals) == 1
+    assert not result.discarded
+
+
+def test_the_prompt_names_the_language_it_expects() -> None:
+    """The check is the guarantee; the instruction is what keeps the model from needing it."""
+    prompt = build_prompt(
+        rules=SAMD, clause_path=PATH, heading=None, text="…", detected_modals=("하여야 한다",)
+    )
+    assert "Korean (한국어)" in prompt
+    assert "English" in build_prompt(
+        rules=SAMD_EN, clause_path=PATH, heading=None, text="…", detected_modals=("shall",)
+    )

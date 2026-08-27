@@ -540,6 +540,35 @@ MODAL_INVENTORY: Final[dict[str, tuple[str, ...]]] = {
     "en": ("shall", "must", "is required to", "may not"),
 }
 
+#: The character class a field **composed** by the extractor must contain to count as written in
+#: this language.
+#:
+#: An IR restates an obligation and its citation pins the clause it restates, so the reviewer's job
+#: is to hold the two side by side. That only works while they are in the same language — a Korean
+#: clause under an English statement makes the reviewer translate before they can check, which is
+#: the one thing citation enforcement exists to spare them. The row is self-contradictory besides:
+#: ``modal`` is normalised against this language's closed inventory, so an English statement beside
+#: ``하여야 한다`` disagrees with its own row.
+#:
+#: Copied fields are unaffected and deliberately unchecked — ``bearer`` comes off the clause text,
+#: and over 133 IRs of 의료기기법 it never drifted while three ``statement`` values did
+#: (2026-08-27).
+LANGUAGE_SCRIPT_REQUIRED: Final[dict[str, str]] = {
+    "ko": r"[가-힣]",
+    "en": r"[A-Za-z]",
+}
+
+#: The character classes that prove a field was composed in a *different* language than the clause.
+#:
+#: **Deliberately not the mirror of the table above.** Hangul in an English statement is evidence;
+#: Latin in a Korean one is not, because Korean statutes are full of it — GMP, IEC 62304, RFID. A
+#: symmetric rule would reject correct Korean statements for naming a standard, so the asymmetry is
+#: the rule rather than an omission in it.
+LANGUAGE_SCRIPT_FOREIGN: Final[dict[str, tuple[str, ...]]] = {
+    "ko": (),
+    "en": (r"[가-힣]",),
+}
+
 #: Permissive forms yield **no IR** (ADR-0004 decision 1). They are recorded as context on a related
 #: IR where one exists, and as an ``ExclusionReason.PERMISSIVE`` classification where none does.
 PERMISSIVE_MODALS: Final[dict[str, tuple[str, ...]]] = {
@@ -642,7 +671,11 @@ TAXONOMY_CODES: Final[dict[Domain, tuple[str, ...]]] = {
 #: response is to say so here rather than to renumber history. What it does buy is that everything
 #: from now on is attributable — which is why it happens **before** the FD&C Act re-extraction
 #: rather than after it.
-IR_RULE_VERSION: Final[str] = "1.4.0"
+IR_RULE_VERSION: Final[str] = "1.5.0"
+#:
+#: **1.5.0 (2026-08-27)** adds the composed-field language check: ``statement`` and
+#: ``condition_text`` must be written in the clause's language, or the proposal is rejected the way
+#: one carrying a modal outside the inventory is. See ``LANGUAGE_SCRIPT_REQUIRED``.
 
 #: Fingerprint of the rule tables that ``IR_RULE_VERSION`` above claims to name.
 #:
@@ -660,10 +693,15 @@ IR_RULE_VERSION: Final[str] = "1.4.0"
 #: It lives here rather than beside ``rule_digest()`` so that anyone editing ``MODAL_INVENTORY``,
 #: ``PERMISSIVE_MODALS`` or ``TAXONOMY_CODES`` — which are in this file and *are* digest input — has
 #: it in front of them.
-IR_RULE_DIGEST: Final[str] = "f9ba469c4f31e413"
+IR_RULE_DIGEST: Final[str] = "3cb23d29b458559c"
 
 #: Bumped independently of the rules — a prompt can be reworded without the rule set moving.
-IR_PROMPT_VERSION: Final[str] = "1.2.0"
+#:
+#: **1.3.0 moves with the rules for once, and that is not the usual case.** The prompt gained an
+#: output-language instruction and the rule set gained the check that makes the instruction
+#: verifiable; they are one change wearing two version numbers, because a reader asking *"why is
+#: this IR in English"* of a row stamped ``1.2.0`` must not be told the prompt already asked.
+IR_PROMPT_VERSION: Final[str] = "1.3.0"
 
 # --- task broker --------------------------------------------------------------------------------
 

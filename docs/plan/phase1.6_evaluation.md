@@ -205,6 +205,37 @@ The corpus and its authoring rules are [docs/eval/README.md](../eval/README.md).
   verification agent caught it. One observation is not a rate; the full mis-citation axis is 30
   items per cell and that is what will say whether this is a pattern.
 
+- **Nothing measures whether an IR *says* what the clause says — language drift is the visible
+  edge of it (2026-08-27).** The extraction measurement in this phase is `extraction_against_markup`
+  and it scores **recall**: did the extractor find the obligations an RA marked. Faithfulness of the
+  IR's own wording has no axis, and a review of 의료기기법 @ 2026-07-01 under `rule 1.4.0` /
+  `prompt 1.2.0` / `gemma3:4b` (133 IRs) shows what that misses:
+
+  | | count |
+  | --- | --- |
+  | `statement` with no Korean at all | **3 / 133** |
+  | `condition_text` with no Korean | 1 / 21 |
+  | `bearer` with no Korean | 0 / 133 |
+
+  `bearer` holds because it is copied from the clause; `statement` is composed, and composition is
+  where the model drifts. The prompt never states an output language — `RuleSet.language` exists and
+  `rule_set_for` refuses an unknown one rather than silently falling back to Korean, so the pipeline
+  is language-aware everywhere *except* the instruction that produces the text a reviewer reads.
+
+  Each of the three rows is internally contradictory: `modal` is `하여야 한다`, normalised from the
+  closed Korean inventory, beside an English `statement`. One is worse — *"may request cooperation
+  from specified entities"* carries `modal: 하여야 한다`, so a permissive form that atomicity rule 5
+  says yields **no IR** was emitted as an obligation. That is a precision defect, and recall-only
+  markup cannot see it: the clause was never marked as bearing an obligation, so nothing is missing
+  from the denominator.
+
+  Recorded, not fixed, and deliberately not re-extracted — 47 of the 133 were locked by then, and
+  a re-run clears drafts while leaving locked IRs, so fixing three rows would have manufactured 47
+  duplicates. What the number is good for: **2.3% wording drift is a `gemma3:4b` capability signal**
+  at the pinned regime — one more way the binding constraint above is the model rather than the
+  product, and it argues that the markup exercise
+  should ask the RA to judge the extractor's *statement* against the clause, not only whether the
+  clause was found.
 ## Deviations & decisions
 
 **1. Four of the six gates are returned unmeasured, and that is the deliverable — not a shortfall

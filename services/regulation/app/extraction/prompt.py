@@ -43,6 +43,10 @@ Reply with JSON only. No prose before or after, no markdown fence.\
 """
 
 
+#: Named rather than passed as a bare code, so the instruction reads as an instruction.
+_LANGUAGE_NAME: dict[str, str] = {"ko": "Korean (한국어)", "en": "English"}
+
+
 def build_prompt(
     *,
     rules: RuleSet,
@@ -67,6 +71,8 @@ def build_prompt(
     if context:
         payload["surrounding_context"] = context
 
+    language = _LANGUAGE_NAME.get(rules.language, rules.language)
+
     return f"""\
 {_DOMAIN_GUIDANCE[rules.domain.value]}
 
@@ -81,6 +87,13 @@ def build_prompt(
 6. Definitions, scope statements, headings and delegations ("…으로 정한다") yield no IR.
 7. An obligation that applies only to certain product classes or categories stays **one** IR; the
    restriction goes in `condition_text`. Do not emit one IR per class.
+
+## Language
+
+Write `statement` and `condition_text` in **{language}** — the language of the clause. Do not
+translate. An IR is read beside the clause it cites, and a reviewer cannot check a restatement
+against a text in another language. The row would contradict itself besides: `modal` is reported
+from a {language} inventory. Copy `bearer` from the clause as it appears there.
 
 ## Modals
 

@@ -181,6 +181,22 @@ def _validate(item: dict, *, rules: RuleSet) -> tuple[Proposal | None, str]:
         # cover — that is a rule question for an RA, not a row to write.
         return None, f"modal outside the inventory: {item.get('modal')!r}"
 
+    condition_text = _text(item.get("condition_text")) or None
+
+    # The prompt asks for the clause's language; this is what makes the answer checkable. An IR is
+    # read side by side with the clause it cites, and that only works while the two are in the same
+    # language — otherwise the reviewer must translate before they can verify, which is the work
+    # citation enforcement exists to spare them. The row would contradict itself besides: `modal` is
+    # normalised against this language's closed inventory. Observed 2026-08-27: three of 133 IRs on
+    # 의료기기법 carried an English `statement` beside `하여야 한다`.
+    #
+    # Rejected rather than flagged, exactly as a modal outside the inventory is. The recall cost is
+    # real and is 1.6's to measure — the reason lands in `discarded`, which is logged and marks the
+    # clause for review, so it is a stated limit rather than a silent gap.
+    for field_name, value in (("statement", statement), ("condition_text", condition_text)):
+        if value and not rules.written_in_language(value):
+            return None, f"{field_name} is not written in {rules.language}: {value[:60]!r}"
+
     cites = tuple(path for path in (_text(value) for value in _as_list(item.get("cites"))) if path)
     if not cites:
         return None, "no cites"
@@ -190,7 +206,7 @@ def _validate(item: dict, *, rules: RuleSet) -> tuple[Proposal | None, str]:
             bearer=_text(item.get("bearer")) or None,
             modal=modal,
             statement=statement,
-            condition_text=_text(item.get("condition_text")) or None,
+            condition_text=condition_text,
             taxonomy_code=rules.canonical_taxonomy(_text(item.get("taxonomy_code"))),
             cites=cites,
         ),
