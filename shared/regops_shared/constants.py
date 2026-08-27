@@ -715,12 +715,21 @@ IR_PROMPT_VERSION: Final[str] = "1.3.0"
 #: beside the original in the sibling pool child, called ``_clear_previous_drafts`` and deleted the
 #: 89 drafts the live run had just committed.
 #:
-#: Six hours covers every task this stack runs today with room to spare — the longest observed
-#: extraction is under two. It is a **waste** guard, not a correctness one: no timeout can be
-#: proven large enough for a corpus nobody has extracted yet, so the duplicate is *also* refused
-#: where every path to an extraction converges (``extract_version``'s liveness guard). This number
-#: only decides whether the pointless copy is created at all.
-CELERY_VISIBILITY_TIMEOUT: Final[timedelta] = timedelta(hours=6)
+#: It is a **waste** guard, not a correctness one: no timeout can be proven large enough for a
+#: corpus nobody has extracted yet, so the duplicate is *also* refused where every path to an
+#: extraction converges (``extract_version``'s liveness guard). This number only decides whether the
+#: pointless copy is created at all.
+#:
+#: **It was six hours for one day, and that was already too small.** The comment here read "six
+#: hours covers every task this stack runs today with room to spare — the longest observed
+#: extraction is under two", written on 2026-08-27 against a corpus whose largest extraction *was*
+#: under two hours. The 21 U.S.C. chapter 9 run scheduled that same night is 12,179 clauses at a
+#: measured 2.03s each — **six hours and fifty-two minutes**, over the line before it finished.
+#:
+#: Raised to twenty-four rather than to seven: sizing it to the job in front of us is what produced
+#: a number that expired within a day. Twenty-four is not a proof either, which is the point — the
+#: guard is what makes the number safe to be wrong about.
+CELERY_VISIBILITY_TIMEOUT: Final[timedelta] = timedelta(hours=24)
 
 
 #: Extraction is run at temperature 0 and any delta between two runs at the same
