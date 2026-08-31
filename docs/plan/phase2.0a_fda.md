@@ -578,6 +578,23 @@ And the structural criteria the slice is really about:
 - **Open question (new) — how far does the eCFR lag the Federal Register?** One observation puts it at
   a day or two. The ≤24h gate depends on the distribution, not one sample; measure over a fortnight
   before fixing the poll interval ([ADR-0018](../design/ADR-0018-fda-source-model.md) open question 1).
+  → **the series runs on weekdays only, decided 2026-08-31 after the first skipped weekend.** The
+  Federal Register does not publish on Saturday or Sunday and the eCFR does not advance, so a
+  weekend probe adds nothing to the blind spot — the one number the verdict rests on — while
+  inflating raw freshness purely by the calendar. That showed up immediately: Monday 2026-08-31 read
+  `freshness_lag_days = 4` where the preceding weekdays read 2, with blind spot 0 throughout, which
+  is exactly the confusion the report's own caveat names (*"it cannot tell a compilation that is
+  behind from one that did not advance because nothing was amended"*).
+
+  Two consequences, both stated rather than assumed. The sample is **weekday-only**, so it says
+  nothing about weekend behaviour — acceptable because a poll interval is chosen against the days
+  amendments actually land, but it is a limit of the measurement and not a property of the system.
+  And `report` counts *distinct days*, not consecutive ones, so skipping weekends does not
+  invalidate the series; it only moves the tenth observation to about 2026-09-04.
+
+  One observation carries a note: 2026-08-28 caught the eCFR with `import_in_progress` set, so its
+  section-version rows are provisional. The probe recorded that rather than passing the reading off
+  as clean, and `report` counts it under data health.
 - **Open question (new) — how is the guidance corpus enumerated?** No API, and no crawl was attempted.
   Decision 9 settles how guidance is *treated*, not how it is *found*.
   → **crawl attempted 2026-08-26, and the answer is "not on anything worth building on".** Three

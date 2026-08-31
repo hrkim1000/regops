@@ -347,7 +347,9 @@ $E score && $E polls       # per-axis scores; scheduled polls versus polls that 
 $E gates --out /eval/go-no-go.md
 
 # phase 2.0a measurement — how far the eCFR trails the Federal Register (ADR-0018 open question 1).
-# Runs daily for a fortnight; stdout is the data, stderr the progress. Append, never overwrite.
+# Runs on weekdays until ten observations exist — the Federal Register does not publish at the
+# weekend and the eCFR does not advance, so a Saturday probe adds nothing but calendar to the
+# freshness number. stdout is the data, stderr the progress. Append, never overwrite.
 L="docker compose exec -T -w /scripts regulation python -m fda_lag.cli"
 $L probe >> docs/design/fda-lag-observations.jsonl     # one observation, one JSON line
 $L report < docs/design/fda-lag-observations.jsonl     # exits 1 with UNDETERMINED until 10 days
