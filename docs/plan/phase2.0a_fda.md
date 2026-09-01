@@ -595,6 +595,33 @@ And the structural criteria the slice is really about:
   One observation carries a note: 2026-08-28 caught the eCFR with `import_in_progress` set, so its
   section-version rows are provisional. The probe recorded that rather than passing the reading off
   as clean, and `report` counts it under data health.
+
+  → **the underlying lag is one business day and has never slipped; `freshness_lag_days` only looks
+  like it moves (2026-09-01, seven observations).** Tracking the title's own stamp rather than the
+  derived number shows it advancing exactly one business day per business day, without exception:
+
+  | observed | `up_to_date_as_of` | freshness | weekday |
+  | --- | --- | ---: | --- |
+  | 08-24 | 08-20 | **4** | Mon |
+  | 08-25 | 08-21 | **4** | Tue |
+  | 08-26 | 08-24 | 2 | Wed |
+  | 08-27 | 08-25 | 2 | Thu |
+  | 08-28 | 08-26 | 2 | Fri |
+  | 08-31 | 08-27 | **4** | Mon |
+  | 09-01 | 08-28 | **4** | Tue |
+
+  `freshness_lag_days` is **calendar** arithmetic over a value that advances in **business** days, so
+  it oscillates 2 on Wed–Fri and 4 on Mon–Tue. Two consecutive weeks show the identical pattern, and
+  nothing about the source changed between them.
+
+  That has a consequence for how the tenth-day report is read, and it is the reason this is written
+  here rather than left in a chat log: **the median freshness `report` prints is a function of which
+  weekdays the sample contains.** Now that the series is weekday-only, ten observations will hold
+  Mon/Tue and Wed/Fri in whatever proportion the calendar happens to give, and the median will move
+  with that mix while the source's behaviour stays constant. So the answer to ADR-0018 open
+  question 1 should be stated as *one business day*, sourced from `up_to_date_as_of`, and the
+  freshness table read as the corroborating context the report already says it is. **Blind spot is
+  unaffected** — it is 0 on every observation, and it is the verdict input.
 - **Open question (new) — how is the guidance corpus enumerated?** No API, and no crawl was attempted.
   Decision 9 settles how guidance is *treated*, not how it is *found*.
   → **crawl attempted 2026-08-26, and the answer is "not on anything worth building on".** Three
