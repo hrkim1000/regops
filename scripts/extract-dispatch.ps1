@@ -122,9 +122,19 @@ while ((Get-Date) -lt $deadline) {
 }
 if ($opened) {
     Write-Log "OK - extraction is running. Watch it with: docker compose logs -f regulation-worker"
-} else {
-    Write-Log "WARNING: no running run appeared within 3 minutes. Either the guard refused it (a live"
-    Write-Log "         run already owns this version and domain) or the worker never picked it up."
-    Write-Log "         Check: docker compose logs regulation-worker --tail=50"
+    Write-Log "=== done ==="
+    # Explicit, and not decoration. Without it the script's exit code is whatever the last native
+    # command left in $LASTEXITCODE — psql, here — so a run that did everything right reported -1
+    # to Task Scheduler. A scheduled job whose success looks like a failure gets ignored, and then
+    # so does a real one.
+    exit 0
 }
+
+Write-Log "WARNING: no running run appeared within 3 minutes. Either the guard refused it (a live"
+Write-Log "         run already owns this version and domain) or the worker never picked it up."
+Write-Log "         Check: docker compose logs regulation-worker --tail=50"
 Write-Log "=== done ==="
+# Non-zero because nothing started, which is what a scheduler needs to hear. A guard refusal is a
+# *correct* outcome and still lands here — the log line says which, and "correct but nothing is
+# running" is still worth a person's attention when the point was to start a run.
+exit 1

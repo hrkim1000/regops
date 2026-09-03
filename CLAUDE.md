@@ -372,6 +372,38 @@ In Git Bash, prefix the `docker compose exec` calls with `MSYS_NO_PATHCONV=1` �
 `-w /scripts` into a Windows path and the daemon rejects it with *"Cwd must be an absolute path"*.
 (The same conversion is why `admrul_triage.py` is invoked as `python //scripts/...`.)
 
+**Starting an extraction that will run for hours** — `scripts/extract-dispatch.ps1`. It brings the
+stack up, waits for the database *and* the worker, dispatches, and then confirms a run row actually
+opened, because a task id proves only that a message was queued. Exit 0 means a run is running;
+exit 1 means nothing started, including the correct-but-idle case where the concurrency guard
+refused because a live run already owns that version and domain.
+
+```powershell
+.\scripts\extract-dispatch.ps1 -VersionId <uuid> -Domain samd    # -> scripts/extract-dispatch.log
+```
+
+**The domain is mandatory.** Left out, `extract_document_version` runs once per claiming cell, and
+21 U.S.C. chapter 9 is claimed by both FDA cells — two passes over 12,179 clauses, fourteen hours
+instead of seven.
+
+**Checking on it afterwards.** The run row is the source of truth; the log only records the start.
+A dead run says `running` with a stale heartbeat until something sweeps it, so read the pulse, not
+the status:
+
+```bash
+docker compose exec -T db psql -U regops -d regops -c "
+  select domain_profile, status, clauses_seen, irs_written,
+         round(extract(epoch from now()-heartbeat_at)) as beat_s
+  from extraction_runs where document_version_id='<uuid>'
+  order by started_at desc limit 3;"
+
+docker compose logs regulation-worker --tail=20        # LLM calls, extract.done, extract.resuming
+```
+
+`beat_s` under ~900 with `clauses_seen` climbing is alive; a stale beat is a crash nobody has closed
+yet. Re-dispatching after one **resumes** — it adopts the clauses the dead run finished and keeps
+its drafts — so the cost of a crash is the clauses it never reached, not the run.
+
 From `frontend/`:
 
 ```bash
