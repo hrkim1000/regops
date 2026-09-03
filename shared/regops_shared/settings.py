@@ -62,6 +62,32 @@ class Settings(BaseSettings):
     #: rather than by the model. Null leaves Ollama's own default in place.
     ollama_num_ctx: int | None = None
 
+    #: How many model layers Ollama must place on the GPU. Null leaves its own estimate in place.
+    #:
+    #: **A hardware knob, not a model property** — which is why it defaults to null and is set per
+    #: deployment rather than pinned here. It changes nothing a model says: layer placement affects
+    #: where the arithmetic happens, not its result, so ``llm_model`` and the IR fingerprint are
+    #: untouched (ADR-0017 decision 1) and rows either side of the change stay comparable.
+    #:
+    #: It exists because Ollama's own estimate is conservative on a small card and the cost is
+    #: paid per generated token. Measured 2026-09-03 on an RTX 3050 Laptop (4 GB) with
+    #: ``gemma3:4b``, three samples each, on the generation half that is 86% of an extraction call
+    #: — **at ``ollama_num_ctx=32768``, the value this stack actually sends.** That qualifier is
+    #: the point: the first pass of this benchmark used Ollama's default 4096 window and would have
+    #: recommended a placement whose KV cache does not fit what production asks for.
+    #:
+    #: ===============  ==============  ==========  ===========
+    #: setting          generation      placement   VRAM
+    #: ===============  ==============  ==========  ===========
+    #: (null, auto)     18.1 tok/s      43% GPU     2,465 MiB
+    #: 34               29.3 tok/s      77% GPU     3,029 MiB
+    #: ===============  ==============  ==========  ===========
+    #:
+    #: 34 rather than full offload, which was 5% faster at 4096 but leaves under 500 MiB spare on a
+    #: card the display also uses. An extraction runs for hours; a model that fails to load
+    #: mid-corpus costs more than 5%. At 34 there is a gigabyte of headroom.
+    ollama_num_gpu: int | None = None
+
     #: Embeddings are always Ollama and always this model/dim — changing them invalidates
     #: the whole index, so they are not configurable per provider.
     embedding_model: str = EMBEDDING_MODEL

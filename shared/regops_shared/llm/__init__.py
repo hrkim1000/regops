@@ -47,6 +47,7 @@ class OllamaClient(LLMClient):
         self._embedding_model = settings.embedding_model
         self._timeout = settings.llm_timeout_seconds
         self._num_ctx = settings.ollama_num_ctx
+        self._num_gpu = settings.ollama_num_gpu
 
     async def complete(
         self, prompt: str, *, system: str | None = None, temperature: float | None = None
@@ -64,6 +65,11 @@ class OllamaClient(LLMClient):
             # A prompt longer than the window is truncated without an error, and a generator that
             # loses the tail of its passage list cites what it can no longer see.
             options["num_ctx"] = self._num_ctx
+        if self._num_gpu is not None:
+            # Layer placement, not sampling: it moves where the arithmetic runs, never what comes
+            # out. Sent because Ollama's own estimate is conservative on a small card and the cost
+            # is paid per generated token — see `Settings.ollama_num_gpu` for the measurement.
+            options["num_gpu"] = self._num_gpu
         if options:
             body["options"] = options
         async with httpx.AsyncClient(timeout=self._timeout) as client:

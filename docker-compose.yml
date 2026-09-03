@@ -39,6 +39,11 @@ x-service-base: &service-base
     # SignatureDoesNotMatch at the first archive write rather than at startup.
     MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-regops}
     MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-regops-secret}
+    # How many layers Ollama must put on the GPU. Its own estimate left half the model on the CPU
+    # of a 4 GB card, and generation is 86% of an extraction call — 19.6 to 28.8 tok/s when forced.
+    # Overridable per machine because it describes the *card*, not the model; see
+    # `Settings.ollama_num_gpu` for the measurement and for why 34 rather than full offload.
+    OLLAMA_NUM_GPU: ${OLLAMA_NUM_GPU:-34}
   volumes:
     - ./shared:/shared
   depends_on:
