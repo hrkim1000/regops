@@ -41,6 +41,10 @@ htmlcov/
 nosetests.xml
 test-results/
 
+# Host resource samples from scripts/host-sampler.ps1 — a row every 5s while it runs, and specific
+# to one machine's hardware. The script is worth keeping; its output is not.
+scripts/host-samples.csv
+
 # mypy / pyright / ruff
 .mypy_cache/
 .dmypy.json
