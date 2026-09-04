@@ -575,9 +575,12 @@ And the structural criteria the slice is really about:
   redesignation is unverified. **Sharpened 2026-08-24:** the eCFR `versions` endpoint does carry
   `removed` (27 of 72 rows for part 820), but no move field — so this is now Risk 1a, not an
   open question about whether a signal exists.
-- **Open question (new) — how far does the eCFR lag the Federal Register?** One observation puts it at
-  a day or two. The ≤24h gate depends on the distribution, not one sample; measure over a fortnight
-  before fixing the poll interval ([ADR-0018](../design/ADR-0018-fda-source-model.md) open question 1).
+- ~~**Open question (new) — how far does the eCFR lag the Federal Register?**~~ — **closed
+  2026-09-04.** Ten observations, blind spot 0 on every one; the lag is **one business day**, which
+  bounds it at ≤1 day and settles the poll interval at **daily**.
+  [ADR-0018](../design/ADR-0018-fda-source-model.md) open question 1 carries the closure and
+  [fda-lag-report.md](../design/fda-lag-report.md) the rendered series. The reasoning that got
+  there is below, kept because it is what the number means rather than what it is.
   → **the series runs on weekdays only, decided 2026-08-31 after the first skipped weekend.** The
   Federal Register does not publish on Saturday or Sunday and the eCFR does not advance, so a
   weekend probe adds nothing to the blind spot — the one number the verdict rests on — while

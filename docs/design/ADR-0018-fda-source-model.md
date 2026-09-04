@@ -411,20 +411,39 @@ being defined into existence.
 
 ## Open questions
 
-1. **How far does the eCFR `versions` endpoint lag the Federal Register?** **Being measured** —
-   `scripts/fda_lag/` runs daily into
-   [fda-lag-observations.jsonl](fda-lag-observations.jsonl); it renders `UNDETERMINED` and exits
-   non-zero until ten distinct days are in, so the number cannot be quoted early. Decision 6 rests
-   on the answer.
+1. ~~**How far does the eCFR `versions` endpoint lag the Federal Register?**~~ — **closed
+   2026-09-04 by the ten-day series.** [fda-lag-report.md](fda-lag-report.md) is the rendered
+   result over [fda-lag-observations.jsonl](fda-lag-observations.jsonl), 10 observations across
+   2026-08-24 → 09-04.
 
-   The metric is **not** the naive one. Observation date minus `up_to_date_as_of` was 4 days on the
-   first run, which reads as a failed gate but was a weekend — a compilation that has not advanced
-   because nothing was amended is indistinguishable, by that number, from one that is behind. The
-   harness reports the **blind spot**: days since the oldest rule already in force yet absent from
-   the compilation. First observation: **0**, with raw freshness recorded beside it as context.
+   **Blind spot was 0 on every one of the ten days** — no rule was ever in force while absent from
+   the compilation. Polling `versions/title-21.json` therefore sees an amendment inside the window
+   decision 6 assumes, and **decision 6 stands on measurement rather than on expectation.**
+
+   **The poll interval this settles is daily.** A lag bounded at ≤1 day means one poll per day meets
+   the ≤24h detection gate, and nothing in ten days argued for tighter. `source_schedules` already
+   carries the cadence per source, so this is a seeded value and not a new mechanism.
+
+   The metric was **not** the naive one, and that mattered. Observation date minus
+   `up_to_date_as_of` was 4 days on the first run, which reads as a failed gate but was a weekend —
+   a compilation that has not advanced because nothing was amended is indistinguishable, by that
+   number, from one that is behind. Raw freshness stayed beside the blind spot as context and never
+   became the answer: over the series it oscillated 2 and 4 with the weekday, while
+   `up_to_date_as_of` advanced exactly one business day per business day, ten times without a slip.
+   **The number to quote is one business day, sourced from that field** — the report's median
+   freshness is a function of which weekdays the sample contains, and the series is weekday-only by
+   [phase2.0a](../plan/phase2.0a_fda.md).
 
    Day granularity is the endpoint's own — `up_to_date_as_of` is a date, not a timestamp — so this
-   can bound the lag at ≤1 day and can never *prove* ≤24h. That bound is what decision 6 needs.
+   bounds the lag at ≤1 day and can never *prove* ≤24h. That bound is what decision 6 needs, and it
+   is the strongest claim this surface supports; a stronger one would have to come from somewhere
+   else.
+
+   Two limits the series carries rather than hides. It is **weekday-only**, so it says nothing about
+   weekend behaviour — acceptable for choosing a poll interval against the days amendments land, and
+   stated because it is a limit of the measurement, not a property of the source. And one
+   observation (2026-08-28) caught the eCFR with `import_in_progress` set, so its section-version
+   rows are provisional; the probe recorded that rather than passing the reading off as clean.
 2. **Is a `removed` row followed by a re-added identifier distinguishable from a redesignation?**
    Decision 8 routes this to the similarity fallback; whether the fallback actually separates the two
    on CFR data is untested.
