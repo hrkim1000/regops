@@ -281,6 +281,20 @@ class ExtractionRun(UUIDPrimaryKey, Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    #: The interrupted run this one continued, if any — the link that makes a resume *chain*
+    #: legible.
+    #:
+    #: Recorded rather than inferred, and the difference is not academic. Resumption used to look at
+    #: the single most recent run on the reasoning that an older one's drafts had since been cleared
+    #: by whatever ran after it. That is false of a chain: a resuming run **keeps** its
+    #: predecessor's drafts, so the run before last is alive, not superseded. On 2026-09-04 a third
+    #: run over 21 U.S.C. chapter 9 read the first as stale and deleted 938 IRs it was still
+    #: relying on. Following this column instead makes "what did this run inherit" a fact on the row
+    #: rather than a guess from timestamps.
+    resumed_from_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("extraction_runs.id", ondelete="SET NULL"), nullable=True
+    )
+
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<ExtractionRun {self.domain_profile} {self.status} irs={self.irs_written}>"
 

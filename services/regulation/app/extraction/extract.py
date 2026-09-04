@@ -32,11 +32,12 @@ import uuid
 from dataclasses import dataclass, field
 
 import structlog
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from regops_shared.constants import (
     EXTRACTION_COMMIT_EVERY,
+    EXTRACTION_RESUME_CHAIN_MAX,
     EXTRACTION_TEMPERATURE,
     ClassificationKind,
     Domain,
@@ -153,18 +154,22 @@ def extract_version(
     # crash of 2026-08-27 actually cost: two hours of `gemma3:4b`, not the ninety seconds the
     # database was down.
     resume_from = _resumable_run(session, version, domain=domain, rules=rules, client=client)
-    run = open_run(session, version, rules=rules, client=client)
+    resume_chain = _resume_chain(session, resume_from)
+    run = open_run(session, version, rules=rules, client=client, resumed_from=resume_from)
     result.run_id = run.id
 
     # Spares the predecessor's drafts and clears every other draft, so a clause is either adopted
     # whole or re-examined with nothing of its own left behind. There is no third state where a
     # cleared clause keeps a classification saying it was done.
-    _clear_previous_drafts(session, version, domain=domain, keep_run=resume_from)
-    done = _clauses_done_by(session, version, run=resume_from)
+    _clear_previous_drafts(session, version, domain=domain, keep_runs=resume_chain)
+    done = _clauses_done_by(session, version, runs=resume_chain)
     if done:
         bound_resume = log.bind(version=str(version.id), domain=domain.value)
         bound_resume.info(
-            "extract.resuming", from_run=str(resume_from.id), clauses_adopted=len(done)
+            "extract.resuming",
+            from_run=str(resume_from.id) if resume_from else None,
+            chain=[str(r.id) for r in resume_chain],
+            clauses_adopted=len(done),
         )
 
     bound = log.bind(version=str(version.id), domain=domain.value, run=str(run.id))
@@ -597,10 +602,43 @@ def _resumable_run(
     return candidate if same_fingerprint else None
 
 
+def _resume_chain(session: Session, run: ExtractionRun | None) -> list[ExtractionRun]:
+    """The run being resumed and everything it, in turn, resumed. Newest first; empty for ``None``.
+
+    **A resuming run keeps its predecessor's drafts**, so the chain is a list of runs whose work is
+    all still live — not a history where only the last entry matters. Reading only the head is what
+    deleted 938 IRs on 2026-09-04: the third run over 21 U.S.C. chapter 9 adopted the second's 1,400
+    clauses and cleared the first's drafts as though something had already superseded them.
+
+    Bounded by `EXTRACTION_RESUME_CHAIN_MAX` and by a seen-set. The column is a self-reference, and
+    a cycle in it would otherwise hang the extractor before it read a single clause — cheap
+    insurance against a row nobody expected.
+    """
+    chain: list[ExtractionRun] = []
+    seen: set[uuid.UUID] = set()
+    current = run
+    while current is not None and len(chain) < EXTRACTION_RESUME_CHAIN_MAX:
+        if current.id in seen:
+            log.warning("extract.resume_chain_cycle", run=str(current.id))
+            break
+        seen.add(current.id)
+        chain.append(current)
+        current = (
+            session.get(ExtractionRun, current.resumed_from_id) if current.resumed_from_id else None
+        )
+    if current is not None:
+        # Truncated rather than silently partial: the caller is about to clear the drafts of every
+        # run it did *not* adopt, so a chain that ran off the end is a reason to say so loudly.
+        log.warning(
+            "extract.resume_chain_truncated", head=str(run.id) if run else None, kept=len(chain)
+        )
+    return chain
+
+
 def _clauses_done_by(
-    session: Session, version: DocumentVersion, *, run: ExtractionRun | None
+    session: Session, version: DocumentVersion, *, runs: list[ExtractionRun]
 ) -> frozenset[uuid.UUID]:
-    """Clauses the given run finished — safe to adopt rather than re-examine.
+    """Clauses the resume chain finished — safe to adopt rather than re-examine.
 
     A committed classification is the marker, and it is sound because of the write order in
     :func:`_process`: the IRs go in first and the classification last, both inside the transaction
@@ -608,21 +646,26 @@ def _clauses_done_by(
     and a lost batch lost both together. There is no committed state where a clause claims to be
     classified while its obligations are missing.
     """
-    if run is None:
+    if not runs:
         return frozenset()
     rows = session.scalars(
         select(ClauseClassification.clause_id)
         .join(Clause, Clause.id == ClauseClassification.clause_id)
         .where(
             Clause.document_version_id == version.id,
-            ClauseClassification.extraction_run_id == run.id,
+            ClauseClassification.extraction_run_id.in_([r.id for r in runs]),
         )
     )
     return frozenset(rows)
 
 
 def open_run(
-    session: Session, version: DocumentVersion, *, rules: RuleSet, client: LLMClient
+    session: Session,
+    version: DocumentVersion,
+    *,
+    rules: RuleSet,
+    client: LLMClient,
+    resumed_from: ExtractionRun | None = None,
 ) -> ExtractionRun:
     run = ExtractionRun(
         document_version_id=version.id,
@@ -638,6 +681,8 @@ def open_run(
         # first `EXTRACTION_COMMIT_EVERY` clauses would read as a dead run and the concurrency
         # guard would let a second worker in over the same clauses.
         heartbeat_at=utcnow(),
+        # Recorded, not inferred. See `_resume_chain` for what it costs to guess this.
+        resumed_from_id=resumed_from.id if resumed_from else None,
     )
     session.add(run)
     session.commit()
@@ -662,7 +707,7 @@ def _clear_previous_drafts(
     version: DocumentVersion,
     *,
     domain: Domain,
-    keep_run: ExtractionRun | None = None,
+    keep_runs: list[ExtractionRun] | None = None,
 ) -> None:
     """Drop unreviewed proposals from an earlier run of this version and profile.
 
@@ -678,11 +723,15 @@ def _clear_previous_drafts(
         IR.domain_profile == domain,
         IR.status == IRStatus.DRAFT,
     ]
-    if keep_run is not None:
+    if keep_runs:
         # Spared by **run**, not by citation path. An IR can cite a second clause for a condition
         # that lives elsewhere, so a path-based exclusion would delete an IR the resumed run wrote
         # merely because one of its citations points at a clause about to be re-examined.
-        conditions.append(IR.extraction_run_id.is_distinct_from(keep_run.id))
+        #
+        # The whole chain is spared, not just its head: every run in it kept the one before, so all
+        # of their drafts are live work rather than superseded leftovers.
+        kept = [r.id for r in keep_runs]
+        conditions.append(or_(IR.extraction_run_id.is_(None), IR.extraction_run_id.notin_(kept)))
     doomed = (
         select(IR.id)
         .join(IRCitation, IRCitation.ir_id == IR.id)

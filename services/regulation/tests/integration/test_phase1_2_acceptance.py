@@ -922,3 +922,51 @@ def test_a_run_still_holding_a_pulse_is_never_adopted(session, source):
     assert second.error is not None, "a live run is refused before resumption is even considered"
     assert second.resumed == 0
     assert _draft_ids(session, version) == kept
+
+
+def test_resuming_a_resumed_run_keeps_the_whole_chain_of_drafts(session, source):
+    """The 2026-09-04 loss, as a test. Two crashes, and the third run must keep both segments.
+
+    Resumption used to adopt only the most recent run and clear every other run's drafts, on the
+    reasoning that an older run's drafts had since been cleared by whatever ran after it. A resuming
+    run **keeps** its predecessor's drafts, so that reasoning is false the moment a chain forms: the
+    third run over 21 U.S.C. chapter 9 read the first as stale and deleted 938 IRs that were the
+    only extraction those clauses had.
+
+    Worse than the loss was its shape. With a crash roughly every hundred minutes, each resume
+    destroyed the segment before it — so a corpus interrupted twice could never converge.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-chain"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    assert first.irs_written == 1
+    from_first = _draft_ids(session, version)
+    _fail_run(session, session.get(ExtractionRun, first.run_id))
+
+    # Second run resumes the first and keeps its drafts — then dies too.
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+    assert second.resumed == first.clauses_seen
+    assert _draft_ids(session, version) == from_first, "the first run's drafts survive one resume"
+    second_run = session.get(ExtractionRun, second.run_id)
+    assert second_run.resumed_from_id == first.run_id, "the link is recorded, not inferred"
+    _fail_run(session, second_run)
+
+    third = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert third.resumed == first.clauses_seen, "the chain is adopted, not just its head"
+    assert third.irs_written == 0
+    assert _draft_ids(session, version) == from_first, "and two resumes later they are still there"
+
+
+def test_a_run_that_resumed_nothing_records_no_predecessor(session, source):
+    """`resumed_from_id` is null for a fresh run, so the chain terminates rather than wandering."""
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-head"
+    )
+    result = extract_version(session, version, domain=Domain.SAMD, client=StubLLM())
+
+    assert session.get(ExtractionRun, result.run_id).resumed_from_id is None

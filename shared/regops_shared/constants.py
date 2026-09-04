@@ -746,6 +746,18 @@ EXTRACTION_BATCH_SIZE: Final[int] = 1
 #: progress survives a worker restart and a retry skips what is already classified.
 EXTRACTION_COMMIT_EVERY: Final[int] = 25
 
+#: How many links of a resume chain to follow before giving up and saying so.
+#:
+#: A run records the run it resumed (``extraction_runs.resumed_from_id``), and each resume keeps its
+#: predecessor's drafts, so the whole chain is live work that must be adopted and spared together.
+#: This bounds the walk. It is not a limit anyone should reach — reaching it means a corpus has been
+#: interrupted twenty times — and the walker logs when it truncates rather than proceeding with a
+#: partial chain, because the caller is about to clear the drafts of every run it did not adopt.
+#:
+#: It also stops a cycle in a self-referencing column from hanging the extractor before it reads a
+#: single clause. Cheap insurance against a row nobody expected.
+EXTRACTION_RESUME_CHAIN_MAX: Final[int] = 20
+
 #: How long a ``running`` extraction may go without a checkpoint before it is presumed dead.
 #:
 #: A status column alone cannot answer *"is this still running?"* — a row says ``running`` just as

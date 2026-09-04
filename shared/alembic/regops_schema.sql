@@ -784,6 +784,7 @@ CREATE TABLE public.extraction_runs (
     heartbeat_at timestamp with time zone,
     completed_at timestamp with time zone,
     error text,
+    resumed_from_id uuid,
     CONSTRAINT ck_extraction_runs_counts_nonneg CHECK (((clauses_seen >= 0) AND (irs_written >= 0) AND (rejected_uncited >= 0)))
 );
 
@@ -2136,6 +2137,14 @@ ALTER TABLE ONLY public.documents
 
 ALTER TABLE ONLY public.extraction_runs
     ADD CONSTRAINT extraction_runs_document_version_id_fkey FOREIGN KEY (document_version_id) REFERENCES public.document_versions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: extraction_runs fk_extraction_runs_resumed_from_id_extraction_runs; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.extraction_runs
+    ADD CONSTRAINT fk_extraction_runs_resumed_from_id_extraction_runs FOREIGN KEY (resumed_from_id) REFERENCES public.extraction_runs(id) ON DELETE SET NULL;
 
 
 --
