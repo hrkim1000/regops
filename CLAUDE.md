@@ -346,27 +346,32 @@ $E run --per-axis 3        # a bounded scored pass that spreads across axes; res
 $E score && $E polls       # per-axis scores; scheduled polls versus polls that ran
 $E gates --out /eval/go-no-go.md
 
-# phase 2.0a measurement — how far the eCFR trails the Federal Register (ADR-0018 open question 1).
-# Runs on weekdays until ten observations exist — the Federal Register does not publish at the
-# weekend and the eCFR does not advance, so a Saturday probe adds nothing but calendar to the
-# freshness number. stdout is the data, stderr the progress. Append, never overwrite.
+# phase 2.0a measurement — **finished 2026-09-04, not a daily routine.** Ten weekday observations
+# closed ADR-0018 open question 1: the eCFR trails the Federal Register by **one business day**,
+# blind spot 0 on every day, and the poll interval that settles is daily. The rendered series is
+# docs/design/fda-lag-report.md. The harness stays for **re-measurement** — if the source's
+# behaviour is ever in doubt, ten more mornings answer it the same way.
 L="docker compose exec -T -w /scripts regulation python -m fda_lag.cli"
 $L probe >> docs/design/fda-lag-observations.jsonl     # one observation, one JSON line
-$L report < docs/design/fda-lag-observations.jsonl     # exits 1 with UNDETERMINED until 10 days
+$L report < docs/design/fda-lag-observations.jsonl     # UNDETERMINED until 10 distinct days
 ```
 
-**Use the wrapper for the daily run** — `scripts/fda-lag-probe.ps1`, from PowerShell:
+**If a series is ever run again, use the wrapper** — `scripts/fda-lag-probe.ps1`, from PowerShell:
 
 ```powershell
 .\scripts\fda-lag-probe.ps1        # -Force to record a second row on a day already logged
 ```
 
-It exists because the raw redirect has three ways to lose the series, and it is run on ten
-consecutive mornings: `>` instead of `>>` wipes it; a stopped stack makes `docker compose exec`
+It exists because the raw redirect has three ways to lose a series run over consecutive mornings:
+`>` instead of `>>` wipes it; a stopped stack makes `docker compose exec`
 write *"OCI runtime exec failed"* to **stdout**, which a blind append files as an observation; and
 PowerShell's `>>` writes a BOM when it *creates* the file, costing the first line. The wrapper
 validates the output as one JSON object before touching the log, writes UTF-8 without a BOM, and
 treats a day already recorded as a no-op rather than a duplicate row.
+
+Weekends are skipped deliberately: the Federal Register does not publish and the eCFR does not
+advance, so a Saturday probe adds nothing but calendar to the freshness number. `report` counts
+distinct days, not consecutive ones.
 
 In Git Bash, prefix the `docker compose exec` calls with `MSYS_NO_PATHCONV=1` — MSYS rewrites
 `-w /scripts` into a Windows path and the daemon rejects it with *"Cwd must be an absolute path"*.
