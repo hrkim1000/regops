@@ -236,6 +236,60 @@ The corpus and its authoring rules are [docs/eval/README.md](../eval/README.md).
   product, and it argues that the markup exercise
   should ask the RA to judge the extractor's *statement* against the clause, not only whether the
   clause was found.
+
+  → **three defect modes, and two of them are systematic (2026-09-06).** Found by reading output
+  rather than by any gate — in every case the clause *was* found and *was* classified
+  obligation-bearing, so recall-only markup sees nothing wrong. Measured across the 4,733 IRs at
+  `rule 1.5.0`, all of them English:
+
+  | defect | rate |
+  | --- | ---: |
+  | placeholder in `bearer` | **243 / 4,733 — 5.1%** |
+  | `modal` repeated inside `statement` | **1,391 / 4,733 — 29.4%** |
+  | passive subject as bearer | not countable — see below |
+
+  They were written up first as "three anecdotes", which the query contradicted immediately. Three
+  was how many had been *read*, not how many there were, and the difference is the reason this
+  entry carries rates rather than examples.
+
+  1. **A prompt placeholder reached a row.** One IR on 21 CFR 740 carries
+     `bearer = "who must act"` — the literal text of the JSON schema example in `prompt.py`. The
+     model could not name a bearer and copied the template. `_validate` never noticed, because it
+     checks `statement`, `modal`, `cites` and language, and **not `bearer`**. The fix is the shape
+     `canonical_taxonomy` already uses for an invented code — refuse the value, keep the row — and
+     it is small and certain.
+  2. **The modal is duplicated into the statement.** `modal: shall` beside
+     `statement: "shall include an adequate factual basis…"`. The field exists so an obligation's
+     force is one enumerable value; repeating it in prose makes the statement read as a fragment.
+  3. **Passive subjects become bearers.** `the label`, `retail package`, `labeling statement`,
+     `cosmetic products`, `advisory notices`. English regulation is written passively — *"the label
+     shall bear…"* — and the model takes the grammatical subject. The real bearer is the
+     manufacturer. Seen across 21 CFR 700, 740 and 820, so it is a property of the corpus rather
+     than of one document.
+
+  **None of the three is fixed, and the reason differs by defect.**
+
+  Defect 1 is a plain bug with a plain fix — refuse the value in `_validate`, the shape
+  `canonical_taxonomy` already uses for an invented code — and it would **not** move the
+  fingerprint, since it changes validation and not the prompt. It is left undone only because
+  nothing was decided about it here.
+
+  Defects 2 and 3 are prompt wording, and that is the constraint: 4,733 IRs are waiting at
+  `rule 1.5.0 / prompt 1.3.0`, and changing either splits the fingerprint so the reviewed corpus
+  stops being comparable with what follows (ADR-0017 decision 1). Whether 29% is a *defect* is also
+  not obvious — *"shall include an adequate factual basis"* is an ordinary English sentence, and the
+  real question is whether a `statement` should carry the obligation's force when `modal` already
+  does. That is a reading, and reviewers are the ones doing readings.
+
+  The queries, so the next person counts rather than re-derives:
+
+  ```sql
+  select count(*) from irs where bearer in ('who must act', 'one of the modals above');
+  select count(*) from irs where modal is not null and statement ilike '%' || modal || '%';
+  ```
+
+  Defect 3 has no query. Deciding that `the label` is not a bearer is exactly the judgement this
+  entry says the markup exercise should be asking for, and it cannot be asked in SQL.
 ## Deviations & decisions
 
 **1. Four of the six gates are returned unmeasured, and that is the deliverable — not a shortfall
