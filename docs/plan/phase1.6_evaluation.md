@@ -290,6 +290,41 @@ The corpus and its authoring rules are [docs/eval/README.md](../eval/README.md).
 
   Defect 3 has no query. Deciding that `the label` is not a bearer is exactly the judgement this
   entry says the markup exercise should be asking for, and it cannot be asked in SQL.
+
+  → **a fourth, and this one is a mislabel rather than a wrong IR (2026-09-06).**
+  `ExclusionReason.UNPARSEABLE` — the UI's *"에이전트 응답 불가"* — fires 19 times across the FDA
+  corpus of 14,465 clauses. **All 19 are modal rejections**, and not one is the case the reason
+  names, where the agent returned something unusable:
+
+  | rejected modal | n | what it actually is |
+  | --- | ---: | --- |
+  | `may`, `may elect`, `may require`, `may or not` | 16 | permissive — `PERMISSIVE_MODALS` covers it |
+  | `is authorized`, `are thereafter authorized`, `will not be considered` | 3 | outside both inventories |
+
+  `_process` sets the reason from `agent.unparseable or bool(agent.discarded) or …`, so **any**
+  discarded proposal makes the clause `unparseable`. For the 16 that is the rule set working
+  exactly as ADR-0004 decision 1 requires — a permissive form yields no IR — reported as though the
+  agent had failed. `permissive` is the reason those clauses deserve.
+
+  The remaining 3 are the reason worth keeping. `_validate` already says why: *"a modal outside the
+  inventory means the model found something the rule does not cover — that is a rule question for an
+  RA, not a row to write."* Whether `is authorized` binds anyone is a judgement, and it is exactly
+  the signal this reason exists to raise.
+
+  So the defect is that the two are indistinguishable: 3 real signals sit inside 16 non-events, in a
+  field whose whole purpose was to keep a prompt regression from hiding inside a legitimate verdict.
+  The fix is a condition beside the `unusable` line — all-permissive discards mean `permissive`,
+  anything else keeps `unparseable`.
+
+  Not fixed for the same reason as defects 2 and 3: it changes the rule set, `IR_RULE_VERSION` moves
+  with it, and 3,786 IRs are waiting for review at the current fingerprint. At 0.13% of clauses it
+  can wait for a version boundary rather than force one.
+
+  ```sql
+  select substring(cc.exclusion_note from 'inventory: ''([^'']*)''') as rejected_modal, count(*)
+  from clause_classifications cc join clauses cl on cl.id = cc.clause_id
+  where cc.exclusion_reason = 'unparseable' group by 1 order by 2 desc;
+  ```
 ## Deviations & decisions
 
 **1. Four of the six gates are returned unmeasured, and that is the deliverable — not a shortfall
