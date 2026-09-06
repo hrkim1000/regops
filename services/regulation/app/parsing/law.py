@@ -170,8 +170,19 @@ def _paragraph(
         )
         parent = len(document.clauses) - 1
 
-    # 호 and 목 arrive as *siblings* in document order, not nested: a 목 belongs to the most recent
-    # preceding 호. Reading the tree literally would hang every 목 off the 항 and lose 제2호가목.
+    # **The authority serves 목 in two shapes, and both are accepted.** Until 2026-08 a 목 arrived
+    # as a *sibling* of 호 in document order, belonging to the most recent preceding one; reading
+    # the tree literally would have hung every 목 off the 항 and lost 제2호가목. Some time before
+    # 2026-08-24 law.go.kr moved `</호>` to after the 목 elements, nesting them inside the 호 —
+    # same bytes, same length, different tree. The sibling branch alone then silently dropped every
+    # 목: 16 versions parsed after the change carry **zero**, where earlier parses of the same
+    # statutes carry 493.
+    #
+    # Both branches stay, and neither is a mode flag. The WORM archive holds payloads in both
+    # shapes and ADR-0015 makes re-parsing them a routine operation, so a parser that understands
+    # only the current shape would lose 목 on every historical artefact it re-reads. A 목 is emitted
+    # once either way: a nested one is not a direct child of 항, and a sibling one is not a child of
+    # 호.
     item_prefix = prefix
     item_parent = parent
     for child in element:
@@ -186,18 +197,28 @@ def _paragraph(
                 )
             )
             item_parent = len(document.clauses) - 1
+            for nested in child:
+                if nested.tag == "목":
+                    _append_subitem(document, nested, prefix=item_prefix, parent=item_parent)
         elif child.tag == "목":
-            document.clauses.append(
-                ParsedClause(
-                    path_segments=(
-                        *item_prefix,
-                        subitem_segment(normalize_text(child.findtext("목번호") or "")),
-                    ),
-                    text=normalize_text(child.findtext("목내용") or ""),
-                    kind=ClauseKind.PROSE,
-                    parent_index=item_parent,
-                )
-            )
+            _append_subitem(document, child, prefix=item_prefix, parent=item_parent)
+
+
+def _append_subitem(
+    document: ParsedDocument, element: Element, *, prefix: tuple[str, ...], parent: int
+) -> None:
+    """One ``<목>``, wherever the authority chose to hang it this month."""
+    document.clauses.append(
+        ParsedClause(
+            path_segments=(
+                *prefix,
+                subitem_segment(normalize_text(element.findtext("목번호") or "")),
+            ),
+            text=normalize_text(element.findtext("목내용") or ""),
+            kind=ClauseKind.PROSE,
+            parent_index=parent,
+        )
+    )
 
 
 def _ref(unit: Element, tag: str) -> str | None:

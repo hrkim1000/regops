@@ -796,7 +796,17 @@ def extraction_run_is_live(
 #: Stamped onto every ``document_versions.parser_version`` and used to decide whether a stored parse
 #: is stale. Bump it whenever a profile changes what it emits — that is the signal to re-parse the
 #: archive, which ADR-0015 makes possible without re-fetching.
-PARSER_VERSION: Final[str] = "1.1.0"
+#:
+#: **1.2.0 (2026-09-06)** — the 법령 profile reads ``목`` nested inside ``호`` as well as beside it.
+#: law.go.kr moved ``</호>`` to after the 목 elements some time before 2026-08-24; the payload kept
+#: the same length and the same content, so nothing failed and nothing was logged, while every 목
+#: silently stopped being produced. Sixteen versions parsed after the change carry **zero** 목 where
+#: earlier parses of the same statutes carry 493.
+#:
+#: The bump is what makes those parses *stale* rather than merely wrong. Without it the affected
+#: versions look current, and the loss is undetectable from inside: coverage still reports every
+#: clause examined, because a clause that was never produced cannot be counted as missing.
+PARSER_VERSION: Final[str] = "1.2.0"
 
 #: Embeddings are pinned regardless of the generation provider (ADR-0005 decision 7).
 EMBEDDING_MODEL: Final[str] = "nomic-embed-text"

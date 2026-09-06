@@ -170,6 +170,65 @@ def test_mok_attaches_to_the_preceding_ho_not_to_the_hang() -> None:
     assert "제1장/제2조/가목" not in paths
 
 
+NESTED_MOK_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<법령>
+  <기본정보>
+    <법령ID>002015</법령ID><법령명_한글>화장품법</법령명_한글>
+    <공포일자>20250101</공포일자><시행일자>20260402</시행일자>
+  </기본정보>
+  <조문>
+    <조문단위 조문키="0002001">
+      <조문번호>2</조문번호><조문여부>조문</조문여부><조문제목>정의</조문제목>
+      <조문내용>제2조(정의) 이 법에서 사용하는 용어의 뜻은 다음과 같다.</조문내용>
+      <항>
+        <호>
+          <호번호>2.</호번호><호내용>2. "기능성화장품"이란 …</호내용>
+          <목><목번호>가.</목번호><목내용>가. 피부의 미백에 도움을 주는 제품</목내용></목>
+          <목><목번호>나.</목번호><목내용>나. 피부의 주름개선에 도움을 주는 제품</목내용></목>
+        </호>
+      </항>
+    </조문단위>
+  </조문>
+</법령>
+"""
+
+
+def test_mok_nested_inside_ho_is_read_too() -> None:
+    """The authority moved ``</호>`` to after the 목 elements, and the sibling branch went blind.
+
+    Same bytes, same length, different tree — so nothing failed and nothing was logged. Sixteen
+    versions parsed after the change carry **zero** 목 where earlier parses of the same statutes
+    carry 493, and the loss is invisible downstream: coverage still reports every clause examined,
+    because a clause that was never produced cannot be counted as missing.
+    """
+    parsed = parse_document(
+        NESTED_MOK_XML.encode(), doc_type=DocType.LAW, canonical_key="mfds:law:002015"
+    )
+    paths = {clause.clause_path for clause in parsed.clauses}
+
+    assert "제2조/제2호/가목" in paths
+    assert "제2조/제2호/나목" in paths
+
+
+def test_both_mok_shapes_survive_the_same_parser() -> None:
+    """Neither shape is a mode. The WORM archive holds payloads from before and after the change,
+    and ADR-0015 makes re-parsing them routine — so a parser that understood only the current
+    shape would lose 목 on every historical artefact it re-reads.
+    """
+    sibling = parse_document(
+        LAW_XML.encode(), doc_type=DocType.LAW, canonical_key="mfds:law:002015"
+    )
+    nested = parse_document(
+        NESTED_MOK_XML.encode(), doc_type=DocType.LAW, canonical_key="mfds:law:002015"
+    )
+
+    assert "제1장/제2조/제2호/가목" in {c.clause_path for c in sibling.clauses}
+    assert "제2조/제2호/가목" in {c.clause_path for c in nested.clauses}
+    # Emitted once either way — a nested 목 is not a direct child of 항, and a sibling one is not a
+    # child of 호, so no payload can produce a duplicate.
+    assert len([c for c in nested.clauses if c.clause_path.endswith("가목")]) == 1
+
+
 def test_unnumbered_hang_contributes_no_segment() -> None:
     """화장품법 제2조 has one implicit 항 and is cited 제2조제1호, never 제2조제1항제1호."""
     parsed = parse_document(LAW_XML.encode(), doc_type=DocType.LAW, canonical_key="mfds:law:002015")
