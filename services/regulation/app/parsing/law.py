@@ -31,7 +31,7 @@ from .dates import (
 from .markers import (
     Rank,
     article_segment,
-    item_segment,
+    item_segment_for,
     match_marker,
     paragraph_segment,
     subitem_segment,
@@ -187,7 +187,13 @@ def _paragraph(
     item_parent = parent
     for child in element:
         if child.tag == "호":
-            item_prefix = (*prefix, item_segment(normalize_text(child.findtext("호번호") or "")))
+            item_prefix = (
+                *prefix,
+                item_segment_for(
+                    normalize_text(child.findtext("호번호") or ""),
+                    normalize_text(child.findtext("호내용") or ""),
+                ),
+            )
             document.clauses.append(
                 ParsedClause(
                     path_segments=item_prefix,

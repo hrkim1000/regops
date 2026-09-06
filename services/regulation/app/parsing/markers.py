@@ -146,6 +146,33 @@ def item_segment(raw: str) -> str:
     return f"제{number}호의{branch}" if branch else f"제{number}호"
 
 
+def item_segment_for(number: str, body: str) -> str:
+    """The 호 segment, reading the branch from ``호내용`` when ``호번호`` has lost it.
+
+    On 2026-08-24 law.go.kr stopped populating the branch in ``호번호``: what had been ``2의2.``
+    became ``2.``, while ``호내용`` still opens ``2의2. 삭제<2025.1.31>``. Two 호 in one 항 then
+    resolve to the same ``제2호``, the duplicate-path guard renames the second ``제2호~2``, and the
+    citation address for an article the authority itself calls 제2호의2 becomes one we invented
+    because their structured field went empty.
+
+    The body is trusted **only** to supply a branch the number lacks, and only when the two agree
+    on the base number. A ``호번호`` of ``3.`` beside a body reading ``2의2.`` is inconsistent data
+    rather than a branch to recover, and guessing there would put a citation on the wrong article.
+    """
+    number = number.strip()
+    from_number = _ITEM.match(number)
+    from_body = _ITEM.match(body.strip())
+    if (
+        from_number
+        and from_body
+        and not from_number.group(2)
+        and from_body.group(2)
+        and from_number.group(1) == from_body.group(1)
+    ):
+        return f"제{from_body.group(1)}호의{from_body.group(2)}"
+    return item_segment(number)
+
+
 def subitem_segment(raw: str) -> str:
     """``가.`` → ``가목``."""
     return f"{raw.strip().rstrip('.')}목"

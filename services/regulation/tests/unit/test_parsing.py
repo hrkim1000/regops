@@ -229,6 +229,59 @@ def test_both_mok_shapes_survive_the_same_parser() -> None:
     assert len([c for c in nested.clauses if c.clause_path.endswith("가목")]) == 1
 
 
+BRANCH_LOST_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<법령>
+  <기본정보>
+    <법령ID>002015</법령ID><법령명_한글>화장품법</법령명_한글>
+    <공포일자>20250101</공포일자><시행일자>20260402</시행일자>
+  </기본정보>
+  <조문>
+    <조문단위 조문키="0002001">
+      <조문번호>2</조문번호><조문여부>조문</조문여부><조문제목>정의</조문제목>
+      <조문내용>제2조(정의)</조문내용>
+      <항>
+        <호><호번호>2.</호번호><호내용>2. "기능성화장품"이란 …</호내용></호>
+        <호><호번호>2.</호번호><호내용>2의2. 삭제&lt;2025.1.31&gt;</호내용></호>
+      </항>
+    </조문단위>
+  </조문>
+</법령>
+"""
+
+
+def test_branch_number_is_recovered_from_the_body_when_the_number_loses_it() -> None:
+    """law.go.kr stopped populating the branch in ``호번호`` on 2026-08-24: ``2의2.`` became ``2.``.
+
+    Both 호 then resolve to 제2호, the duplicate-path guard renames the second ``제2호~2``, and the
+    citation address for an article the authority calls 제2호의2 becomes one we invented because
+    their structured field went empty. ``호내용`` still opens with the real marker, so the branch is
+    recoverable rather than lost.
+    """
+    parsed = parse_document(
+        BRANCH_LOST_XML.encode(), doc_type=DocType.LAW, canonical_key="mfds:law:002015"
+    )
+    paths = {clause.clause_path for clause in parsed.clauses}
+
+    assert "제2조/제2호의2" in paths
+    assert "제2조/제2호~2" not in paths, "the invented address must not survive the recovery"
+
+
+def test_a_disagreeing_body_marker_is_not_trusted() -> None:
+    """The body supplies a branch the number lacks — it does not override a number that disagrees.
+
+    A ``호번호`` of ``3.`` beside a body reading ``2의2.`` is inconsistent data, and reading the
+    body there would put the citation on a different article than the one the authority numbered.
+    """
+    xml = BRANCH_LOST_XML.replace(
+        "<호번호>2.</호번호><호내용>2의2. 삭제", "<호번호>3.</호번호><호내용>2의2. 삭제"
+    )
+    parsed = parse_document(xml.encode(), doc_type=DocType.LAW, canonical_key="mfds:law:002015")
+    paths = {clause.clause_path for clause in parsed.clauses}
+
+    assert "제2조/제3호" in paths
+    assert "제2조/제2호의2" not in paths
+
+
 def test_unnumbered_hang_contributes_no_segment() -> None:
     """화장품법 제2조 has one implicit 항 and is cited 제2조제1호, never 제2조제1항제1호."""
     parsed = parse_document(LAW_XML.encode(), doc_type=DocType.LAW, canonical_key="mfds:law:002015")

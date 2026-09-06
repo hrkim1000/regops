@@ -806,7 +806,13 @@ def extraction_run_is_live(
 #: The bump is what makes those parses *stale* rather than merely wrong. Without it the affected
 #: versions look current, and the loss is undetectable from inside: coverage still reports every
 #: clause examined, because a clause that was never produced cannot be counted as missing.
-PARSER_VERSION: Final[str] = "1.2.0"
+#: **1.3.0 (2026-09-06)** — the 호 segment reads its 가지번호 from ``호내용`` when ``호번호`` has
+#: none. The same 2026-08-24 change that renested 목 also emptied the branch out of ``호번호``:
+#: ``2의2.`` became ``2.`` while the body still opened ``2의2. 삭제<2025.1.31>``. Two 호 then shared
+#: ``제2호``, and the duplicate-path guard renamed the second ``제2호~2`` — a citation address we
+#: invented, for an article the authority calls 제2호의2. Found because the same statute had been
+#: fetched on both sides of the change and the two parses disagreed on 28 paths.
+PARSER_VERSION: Final[str] = "1.3.0"
 
 #: Embeddings are pinned regardless of the generation provider (ADR-0005 decision 7).
 EMBEDDING_MODEL: Final[str] = "nomic-embed-text"
