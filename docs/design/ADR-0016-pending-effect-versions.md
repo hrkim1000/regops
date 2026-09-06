@@ -184,3 +184,57 @@ remains in the schema on its own merits (decision 5 above), not on this evidence
 - **An `is_pending` / `is_current` status column.** Duplicates `effective_date` and can disagree with
   it. The date already answers the question, and it keeps answering it correctly as time passes
   without a job to flip flags.
+
+## Open questions
+
+1. **Decision 1 says a version is one MST; the schema says a version is one content hash, and they
+   disagreed on 2026-09-06.** `uq_document_versions_content` is
+   `(document_id, language, content_hash)`, so identity is the bytes rather than the authority's
+   key. Some time before 2026-08-24 law.go.kr moved `</호>` to after the 목 elements — the same
+   statute, the same length, the same content, a different tree. The bytes changed, the hash
+   changed, and a second `DocumentVersion` appeared for MST 20139. And for 21525. Across the MFDS
+   corpus: **16 duplicate groups, 17 surplus rows.**
+
+   The cost is not the rows. It is that a formatting change presents as an amendment — a new
+   version enters the diff stage, and decision 1's own rejected alternative names the consequence
+   exactly: *"two of every three versions would be phantom amendments the diff stage then emits as
+   change events."* That was rejected for keying on 시행일자, and content hashing reaches it by a
+   different road.
+
+   Deleting the surplus rows is symptomatic: the next time the authority reformats, they come back.
+   What is unresolved is how identity and change detection divide the work. Hash-first detection
+   (ADR-0003 decision 2) is right that *something* changed; what it cannot say is whether a
+   **statute** changed or a **serialisation** did, and only the first should produce a version.
+
+   Three shapes suggest themselves, none obviously correct. Key versions on
+   `(document_id, version_label)` and treat a hash change at a known MST as a re-fetch rather than
+   an amendment — simplest, but it trusts the authority's key to be stable and unique, which is an
+   empirical claim nobody has tested against 연혁. Normalise the payload before hashing, so
+   whitespace and nesting do not reach the digest — but then the digest stops being of what was
+   archived, and the WORM record and the change signal drift apart. Or keep both: hash the raw for
+   the archive, hash a canonical form for detection, and accept two hashes on the row.
+
+   **The event is dated, and the fetch log says it was one day.** `fetch_observations` records a
+   poll on most days, almost all of them `unchanged` — a version row appears only when the hash
+   moves, which is why `retrieved_at` shows 08-05, 08-06 and 08-24 rather than every day between.
+   For 디지털의료제품법:
+
+   | day | outcome |
+   | --- | --- |
+   | 2026-08-21 | `error` — auth failure, and all 78 of the corpus's `auth_failure` drift alerts are this day |
+   | 2026-08-24 | **`changed`** — the reformatting |
+   | 2026-08-25 | `unchanged` |
+   | 2026-08-26 | `unchanged` |
+
+   So the source was not re-fetched *because* something happened; it is fetched daily, and 08-24 is
+   simply the first day the bytes differed. It has been stable since, so the new shape is the shape
+   now. The 08-21 authentication failure three days earlier may be unrelated, but it is consistent
+   with the authority deploying something to that API around then.
+
+   What one day cost: **17 surplus version rows across 16 documents, and 493 목 clauses that
+   stopped being produced** — a formatting change presenting as seventeen amendments while
+   swallowing content, neither of which any signal reported.
+
+   Left open because it touches ADR-0003 decision 2 as much as this ADR, and because one dated
+   event is not yet a pattern. A second instance would say whether this is a recurring property of
+   law.go.kr or a single day to clean up and remember.
