@@ -27,6 +27,20 @@ const POLL_MS = 5_000;
  * the row saying `running` forever, and only the server can tell the difference — it holds the
  * checkpoint heartbeat.
  *
+ * **The one thing the server cannot answer is "did my request get queued".** `POST .../extract`
+ * returns `202` the moment the message is on the queue, and the run row is written later by the
+ * worker that picks it up. Between those two moments there is no live run, so `/coverage` reports
+ * none, the server's own 409 guard — which asks for a *live run* — accepts a second request, and
+ * this button re-enabled itself. That is not hypothetical: on 2026-09-08 the queue was hours deep
+ * behind a batch, one version was triggered at 13:16 and again at 13:17, and both were enqueued.
+ * A second run is destructive, not idempotent — it calls `_clear_previous_drafts`.
+ *
+ * So acceptance is held here, as `queued`, until a *new* run row appears. It is keyed on the run
+ * id observed at request time rather than on a clock, because comparing a browser's `Date.now()`
+ * with a server timestamp is a skew bug waiting to happen. A reload clears it, and that is the
+ * deliberate escape hatch: a queued task has no server representation to recover from, so a
+ * request that never starts must not disable the button forever.
+ *
  * The elapsed clock still starts **after mount** — a timer initialised during render disagrees with
  * the server's HTML and trips a hydration mismatch.
  */
@@ -40,7 +54,11 @@ export function ExtractButton({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
+  const [pending, setPending] = useState(false);
   const [elapsed, setElapsed] = useState<number | null>(null);
+  // The run the page was showing when the request went out. A different one means the worker has
+  // picked our task up, which is the only honest signal that the queued window is over.
+  const runIdAtRequest = useRef<string | null>(null);
   const [refreshing, startRefresh] = useTransition();
   // Read inside the interval without re-arming it — `refreshing` in the effect deps would tear the
   // timer down and rebuild it on every poll, which is its own way of losing the cadence.
@@ -49,15 +67,29 @@ export function ExtractButton({
 
   const running = run?.live === true;
   const startedAt = run?.started_at ?? null;
+  const runId = run?.id ?? null;
+  // Enqueued, not yet started. Holds the button between the `202` and the worker's first write.
+  const queued = pending && runId === runIdAtRequest.current;
+
+  const busy = running || requesting || queued;
 
   useEffect(() => {
-    if (!running || !startedAt) {
+    if (pending && runId !== runIdAtRequest.current) setPending(false);
+  }, [pending, runId]);
+
+  useEffect(() => {
+    // Poll while queued as well as while running: without it the page never learns that the task
+    // it enqueued has started, so the queued hold would only ever end by reload.
+    if (!running && !queued) {
       setElapsed(null);
       return;
     }
-    const since = new Date(startedAt).getTime();
-    setElapsed(Date.now() - since);
-    const tick = setInterval(() => setElapsed(Date.now() - since), 1_000);
+    const since = startedAt === null ? null : new Date(startedAt).getTime();
+    setElapsed(running && since !== null ? Date.now() - since : null);
+    const tick = setInterval(
+      () => setElapsed(running && since !== null ? Date.now() - since : null),
+      1_000,
+    );
     // No ceiling. The poll stops when the server says the run stopped, which is the only thing that
     // actually knows — a timeout here is a guess that was wrong for every run over five minutes.
     //
@@ -73,11 +105,17 @@ export function ExtractButton({
       clearInterval(tick);
       clearInterval(poll);
     };
-  }, [running, startedAt, router]);
+  }, [running, queued, startedAt, router]);
 
   async function trigger() {
+    // Guard the handler itself, not only the `disabled` attribute. `disabled` is a render away,
+    // and two clicks inside one frame both reach this function before React has re-rendered either.
+    if (busy) return;
     setError(null);
     setRequesting(true);
+    // Pinned before the request, not after: the response can arrive after a poll has already
+    // replaced `run`, and comparing against the newer row would clear the hold immediately.
+    runIdAtRequest.current = runId;
     try {
       const response = await fetch(`/api/regulation/document-versions/${versionId}/extract`, {
         method: 'POST',
@@ -89,6 +127,8 @@ export function ExtractButton({
         setError(body?.message ?? `추출 요청 실패 (HTTP ${response.status})`);
         return;
       }
+      // Accepted and queued. Hold the button here until a new run row proves a worker took it.
+      setPending(true);
       router.refresh();
     } catch {
       setError('서비스에 연결하지 못했습니다');
@@ -96,8 +136,6 @@ export function ExtractButton({
       setRequesting(false);
     }
   }
-
-  const busy = running || requesting;
 
   return (
     <span className="inline-flex flex-col items-end gap-1">
@@ -108,12 +146,19 @@ export function ExtractButton({
         title="조문마다 LLM을 호출합니다 — 수집 시 자동 실행되지 않는 이유입니다"
         className="inline-flex items-center gap-1.5 rounded-md border border-surface-border px-2.5 py-1 text-xs text-slate-300 transition-colors hover:border-slate-500 disabled:opacity-50"
       >
-        <Sparkles size={12} /> {running ? '추출 중…' : requesting ? '요청 중…' : 'IR 추출 실행'}
+        <Sparkles size={12} />{' '}
+        {running ? '추출 중…' : requesting ? '요청 중…' : queued ? '대기 중…' : 'IR 추출 실행'}
       </button>
       {running ? (
         <span className="font-mono text-[11px] text-slate-500">
           {elapsed === null ? '' : `${formatElapsed(elapsed)} 경과 · `}
           {run.clauses_seen.toLocaleString()}개 조문 검토 · 자동 새로고침 중
+        </span>
+      ) : queued ? (
+        // Says *queued*, not *running*, because they are different facts and only one of them
+        // means a worker is spending model budget. A depth-hours queue can sit here a long time.
+        <span className="font-mono text-[11px] text-slate-500">
+          큐에 등록됨 · 워커가 가져가면 시작됩니다 · 다른 화면으로 이동해도 계속됩니다
         </span>
       ) : null}
       {error ? <span className="max-w-xs text-right text-[11px] text-red-400">{error}</span> : null}
