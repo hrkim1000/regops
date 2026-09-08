@@ -211,7 +211,12 @@ services:
       SERVICE_NAME: regulation-worker
     build: {context: ., dockerfile: services/regulation/Dockerfile}
     image: regops-regulation
-    command: celery -A app.celery_app.celery_app worker -Q regulation -c 2 -l info
+    # -c 1, not 2. Extraction is LLM-bound and Ollama serves one 4GB GPU serially, so a second
+    # worker adds no throughput — it only puts a second 32k-context request in flight. On
+    # 2026-09-08 that overran the 4GB of VRAM and both concurrent annex runs died together on
+    # httpx.ReadTimeout after the 180s budget, having written 109 IRs between them. One worker
+    # matches the one resource the work actually contends for.
+    command: celery -A app.celery_app.celery_app worker -Q regulation -c 1 -l info
     volumes:
       - ./shared:/shared
       - ./services/regulation:/app
