@@ -22,6 +22,14 @@ a regression test or a coin toss.
 
 *(Closes ADR-0004 open question 5.)*
 
+> **Amended by [ADR-0022](ADR-0022-re-extraction-drift.md), 2026-09-09 — the second sentence
+> below only.** An unintended double pass over the MFDS SaMD 별표 corpus gave 43 paired runs at an
+> identical fingerprint: 37 produced the same IR count, 6 did not, and absolute churn was 11.7%.
+> At roughly one document in seven, "investigate the difference as a defect" resolves every time to
+> the limit this decision already names below, so a delta is now recorded rather than investigated,
+> and what is watched is the *rate* per fingerprint. Everything else here stands — temperature is
+> still pinned to 0 and still stamped on the run.
+
 Sampling is pinned to `0.0` and stamped on `extraction_runs.temperature`. Two runs over the same
 clause at the same `(rule_version, prompt_version, llm_model)` are expected to produce the same IRs,
 and a difference is investigated as a defect rather than absorbed as variance.
