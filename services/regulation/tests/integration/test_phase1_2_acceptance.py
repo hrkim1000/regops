@@ -44,6 +44,8 @@ from app.models import (
 from app.parse import parse_version
 from regops_shared.constants import (
     EXTRACTION_HEARTBEAT_STALE_AFTER,
+    IR_PROMPT_VERSION,
+    IR_RULE_VERSION,
     ClassificationKind,
     DocType,
     Domain,
@@ -852,6 +854,57 @@ def test_an_unfinished_version_is_re_extracted_without_force(session, source):
 
     assert again.already_complete is False, "an incomplete ledger is real work, not a duplicate"
     assert again.clauses_seen > 0
+
+
+def test_a_failed_re_run_does_not_make_a_version_look_settled(session, source):
+    """The clause ledger only counts if you ask *who* wrote each row.
+
+    Found in production on 2026-09-09, by the guard itself. ``clause_classifications`` is unique per
+    ``(clause, domain)``, so a re-run **overwrites** rows rather than adding to them. A third pass
+    over 24341#별표2 died at 475 of 542 having taken over 475 of the completed run's rows; the
+    completed run's 67 leftovers made the ledger add up to 542-of-542 while the version's IRs were
+    206 against 218 obligation-bearing clauses. An unattributed count said "settled" and the guard
+    refused the resume that would have finished the work.
+
+    So the completed run must own the coverage — it, or the chain it resumed.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:half-owned"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    done = extract_version(session, version, domain=Domain.SAMD, client=client)
+    assert done.clauses_seen > 0
+
+    # A later run takes over one clause's classification row and then dies, exactly as a re-run
+    # interrupted mid-corpus does. Coverage still looks total; ownership no longer is.
+    intruder = ExtractionRun(
+        document_version_id=version.id,
+        domain_profile=Domain.SAMD,
+        rule_version=IR_RULE_VERSION,
+        prompt_version=IR_PROMPT_VERSION,
+        llm_provider=client.provider,
+        llm_model=client.model,
+        status=ExtractionRunStatus.RUNNING,
+        started_at=datetime.now(UTC),
+    )
+    session.add(intruder)
+    session.flush()
+    stolen = session.scalars(
+        select(ClauseClassification)
+        .join(Clause, Clause.id == ClauseClassification.clause_id)
+        .where(Clause.document_version_id == version.id)
+        .limit(1)
+    ).first()
+    stolen.extraction_run_id = intruder.id
+    _fail_run(session, intruder)
+
+    again = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert again.already_complete is False, (
+        "a clause classified by a *failed* run is not coverage the completed run can claim"
+    )
 
 
 def test_a_rule_version_bump_is_not_a_duplicate(session, source):

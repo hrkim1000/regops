@@ -599,12 +599,21 @@ def _completed_at_fingerprint(
       ``rule_version``/``prompt_version``/``llm_provider``/``llm_model`` are the promise stamped on
       every IR (ADR-0017 decision 1): a rule-set bump makes re-extraction *the point*, not a
       duplicate, so the guard must stand aside for it.
-    - **No unclassified clause left.** The run row says the work finished; the clause ledger says
-      what it covered. Trusting only the row would skip a version whose run was marked complete
-      over clauses it never reached, and an unexamined clause reads as an obligation-free one —
-      exactly the confusion ADR-0004 decision 6 exists to prevent. Every clause earns a
-      ``clause_classifications`` row, excluded ones included, so "zero missing" is the real test
-      and it is one indexed count.
+    - **Every clause classified *by that run or its resume chain*.** The run row says the work
+      finished; the clause ledger says what it covered. Trusting only the row would skip a version
+      whose run was marked complete over clauses it never reached, and an unexamined clause reads
+      as an obligation-free one — exactly the confusion ADR-0004 decision 6 exists to prevent.
+
+    **The attribution is the whole point of the second test, and leaving it out was a bug.** A bare
+    "no unclassified clause" count passed on 2026-09-09 for a version that was 475 of 542 done:
+    ``clause_classifications`` is unique per ``(clause, domain)``, so a later run *overwrites* rows
+    rather than adding to them, and a failed re-run had taken over 475 of the completed run's rows
+    while its 67 leftovers made the ledger add up to full coverage. The clauses were classified;
+    they were classified by a run whose IRs no longer existed, and 218 obligation-bearing clauses
+    had 206 IRs between them. Counting rows without asking who wrote them measures the wrong thing.
+
+    The chain rather than the single run because a resumed completion is a legitimate one: run B
+    adopts A's clauses and A keeps its rows, so their union is what B actually covers.
 
     Deliberately *not* a heartbeat question. ``_live_run`` answers "is someone working on this now";
     this answers "is there anything left to do", and a version can be settled for weeks.
@@ -626,13 +635,15 @@ def _completed_at_fingerprint(
     if settled is None:
         return None
 
+    covered = [run.id for run in _resume_chain(session, settled)]
     missing = session.scalar(
         select(func.count())
         .select_from(Clause)
         .outerjoin(
             ClauseClassification,
             (ClauseClassification.clause_id == Clause.id)
-            & (ClauseClassification.domain_profile == domain),
+            & (ClauseClassification.domain_profile == domain)
+            & (ClauseClassification.extraction_run_id.in_(covered)),
         )
         .where(
             Clause.document_version_id == version.id,

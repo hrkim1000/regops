@@ -33,6 +33,7 @@ from regops_shared.audit import record
 from regops_shared.auth import Principal, get_current_principal, require_roles
 from regops_shared.constants import (
     EXTRACTION_HEARTBEAT_STALE_AFTER,
+    EXTRACTION_RESUME_CHAIN_MAX,
     IR_PROMPT_VERSION,
     IR_RULE_VERSION,
     IR_VISIBLE_STATUSES,
@@ -722,8 +723,12 @@ async def _settled_domains(
     The async twin of ``extraction._completed_at_fingerprint``, and deliberately a twin rather than
     a shared call: this side of the seam runs on an async session, and importing the sync path here
     would need a second engine per request. The *rule* lives in one place — a ``COMPLETED`` run at
-    an identical ``(rule_version, prompt_version, llm_provider, llm_model)`` **and** no clause left
-    without a ``clause_classifications`` row — and the acceptance suite asserts the two agree.
+    an identical ``(rule_version, prompt_version, llm_provider, llm_model)`` **and** every clause
+    classified *by that run or its resume chain*.
+
+    The attribution matters: ``clause_classifications`` is unique per ``(clause, domain)``, so a
+    later run overwrites rows rather than adding to them, and an unattributed count reads a version
+    left half-done by a failed re-run as fully covered.
 
     Returns a set because a bare request extracts once per claiming domain: refusing needs to name
     which of them are settled, and a version finished under SaMD but not Cosmetic is real work.
@@ -752,20 +757,45 @@ async def _settled_domains(
         return set()
 
     settled: set[Domain] = set()
+    by_domain = {run.domain_profile: run for run in runs}
     for candidate in candidates:
+        covered = await _chain_ids(db, by_domain[candidate])
         missing = await db.scalar(
             select(func.count())
             .select_from(Clause)
             .outerjoin(
                 ClauseClassification,
                 (ClauseClassification.clause_id == Clause.id)
-                & (ClauseClassification.domain_profile == candidate),
+                & (ClauseClassification.domain_profile == candidate)
+                & (ClauseClassification.extraction_run_id.in_(covered)),
             )
             .where(Clause.document_version_id == version.id, ClauseClassification.id.is_(None))
         )
         if not missing:
             settled.add(candidate)
     return settled
+
+
+async def _chain_ids(db: AsyncSession, run: ExtractionRun) -> list[uuid.UUID]:
+    """``run`` and every run it resumed, by id. The async twin of ``_resume_chain``.
+
+    Bounded the same way, and for the same reason: ``resumed_from_id`` is a self-reference, and a
+    cycle would spin a request rather than an extraction.
+    """
+    ids: list[uuid.UUID] = []
+    seen: set[uuid.UUID] = set()
+    current: ExtractionRun | None = run
+    while current is not None and len(ids) < EXTRACTION_RESUME_CHAIN_MAX:
+        if current.id in seen:
+            break
+        seen.add(current.id)
+        ids.append(current.id)
+        current = (
+            await db.get(ExtractionRun, current.resumed_from_id)
+            if current.resumed_from_id
+            else None
+        )
+    return ids
 
 
 def _run_out(run: ExtractionRun) -> dict[str, Any]:
