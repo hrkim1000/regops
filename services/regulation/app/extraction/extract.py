@@ -32,7 +32,7 @@ import uuid
 from dataclasses import dataclass, field
 
 import structlog
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from regops_shared.constants import (
@@ -85,6 +85,10 @@ class ExtractionResult:
     #: Clauses this run took from an interrupted predecessor instead of re-examining.
     resumed: int = 0
     exclusion_reasons: dict[str, int] = field(default_factory=dict)
+    #: Set when a complete extraction at this fingerprint already existed and ``force`` was not
+    #: given. **Not an error** — nothing was wrong and nothing was done, so ``ok`` stays true and
+    #: the caller reports a no-op rather than a failure.
+    already_complete: bool = False
     error: str | None = None
 
     @property
@@ -98,8 +102,14 @@ def extract_version(
     *,
     domain: Domain,
     client: LLMClient | None = None,
+    force: bool = False,
 ) -> ExtractionResult:
-    """Extract one version under one domain profile. Commits incrementally."""
+    """Extract one version under one domain profile. Commits incrementally.
+
+    ``force`` is what separates a deliberate redo from a duplicate message (ADR-0022 decision 4).
+    Without it, a version already **fully** extracted at the current fingerprint is a no-op; with
+    it, the redo proceeds exactly as it always did.
+    """
     result = ExtractionResult(document_version_id=version.id, domain_profile=domain)
 
     document = session.get(Document, version.document_id)
@@ -147,6 +157,35 @@ def extract_version(
 
     rules = rule_set_for(domain, version.language)
     client = client or get_llm_client()
+
+    if not force:
+        settled = _completed_at_fingerprint(
+            session, version, domain=domain, rules=rules, client=client
+        )
+        if settled is not None:
+            # **A redelivered message and a deliberate redo are the same two arguments.** Killing a
+            # worker returns whatever it held to the queue, and the copy arrives looking exactly
+            # like a fresh request — so the only thing that can tell them apart is an intent the
+            # original dispatch carried. `force` is that intent.
+            #
+            # Refusing here matters because the next statements are destructive:
+            # `_clear_previous_drafts` deletes the drafts of every run outside the resume chain, and
+            # a completed run is never in one (`_resumable_run` returns None for it, deliberately,
+            # so that a *real* redo is not silently a no-op). On 2026-09-08 that cost five hours of
+            # GPU over 43 versions that were already done, and again on 09-09 when Docker was killed
+            # mid-batch: 24341#별표2 lost 361 committed IRs to a message nobody re-sent.
+            result.run_id = settled.id
+            result.already_complete = True
+            log.info(
+                "extract.already_complete",
+                version=str(version.id),
+                domain=domain.value,
+                run=str(settled.id),
+                rule_version=rules.rule_version,
+                prompt_version=rules.prompt_version,
+                llm_model=client.model,
+            )
+            return result
 
     # **A crash should cost minutes, not the whole model budget.** `_checkpoint` has always
     # committed every `EXTRACTION_COMMIT_EVERY` clauses, but nothing read those commits back, so a
@@ -542,6 +581,65 @@ def _live_run(
         (run for run in candidates if extraction_run_is_live(run.status.value, run.heartbeat_at)),
         None,
     )
+
+
+def _completed_at_fingerprint(
+    session: Session,
+    version: DocumentVersion,
+    *,
+    domain: Domain,
+    rules: RuleSet,
+    client: LLMClient,
+) -> ExtractionRun | None:
+    """A finished extraction that leaves nothing for this one to do, or ``None``.
+
+    Two conditions, and both are needed (ADR-0022 decision 4).
+
+    - **A ``COMPLETED`` run at an identical fingerprint.** Identical because
+      ``rule_version``/``prompt_version``/``llm_provider``/``llm_model`` are the promise stamped on
+      every IR (ADR-0017 decision 1): a rule-set bump makes re-extraction *the point*, not a
+      duplicate, so the guard must stand aside for it.
+    - **No unclassified clause left.** The run row says the work finished; the clause ledger says
+      what it covered. Trusting only the row would skip a version whose run was marked complete
+      over clauses it never reached, and an unexamined clause reads as an obligation-free one —
+      exactly the confusion ADR-0004 decision 6 exists to prevent. Every clause earns a
+      ``clause_classifications`` row, excluded ones included, so "zero missing" is the real test
+      and it is one indexed count.
+
+    Deliberately *not* a heartbeat question. ``_live_run`` answers "is someone working on this now";
+    this answers "is there anything left to do", and a version can be settled for weeks.
+    """
+    settled = session.scalars(
+        select(ExtractionRun)
+        .where(
+            ExtractionRun.document_version_id == version.id,
+            ExtractionRun.domain_profile == domain,
+            ExtractionRun.status == ExtractionRunStatus.COMPLETED,
+            ExtractionRun.rule_version == rules.rule_version,
+            ExtractionRun.prompt_version == rules.prompt_version,
+            ExtractionRun.llm_provider == client.provider,
+            ExtractionRun.llm_model == client.model,
+        )
+        .order_by(ExtractionRun.started_at.desc())
+        .limit(1)
+    ).first()
+    if settled is None:
+        return None
+
+    missing = session.scalar(
+        select(func.count())
+        .select_from(Clause)
+        .outerjoin(
+            ClauseClassification,
+            (ClauseClassification.clause_id == Clause.id)
+            & (ClauseClassification.domain_profile == domain),
+        )
+        .where(
+            Clause.document_version_id == version.id,
+            ClauseClassification.id.is_(None),
+        )
+    )
+    return settled if not missing else None
 
 
 def _resumable_run(

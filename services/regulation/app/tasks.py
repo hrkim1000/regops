@@ -238,8 +238,16 @@ def diff_document_version(document_version_id: str) -> dict[str, object]:
 
 
 @celery_app.task(name="regulation.extract_document_version", bind=True, max_retries=0)
-def extract_document_version(self, document_version_id: str, domain: str | None = None) -> dict:
+def extract_document_version(
+    self, document_version_id: str, domain: str | None = None, force: bool = False
+) -> dict:
     """Clauses → draft IRs, once per claiming domain (ADR-0004).
+
+    **``force`` is the difference between a redo and a duplicate** (ADR-0022 decision 4). Without
+    it, a version already fully extracted at the current fingerprint is a logged no-op. The flag
+    travels in the message, which is the whole point: a redelivery carries whatever the original
+    dispatch carried, so a duplicate of a non-forced request stays non-forced and cannot clear the
+    drafts of the work it is duplicating.
 
     **Not chained off the parse stage.** Every other stage in this service is deterministic and
     cheap enough to run on every fetch; this one calls an LLM per obligation-bearing clause, and the
@@ -264,15 +272,18 @@ def extract_document_version(self, document_version_id: str, domain: str | None 
             log.warning("extract.no_claiming_cell", version=document_version_id)
             return {"document_version_id": document_version_id, "status": "no_claiming_cell"}
 
-        runs = [extract_version(session, version, domain=target) for target in targets]
+        runs = [extract_version(session, version, domain=target, force=force) for target in targets]
 
     return {
         "document_version_id": document_version_id,
-        "status": "extracted",
+        # A skip is a correct outcome, not an extraction — reporting "extracted" with zero counts
+        # would read as a version whose clauses carry no obligations.
+        "status": "already_complete" if all(r.already_complete for r in runs) else "extracted",
         "runs": [
             {
                 "domain": run.domain_profile.value,
                 "run_id": str(run.run_id) if run.run_id else None,
+                "already_complete": run.already_complete,
                 "clauses_seen": run.clauses_seen,
                 "obligation_bearing": run.obligation_bearing,
                 "excluded": run.excluded,

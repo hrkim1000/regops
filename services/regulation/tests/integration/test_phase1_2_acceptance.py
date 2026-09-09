@@ -623,6 +623,10 @@ def test_re_extraction_replaces_drafts_and_never_touches_a_locked_ir(session, so
 
     ADR-0015 makes re-running a derived stage routine; a routine operation must not degrade the
     record. Drafts are unreviewed proposals and are replaced; a locked IR is evidence and is not.
+
+    ``force=True`` on the second call because ADR-0022 decision 4 now refuses an unasked-for redo of
+    a finished version. That guard is orthogonal to what this test protects — it decides *whether*
+    a re-extraction happens, and this decides what a re-extraction may destroy when it does.
     """
     version = _make_version(
         session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:idem"
@@ -657,6 +661,7 @@ def test_re_extraction_replaces_drafts_and_never_touches_a_locked_ir(session, so
         version,
         domain=Domain.SAMD,
         client=StubLLM({path: [_ir_json("세 번째", cites=[path])]}),
+        force=True,
     )
 
     surviving = {
@@ -771,6 +776,108 @@ def test_a_run_without_a_pulse_does_not_block_a_re_run(session, source):
     assert result.irs_written == 1
 
 
+def test_a_completed_version_is_not_re_extracted_without_force(session, source):
+    """A duplicate message and a deliberate redo are the same two arguments (ADR-0022 decision 4).
+
+    Killing a worker returns whatever it held to the queue, and the copy arrives looking exactly
+    like a fresh request. On 2026-09-08 that re-ran 43 finished versions — five hours of GPU — and
+    on 09-09 a Docker kill mid-batch cost 24341#별표2 the 361 IRs it had already committed, because
+    a completed run is never in the resume chain and `_clear_previous_drafts` therefore deletes it.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:settled"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    assert first.irs_written == 1
+    drafts = _draft_ids(session, version)
+
+    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert second.already_complete is True
+    assert second.ok, "a skip is a correct outcome, not a failure"
+    assert second.run_id == first.run_id, "the skip names the run that settled it"
+    assert second.irs_written == 0
+    assert _draft_ids(session, version) == drafts, "the finished drafts must survive untouched"
+
+
+def test_force_re_extracts_a_completed_version(session, source):
+    """The escape hatch has to work, or a genuine redo becomes impossible.
+
+    `_resumable_run` returns ``None`` for a completed predecessor precisely so that a redo is a
+    redo. ``force`` restores that path; only the unasked-for duplicate is refused.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:forced"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    redo = extract_version(session, version, domain=Domain.SAMD, client=client, force=True)
+
+    assert redo.already_complete is False
+    assert redo.run_id is not None and redo.run_id != first.run_id, "force opens a new run"
+    assert redo.irs_written == 1
+    assert len(_draft_ids(session, version)) == 1, "the redo replaces rather than duplicates"
+
+
+def test_an_unfinished_version_is_re_extracted_without_force(session, source):
+    """The run row says the work finished; the clause ledger says what it covered.
+
+    Trusting the row alone would skip a version marked complete over clauses it never reached, and
+    an unexamined clause reads as an obligation-free one — the confusion ADR-0004 decision 6 exists
+    to prevent. So the guard also asks for a clause ledger with nothing missing.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:partial"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    extract_version(session, version, domain=Domain.SAMD, client=client)
+    # One clause loses its classification: the run still says COMPLETED, the ledger does not.
+    orphan = session.scalars(
+        select(ClauseClassification)
+        .join(Clause, Clause.id == ClauseClassification.clause_id)
+        .where(Clause.document_version_id == version.id)
+        .limit(1)
+    ).first()
+    session.delete(orphan)
+    session.commit()
+
+    again = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert again.already_complete is False, "an incomplete ledger is real work, not a duplicate"
+    assert again.clauses_seen > 0
+
+
+def test_a_rule_version_bump_is_not_a_duplicate(session, source):
+    """A fingerprint change makes re-extraction the point, so the guard must stand aside for it.
+
+    ``(rule_version, prompt_version, llm_provider, llm_model)`` is the promise stamped on every IR
+    (ADR-0017 decision 1). Skipping across one would leave the corpus half-written by two rule sets
+    while reporting full coverage.
+    """
+    version = _make_version(
+        session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:rulebump"
+    )
+    path = _clause_path(session, version, "5")
+    client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
+
+    first = extract_version(session, version, domain=Domain.SAMD, client=client)
+    run = session.get(ExtractionRun, first.run_id)
+    run.rule_version = "0.0.0-previous"
+    session.commit()
+
+    again = extract_version(session, version, domain=Domain.SAMD, client=client)
+
+    assert again.already_complete is False, "a different rule set is a redo, not a duplicate"
+    assert again.irs_written == 1
+
+
 def _draft_ids(session, version) -> set[uuid.UUID]:
     return set(
         session.scalars(
@@ -833,7 +940,14 @@ def test_a_resumed_run_does_not_duplicate_the_obligations_it_adopted(session, so
 
 
 def test_a_completed_run_is_not_resumed_so_a_re_run_still_re_extracts(session, source):
-    """Resuming a *completed* run would make a deliberate re-run a silent no-op."""
+    """Resuming a *completed* run would make a deliberate re-run a silent no-op.
+
+    Still true, and now reachable only through ``force``: ADR-0022 decision 4 put a guard in front
+    of this path so that a *duplicate* is refused. The two are complementary — the guard decides
+    whether the redo was asked for, and this asserts that once it is asked for, it is a real redo
+    and not an adoption of the finished run. The refusal itself is
+    ``test_a_completed_version_is_not_re_extracted_without_force``.
+    """
     version = _make_version(
         session, source, raw=_law_xml(ARTICLES), canonical_key=f"{KEY_PREFIX}:resume-done"
     )
@@ -841,7 +955,7 @@ def test_a_completed_run_is_not_resumed_so_a_re_run_still_re_extracts(session, s
     client = StubLLM({path: [_ir_json("기록을 3년간 보관", cites=[path])]})
 
     extract_version(session, version, domain=Domain.SAMD, client=client)
-    second = extract_version(session, version, domain=Domain.SAMD, client=client)
+    second = extract_version(session, version, domain=Domain.SAMD, client=client, force=True)
 
     assert second.resumed == 0
     assert second.irs_written == 1

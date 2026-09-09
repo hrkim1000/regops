@@ -33,6 +33,8 @@ from regops_shared.audit import record
 from regops_shared.auth import Principal, get_current_principal, require_roles
 from regops_shared.constants import (
     EXTRACTION_HEARTBEAT_STALE_AFTER,
+    IR_PROMPT_VERSION,
+    IR_RULE_VERSION,
     IR_VISIBLE_STATUSES,
     ClassificationKind,
     Domain,
@@ -43,6 +45,7 @@ from regops_shared.constants import (
     extraction_run_is_live,
 )
 from regops_shared.db import AsyncSession, get_db
+from regops_shared.llm import get_llm_client
 from regops_shared.models.base import utcnow
 
 from ...models import (
@@ -72,6 +75,11 @@ async def trigger_extraction(
     principal: Annotated[Principal, Depends(require_roles([Role.RA, Role.ADMIN]))],
     domain: Domain | None = Query(
         None, description="Limit to one rule set; default is every claiming domain"
+    ),
+    force: bool = Query(
+        False,
+        description="Re-extract a version already complete at this fingerprint, discarding its "
+        "drafts. Without this such a request is refused.",
     ),
 ) -> dict[str, Any]:
     """Extract now, out of band. Long work returns 202 and the worker commits incrementally.
@@ -118,6 +126,25 @@ async def trigger_extraction(
             f"it has already classified.",
         )
 
+    # Nothing live. The other way this request is destructive is quieter: the version may already be
+    # **finished** at this exact fingerprint, in which case the extraction would delete a complete
+    # set of drafts to rebuild it — and rebuild it differently, because re-extraction drifts by
+    # about 11.7% (ADR-0022). Refusing with a 409 rather than enqueueing a no-op is what makes the
+    # answer arrive now: a task refused in the worker is invisible to whoever pressed the button,
+    # and with a deep queue that silence can last hours.
+    #
+    # The task carries the same guard — a redelivered message never passes through this door.
+    if not force:
+        settled = await _settled_domains(db, version, domain=domain)
+        if settled:
+            names = ", ".join(sorted(d.value for d in settled))
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"This version is already fully extracted under {names} at the current rule and "
+                f"prompt version. Re-extracting would discard those drafts and rebuild them; pass "
+                f"force=true if that is what you want.",
+            )
+
     # Whatever is left said `running` and had no pulse. Close it here rather than leaving it for a
     # reboot: it is about to be contradicted by the run this request starts, and two rows claiming
     # to be running the same version is a worse record than one marked dead with its reason.
@@ -135,7 +162,7 @@ async def trigger_extraction(
 
     task = celery_app.send_task(
         "regulation.extract_document_version",
-        args=[str(version_id), domain.value if domain else None],
+        args=[str(version_id), domain.value if domain else None, force],
         queue="regulation",
     )
     await record(
@@ -145,7 +172,11 @@ async def trigger_extraction(
         actor_id=principal.id,
         entity_type="document_version",
         entity_id=version_id,
-        payload={"task_id": task.id, "domain": domain.value if domain else None},
+        payload={
+            "task_id": task.id,
+            "domain": domain.value if domain else None,
+            "force": force,
+        },
     )
     await db.commit()
     return {
@@ -681,6 +712,60 @@ def _ir_out(
 def _run_is_live(run: ExtractionRun) -> bool:
     """Is this run still working, as opposed to merely still *saying* ``running``?"""
     return extraction_run_is_live(run.status.value, run.heartbeat_at)
+
+
+async def _settled_domains(
+    db: AsyncSession, version: DocumentVersion, *, domain: Domain | None
+) -> set[Domain]:
+    """The domains for which this version is already **finished** at the current fingerprint.
+
+    The async twin of ``extraction._completed_at_fingerprint``, and deliberately a twin rather than
+    a shared call: this side of the seam runs on an async session, and importing the sync path here
+    would need a second engine per request. The *rule* lives in one place — a ``COMPLETED`` run at
+    an identical ``(rule_version, prompt_version, llm_provider, llm_model)`` **and** no clause left
+    without a ``clause_classifications`` row — and the acceptance suite asserts the two agree.
+
+    Returns a set because a bare request extracts once per claiming domain: refusing needs to name
+    which of them are settled, and a version finished under SaMD but not Cosmetic is real work.
+
+    The fingerprint constants are read here rather than through ``rule_set_for`` because
+    ``rule_version`` and ``prompt_version`` do not vary by domain — only the modal inventory and the
+    taxonomy do, and neither is part of the run's identity.
+    """
+    client = get_llm_client()
+    runs = list(
+        await db.scalars(
+            select(ExtractionRun).where(
+                ExtractionRun.document_version_id == version.id,
+                ExtractionRun.status == ExtractionRunStatus.COMPLETED,
+                ExtractionRun.rule_version == IR_RULE_VERSION,
+                ExtractionRun.prompt_version == IR_PROMPT_VERSION,
+                ExtractionRun.llm_provider == client.provider,
+                ExtractionRun.llm_model == client.model,
+            )
+        )
+    )
+    candidates = {run.domain_profile for run in runs}
+    if domain is not None:
+        candidates &= {domain}
+    if not candidates:
+        return set()
+
+    settled: set[Domain] = set()
+    for candidate in candidates:
+        missing = await db.scalar(
+            select(func.count())
+            .select_from(Clause)
+            .outerjoin(
+                ClauseClassification,
+                (ClauseClassification.clause_id == Clause.id)
+                & (ClauseClassification.domain_profile == candidate),
+            )
+            .where(Clause.document_version_id == version.id, ClauseClassification.id.is_(None))
+        )
+        if not missing:
+            settled.add(candidate)
+    return settled
 
 
 def _run_out(run: ExtractionRun) -> dict[str, Any]:
