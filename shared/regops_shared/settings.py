@@ -88,6 +88,27 @@ class Settings(BaseSettings):
     #: mid-corpus costs more than 5%. At 34 there is a gigabyte of headroom.
     ollama_num_gpu: int | None = None
 
+    #: The ceiling on **generated** tokens. Not a quality knob and not a truncation of anything the
+    #: model had more to say about — a bound on a failure mode.
+    #:
+    #: Ollama's default is unbounded up to ``num_ctx``, so a model that stops predicting a stop
+    #: token generates until the window fills. Measured on ``gemma3:4b`` 2026-09-09: a normal
+    #: extraction reply is 200-400 tokens in 8-13 s, while three clauses of the 전자파 시험방법
+    #: annexes ran to 1,200-1,400 tokens in 60-140 s and one to 4,956 — past the 180 s budget, so
+    #: the whole run died on ``httpx.ReadTimeout``. Token *rate* was unchanged throughout; the model
+    #: was not slow, it would not stop. That killed three annex extractions repeatedly, and because
+    #: a resume restarts near where it died, they could never converge.
+    #:
+    #: 1024 sits well above every observed healthy reply and well below the runaway ones. A clause
+    #: that exceeds it returns unparseable JSON, which the pipeline already records as
+    #: ``EXCLUDED / UNPARSEABLE`` for that one clause and carries on — one clause lost instead of
+    #: the run.
+    #:
+    #: **Not part of the IR fingerprint.** Like ``num_gpu`` this bounds the call rather than
+    #: changing the rule set, and a reply short enough to parse is byte-identical with or without
+    #: it. A reply long enough to be cut produced nothing storable either way.
+    ollama_num_predict: int | None = 1024
+
     #: Embeddings are always Ollama and always this model/dim — changing them invalidates
     #: the whole index, so they are not configurable per provider.
     embedding_model: str = EMBEDDING_MODEL

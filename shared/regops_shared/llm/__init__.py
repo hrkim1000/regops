@@ -48,6 +48,7 @@ class OllamaClient(LLMClient):
         self._timeout = settings.llm_timeout_seconds
         self._num_ctx = settings.ollama_num_ctx
         self._num_gpu = settings.ollama_num_gpu
+        self._num_predict = settings.ollama_num_predict
 
     async def complete(
         self, prompt: str, *, system: str | None = None, temperature: float | None = None
@@ -70,6 +71,11 @@ class OllamaClient(LLMClient):
             # out. Sent because Ollama's own estimate is conservative on a small card and the cost
             # is paid per generated token — see `Settings.ollama_num_gpu` for the measurement.
             options["num_gpu"] = self._num_gpu
+        if self._num_predict is not None:
+            # A bound on runaway generation, not on quality. Unset, Ollama generates until `num_ctx`
+            # fills, so one clause that never emits a stop token spends the whole request budget and
+            # takes the run down with it — see `Settings.ollama_num_predict` for the measurement.
+            options["num_predict"] = self._num_predict
         if options:
             body["options"] = options
         async with httpx.AsyncClient(timeout=self._timeout) as client:

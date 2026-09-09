@@ -18,6 +18,15 @@ from app.extraction.rules import rule_set_for
 from regops_shared.constants import Domain
 from regops_shared.llm import Completion
 
+#: A reply the generation cap cut mid-object — the bytes Ollama returns when `num_predict` fires
+#: part-way through an array. Cut inside a value rather than between fields, because that is where
+#: a token limit actually lands: there is no closing quote, no closing brace, and no bracket.
+CUT_OFF_REPLY = """[
+  {
+    "statement": "기록을 3년간 보관하여야 한다",
+    "modal": "하여야 한
+"""
+
 SAMD = rule_set_for(Domain.SAMD, "ko")
 COSMETIC = rule_set_for(Domain.COSMETIC, "ko")
 
@@ -268,3 +277,24 @@ def test_the_prompt_names_the_language_it_expects() -> None:
     assert "English" in build_prompt(
         rules=SAMD_EN, clause_path=PATH, heading=None, text="…", detected_modals=("shall",)
     )
+
+
+def test_a_reply_cut_at_the_generation_cap_costs_one_clause_not_the_run() -> None:
+    """The shape `ollama_num_predict` produces when it fires, and what it must cost.
+
+    A generation stopped mid-array is invalid JSON. Recording it as an examined clause with
+    nothing storable is what makes the cap safe to have: without one, a clause the model would
+    not stop writing about spent the whole 180s request budget and took the run with it — and
+    because a resume restarts near where it died, the three 전자파 시험방법 annexes could never
+    converge (measured 2026-09-09: healthy replies 200-400 tokens, runaways 1,200-4,956).
+    """
+    cut = Completion(
+        text=CUT_OFF_REPLY,
+        provider="ollama",
+        model="gemma3:4b",
+    )
+
+    result = parse_completion(cut, rules=SAMD, clause_path="별표1/제6호")
+
+    assert result.unparseable, "a cut reply is unusable and must say so, not read as empty"
+    assert result.proposals == [], "half an object is not half an obligation"
