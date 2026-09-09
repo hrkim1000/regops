@@ -83,9 +83,24 @@ class Settings(BaseSettings):
     #: 34               29.3 tok/s      77% GPU     3,029 MiB
     #: ===============  ==============  ==========  ===========
     #:
-    #: 34 rather than full offload, which was 5% faster at 4096 but leaves under 500 MiB spare on a
-    #: card the display also uses. An extraction runs for hours; a model that fails to load
-    #: mid-corpus costs more than 5%. At 34 there is a gigabyte of headroom.
+    #: 34 was chosen over full offload because the latter was only 5% faster at 4096 while leaving
+    #: under 500 MiB spare on a card the display also uses, and an extraction that runs for hours
+    #: cannot afford a model that fails to load mid-corpus.
+    #:
+    #: **That trade-off was stated on the wrong axis, and the machine running this is set to 99.**
+    #: What 34 actually costs is not 5% of throughput: it leaves roughly a quarter of the model on
+    #: the CPU, and *the CPU* is what heats a laptop. During the FDA corpus extraction that showed
+    #: up as a hot machine and a slow run together — CPU at ~50%, falling to 11-19% once the layers
+    #: moved to the GPU. Generation measured 29.2 tok/s at 99 against 29.3 at 34, so the speed was
+    #: a wash and the thermal load was not. A card that thermally throttles, or a laptop somebody
+    #: shuts down because it is too hot to keep on a desk, costs the whole run.
+    #:
+    #: 99 is "every layer" rather than a measured placement; ``gemma3:4b`` has fewer than that, so
+    #: it saturates. Keep the headroom argument in mind on a card the display shares — it is why
+    #: this is per-machine and not pinned here. On the development machine it is a **Windows user
+    #: environment variable**, which is why ``docker compose config`` shows 99 while ``.env.dev``
+    #: and the compose default both say 34: nothing in the repository records it, and a different
+    #: machine or a different shell gets 34 and the CPU heat back.
     ollama_num_gpu: int | None = None
 
     #: The ceiling on **generated** tokens. Not a quality knob and not a truncation of anything the
