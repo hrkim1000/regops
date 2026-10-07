@@ -449,7 +449,8 @@ replaces both the docs-only filter and the per-occasion ask. What did **not** ch
 - `git subtree` is still wrong: it would rewrite the paths, and `startup` mirrors this repo's
   layout as it is.
 
-Publish `main`'s committed tree as a snapshot commit parented on the startup tip:
+Publish `main`'s committed tree as a snapshot commit parented on the startup tip. **In Git Bash,
+not PowerShell** — see below for why.
 
 ```bash
 set -e
@@ -461,8 +462,21 @@ COMMIT=$(git commit-tree 'main^{tree}' -p "$BASE" -m "chore: sync RegOps reposit
 # Verify before pushing: right parent, and a genuine fast-forward. The `&&` is the actual gate —
 # `set -e` does NOT reliably abort this script when it runs through the agent's shell wrapper.
 git log -1 --format='snapshot %h  parent %p' "$COMMIT"   # rev-parse --short takes ONE revision
-git merge-base --is-ancestor "$BASE" "$COMMIT" && git push startup "$COMMIT":hrkim
+git merge-base --is-ancestor "$BASE" "$COMMIT" && git push startup "$COMMIT":refs/heads/hrkim
 ```
+
+**`refs/heads/hrkim`, fully qualified, not `hrkim`.** The short form only resolves when the branch
+already exists on the remote, so it worked for years against `startup-doc` and failed on the first
+push to `regops-multi-domain` — *"The destination you provided is not a full refname"*. The source
+is a bare commit object with no local ref, so git has nothing to infer the destination from. The
+long form is correct either way; the short form is correct only after the first push.
+
+**Run it in Git Bash.** Windows PowerShell 5.1 breaks this three ways, and only one of them is
+loud: `&&` is a parser error; `$(…)` command substitution is not its syntax (assign with
+`$BASE = git rev-parse FETCH_HEAD`); and `"$COMMIT:refs/heads/hrkim"` **silently expands to the
+empty string**, because PowerShell reads `$COMMIT:` as a scope qualifier. That last one produces no
+error at all. If PowerShell is unavoidable, the refspec must be written `"$($COMMIT):refs/heads/hrkim"`
+and the gate as `git merge-base --is-ancestor $BASE $COMMIT; if ($LASTEXITCODE -eq 0) { … }`.
 
 It publishes **committed** state, so "commit to `origin` first" is now structural rather than a rule
 to remember. `git push startup main:hrkim` is not an equivalent shortcut and does not work: `hrkim`
