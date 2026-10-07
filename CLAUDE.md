@@ -423,7 +423,19 @@ REGOPS_E2E_RA_PASSWORD=… REGOPS_E2E_VIEWER_PASSWORD=… npm run e2e
 ## Repo sync to `startup`
 
 Two remotes: `origin` (github.com/hrkim1000/regops — the real repo) and `startup`
-(github.com/kimhwangdata/startup-doc — a shared repo owned by another account).
+(github.com/chomskim/regops-multi-domain — a shared repo owned by another account).
+
+**The `startup` target moved on 2026-10-07**, from `kimhwangdata/startup-doc` to
+`chomskim/regops-multi-domain`. The new repository was created *from* the old `hrkim` branch, so the
+content lineage is continuous even though the commit lineage is not: its `main` is an unrelated
+`Initial commit` whose tree is this repo's minus seven `docs/data/**` cosmetic-source files. Nothing
+of ours is missing from it; ours is a superset.
+
+Its `main` is therefore **not** foreign content the way `startup-doc/main` was, and the first
+question any future change here has to answer is whether the `hrkim`-only rule below still earns
+its keep. It is kept for now, by decision on 2026-10-07, because `main` is still another account's
+default branch. The first sync parents on **`startup/main`** rather than on an `hrkim` tip that does
+not exist yet; after that, `hrkim` carries its own lineage and is parented on itself as before.
 
 **Standing since 2026-08-21: every commit to `origin/main` is followed by a `startup` sync, and the
 sync publishes the whole repository** — code, `.claude/`, this file, and `docs/` in full. That
@@ -441,7 +453,7 @@ Publish `main`'s committed tree as a snapshot commit parented on the startup tip
 
 ```bash
 set -e
-git fetch startup hrkim
+git fetch startup hrkim                   # `main` instead, for the very first push to a new repo
 BASE=$(git rev-parse FETCH_HEAD)          # pin it NOW — see the warning below
 
 COMMIT=$(git commit-tree 'main^{tree}' -p "$BASE" -m "chore: sync RegOps repository")
